@@ -1,0 +1,94 @@
+/*
+ * Copyright (c) 2017 Google LLC.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <atmel/samd21.dtsi>
+
+/ {
+	model = "Scanimetrics WiTAP ISB";
+	compatible = "scanimetrics,witap_isb", "atmel,samd21g18a", "atmel,samd21";
+
+	chosen {
+		zephyr,console = &sercom5;
+		zephyr,shell-uart = &sercom5;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+	};
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		led0 = &led0;
+		led1 = &led1;
+		led2 = &led2;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&porta 20 0>;
+			label = "Red";
+		};
+		led1: led_1 {
+			gpios = <&porta 19 0>;
+			label = "Green";
+		};
+		led2: led_2 {
+			gpios = <&porta 21 0>;
+			label = "Blue";
+		};
+	};
+
+};
+
+&cpu0 {
+	clock-frequency = <48000000>;
+};
+
+&sercom0 {
+	status = "okay";
+	compatible = "atmel,sam0-uart";
+	current-speed = <115200>;
+	rxpo = <3>;
+	txpo = <1>;
+};
+
+&sercom5 {
+	status = "okay";
+	compatible = "atmel,sam0-uart";
+	current-speed = <115200>;
+	rxpo = <3>;
+	txpo = <1>;
+};
+
+&sercom4 {
+	status = "okay";
+	compatible = "atmel,sam0-spi";
+	dipo = <0>;
+	dopo = <1>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/*
+		 * The final 16 KiB is reserved for the application
+		 * and is used by NFFS if enabled.
+		 */
+		storage_partition: partition@3c000 {
+			label = "storage";
+			reg = <0x0003c000 0x00004000>;
+		};
+	};
+};
+
+&usb0 {
+	status = "okay";
+};
