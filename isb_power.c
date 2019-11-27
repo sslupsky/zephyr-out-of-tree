@@ -47,12 +47,17 @@ void sys_set_power_state(enum power_states state)
 #ifdef CONFIG_HAS_SYS_POWER_STATE_SLEEP_2
 	case SYS_POWER_STATE_SLEEP_2:
         // Disable systick interrupt:  See https://www.avrfreaks.net/forum/samd21-samd21e16b-sporadically-locks-and-does-not-wake-standby-sleep-mode
-        // SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
+        // If SysTick is not enabled then no need to mask the interrupt
+#ifdef CONFIG_CORTEX_M_SYSTICK
+        SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
+#endif
         SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
         __DSB();
         __WFI();
-        // Enable systick interrupt
-        // SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;	
+        // Re-enable systick interrupt if SysTick is enabled
+#ifdef CONFIG_CORTEX_M_SYSTICK
+        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;	
+#endif
 		break;
 #endif /* CONFIG_HAS_SYS_POWER_STATE_SLEEP_2 */
 #ifdef CONFIG_HAS_SYS_POWER_STATE_SLEEP_3
