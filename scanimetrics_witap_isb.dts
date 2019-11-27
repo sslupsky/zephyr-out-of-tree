@@ -1,7 +1,17 @@
 /*
- * Copyright (c) 2017 Google LLC.
+ * Copyright (c) 2019 Scanimetrics Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ *
+ *  See this guide for device tree info
+ *  https://docs.zephyrproject.org/latest/guides/dts/index.html
+ *
+ *  The device tree specification is here:
+ *  https://www.devicetree.org/specifications/
+ *
  */
 
 /dts-v1/;
@@ -12,10 +22,11 @@
 	compatible = "scanimetrics,witap_isb", "atmel,samd21g18a", "atmel,samd21";
 
 	chosen {
-		zephyr,console = &sercom5;
-		zephyr,shell-uart = &sercom5;
+		zephyr,console = &sercom1;
+		zephyr,shell-uart = &sercom1;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
+        zephyr,code-partition = &code_partition;
 	};
 
 	/* These aliases are provided for compatibility with samples */
@@ -49,34 +60,64 @@
 
 &sercom0 {
 	status = "okay";
+	compatible = "atmel,sam0-i2c";
+	#address-cells = <1>;
+	#size-cells = <0>;
+    clock-frequency = <100000>;
+};
+
+&sercom1 {
+	status = "okay";
 	compatible = "atmel,sam0-uart";
 	current-speed = <115200>;
-	rxpo = <3>;
-	txpo = <1>;
+	rxpo = <1>;
+	txpo = <0>;
+};
+
+&sercom3 {
+	status = "okay";
+	compatible = "atmel,sam0-i2c";
+	#address-cells = <1>;
+	#size-cells = <0>;
+    clock-frequency = <100000>;
 };
 
 &sercom5 {
 	status = "okay";
-	compatible = "atmel,sam0-uart";
-	current-speed = <115200>;
-	rxpo = <3>;
-	txpo = <1>;
-};
-
-&sercom4 {
-	status = "okay";
-	compatible = "atmel,sam0-spi";
-	dipo = <0>;
-	dopo = <1>;
+	compatible = "atmel,sam0-i2c";
 	#address-cells = <1>;
 	#size-cells = <0>;
+    clock-frequency = <100000>;
 };
+
+/*
+ *  See this link for additional info on flash partitions
+ *  https://github.com/zephyrproject-rtos/zephyr/blob/master/doc/guides/dts/flash_partitions.inc
+ *
+ *  Note, for some reason, code is not place automatically in the code partition
+ *  To do so, you need to ensure that the base address is set in your project config
+ *  For example:
+ *    CONFIG_FLASH_BASE_ADDRESS=0x2000
+ *
+ */
 
 &flash0 {
 	partitions {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
 		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "sam-ba";
+			reg = <0x00000000 0x2000>;
+			read-only;
+		};
+
+		code_partition: partition@2000 {
+			label = "code";
+			reg = <0x2000 0x3A000>;
+			read-only;
+		};
 
 		/*
 		 * The final 16 KiB is reserved for the application
@@ -91,4 +132,8 @@
 
 &usb0 {
 	status = "okay";
+};
+
+&rtc {
+    status = "okay";
 };
