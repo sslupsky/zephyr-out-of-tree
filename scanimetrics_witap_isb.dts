@@ -79,7 +79,7 @@
 	compatible = "atmel,sam0-i2c";
 	#address-cells = <1>;
 	#size-cells = <0>;
-    clock-frequency = <100000>;
+    clock-frequency = <400000>;
 };
 
 &sercom5 {
@@ -87,7 +87,7 @@
 	compatible = "atmel,sam0-i2c";
 	#address-cells = <1>;
 	#size-cells = <0>;
-    clock-frequency = <100000>;
+    clock-frequency = <400000>;
 };
 
 /*
