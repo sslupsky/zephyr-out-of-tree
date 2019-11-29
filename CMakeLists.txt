@@ -2,5 +2,5 @@
 
 zephyr_library()
 
-zephyr_library_sources_ifdef(CONFIG_MPU6050 mpu6050.c)
-zephyr_library_sources_ifdef(CONFIG_MPU6050_TRIGGER mpu6050_trigger.c)
+zephyr_library_sources_ifdef(CONFIG_ICM20649 icm20649.c)
+zephyr_library_sources_ifdef(CONFIG_ICM20649_TRIGGER icm20649_trigger.c)

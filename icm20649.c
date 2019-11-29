@@ -10,12 +10,12 @@
 #include <drivers/sensor.h>
 #include <logging/log.h>
 
-#include "mpu6050.h"
+#include "icm20649.h"
 
-LOG_MODULE_REGISTER(MPU6050, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(ICM20649, CONFIG_SENSOR_LOG_LEVEL);
 
 /* see "Accelerometer Measurements" section from register map description */
-static void mpu6050_convert_accel(struct sensor_value *val, s16_t raw_val,
+static void icm20649_convert_accel(struct sensor_value *val, s16_t raw_val,
 				  u16_t sensitivity_shift)
 {
 	s64_t conv_val;
@@ -26,7 +26,7 @@ static void mpu6050_convert_accel(struct sensor_value *val, s16_t raw_val,
 }
 
 /* see "Gyroscope Measurements" section from register map description */
-static void mpu6050_convert_gyro(struct sensor_value *val, s16_t raw_val,
+static void icm20649_convert_gyro(struct sensor_value *val, s16_t raw_val,
 				 u16_t sensitivity_x10)
 {
 	s64_t conv_val;
@@ -38,7 +38,7 @@ static void mpu6050_convert_gyro(struct sensor_value *val, s16_t raw_val,
 }
 
 /* see "Temperature Measurement" section from register map description */
-static inline void mpu6050_convert_temp(struct sensor_value *val,
+static inline void icm20649_convert_temp(struct sensor_value *val,
 					s16_t raw_val)
 {
 	val->val1 = raw_val / 340 + 36;
@@ -53,67 +53,67 @@ static inline void mpu6050_convert_temp(struct sensor_value *val,
 	}
 }
 
-static int mpu6050_channel_get(struct device *dev,
+static int icm20649_channel_get(struct device *dev,
 			       enum sensor_channel chan,
 			       struct sensor_value *val)
 {
-	struct mpu6050_data *drv_data = dev->driver_data;
+	struct icm20649_data *drv_data = dev->driver_data;
 
 	switch (chan) {
 	case SENSOR_CHAN_ACCEL_XYZ:
-		mpu6050_convert_accel(val, drv_data->accel_x,
+		icm20649_convert_accel(val, drv_data->accel_x,
 				      drv_data->accel_sensitivity_shift);
-		mpu6050_convert_accel(val + 1, drv_data->accel_y,
+		icm20649_convert_accel(val + 1, drv_data->accel_y,
 				      drv_data->accel_sensitivity_shift);
-		mpu6050_convert_accel(val + 2, drv_data->accel_z,
+		icm20649_convert_accel(val + 2, drv_data->accel_z,
 				      drv_data->accel_sensitivity_shift);
 		break;
 	case SENSOR_CHAN_ACCEL_X:
-		mpu6050_convert_accel(val, drv_data->accel_x,
+		icm20649_convert_accel(val, drv_data->accel_x,
 				      drv_data->accel_sensitivity_shift);
 		break;
 	case SENSOR_CHAN_ACCEL_Y:
-		mpu6050_convert_accel(val, drv_data->accel_y,
+		icm20649_convert_accel(val, drv_data->accel_y,
 				      drv_data->accel_sensitivity_shift);
 		break;
 	case SENSOR_CHAN_ACCEL_Z:
-		mpu6050_convert_accel(val, drv_data->accel_z,
+		icm20649_convert_accel(val, drv_data->accel_z,
 				      drv_data->accel_sensitivity_shift);
 		break;
 	case SENSOR_CHAN_GYRO_XYZ:
-		mpu6050_convert_gyro(val, drv_data->gyro_x,
+		icm20649_convert_gyro(val, drv_data->gyro_x,
 				     drv_data->gyro_sensitivity_x10);
-		mpu6050_convert_gyro(val + 1, drv_data->gyro_y,
+		icm20649_convert_gyro(val + 1, drv_data->gyro_y,
 				     drv_data->gyro_sensitivity_x10);
-		mpu6050_convert_gyro(val + 2, drv_data->gyro_z,
+		icm20649_convert_gyro(val + 2, drv_data->gyro_z,
 				     drv_data->gyro_sensitivity_x10);
 		break;
 	case SENSOR_CHAN_GYRO_X:
-		mpu6050_convert_gyro(val, drv_data->gyro_x,
+		icm20649_convert_gyro(val, drv_data->gyro_x,
 				     drv_data->gyro_sensitivity_x10);
 		break;
 	case SENSOR_CHAN_GYRO_Y:
-		mpu6050_convert_gyro(val, drv_data->gyro_y,
+		icm20649_convert_gyro(val, drv_data->gyro_y,
 				     drv_data->gyro_sensitivity_x10);
 		break;
 	case SENSOR_CHAN_GYRO_Z:
-		mpu6050_convert_gyro(val, drv_data->gyro_z,
+		icm20649_convert_gyro(val, drv_data->gyro_z,
 				     drv_data->gyro_sensitivity_x10);
 		break;
 	default: /* chan == SENSOR_CHAN_DIE_TEMP */
-		mpu6050_convert_temp(val, drv_data->temp);
+		icm20649_convert_temp(val, drv_data->temp);
 	}
 
 	return 0;
 }
 
-static int mpu6050_sample_fetch(struct device *dev, enum sensor_channel chan)
+static int icm20649_sample_fetch(struct device *dev, enum sensor_channel chan)
 {
-	struct mpu6050_data *drv_data = dev->driver_data;
+	struct icm20649_data *drv_data = dev->driver_data;
 	s16_t buf[7];
 
-	if (i2c_burst_read(drv_data->i2c, CONFIG_MPU6050_I2C_ADDR,
-			   MPU6050_REG_DATA_START, (u8_t *)buf, 14) < 0) {
+	if (i2c_burst_read(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
+			   ICM20649_REG_DATA_START, (u8_t *)buf, 14) < 0) {
 		LOG_ERR("Failed to read data sample.");
 		return -EIO;
 	}
@@ -129,41 +129,41 @@ static int mpu6050_sample_fetch(struct device *dev, enum sensor_channel chan)
 	return 0;
 }
 
-static const struct sensor_driver_api mpu6050_driver_api = {
-#if CONFIG_MPU6050_TRIGGER
-	.trigger_set = mpu6050_trigger_set,
+static const struct sensor_driver_api icm20649_driver_api = {
+#if CONFIG_ICM20649_TRIGGER
+	.trigger_set = icm20649_trigger_set,
 #endif
-	.sample_fetch = mpu6050_sample_fetch,
-	.channel_get = mpu6050_channel_get,
+	.sample_fetch = icm20649_sample_fetch,
+	.channel_get = icm20649_channel_get,
 };
 
-int mpu6050_init(struct device *dev)
+int icm20649_init(struct device *dev)
 {
-	struct mpu6050_data *drv_data = dev->driver_data;
+	struct icm20649_data *drv_data = dev->driver_data;
 	u8_t id, i;
 
-	drv_data->i2c = device_get_binding(CONFIG_MPU6050_I2C_MASTER_DEV_NAME);
+	drv_data->i2c = device_get_binding(CONFIG_ICM20649_I2C_MASTER_DEV_NAME);
 	if (drv_data->i2c == NULL) {
 		LOG_ERR("Failed to get pointer to %s device",
-			    CONFIG_MPU6050_I2C_MASTER_DEV_NAME);
+			    CONFIG_ICM20649_I2C_MASTER_DEV_NAME);
 		return -EINVAL;
 	}
 
 	/* check chip ID */
-	if (i2c_reg_read_byte(drv_data->i2c, CONFIG_MPU6050_I2C_ADDR,
-			      MPU6050_REG_CHIP_ID, &id) < 0) {
+	if (i2c_reg_read_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
+			      ICM20649_REG_CHIP_ID, &id) < 0) {
 		LOG_ERR("Failed to read chip ID.");
 		return -EIO;
 	}
 
-	if (id != MPU6050_CHIP_ID) {
+	if (id != ICM20649_CHIP_ID) {
 		LOG_ERR("Invalid chip ID.");
 		return -EINVAL;
 	}
 
 	/* wake up chip */
-	if (i2c_reg_update_byte(drv_data->i2c, CONFIG_MPU6050_I2C_ADDR,
-				MPU6050_REG_PWR_MGMT1, MPU6050_SLEEP_EN,
+	if (i2c_reg_update_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
+				ICM20649_REG_PWR_MGMT1, ICM20649_SLEEP_EN,
 				0) < 0) {
 		LOG_ERR("Failed to wake up chip.");
 		return -EIO;
@@ -171,7 +171,7 @@ int mpu6050_init(struct device *dev)
 
 	/* set accelerometer full-scale range */
 	for (i = 0U; i < 4; i++) {
-		if (BIT(i+1) == CONFIG_MPU6050_ACCEL_FS) {
+		if (BIT(i+1) == CONFIG_ICM20649_ACCEL_FS) {
 			break;
 		}
 	}
@@ -181,9 +181,9 @@ int mpu6050_init(struct device *dev)
 		return -EINVAL;
 	}
 
-	if (i2c_reg_write_byte(drv_data->i2c, CONFIG_MPU6050_I2C_ADDR,
-			       MPU6050_REG_ACCEL_CFG,
-			       i << MPU6050_ACCEL_FS_SHIFT) < 0) {
+	if (i2c_reg_write_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
+			       ICM20649_REG_ACCEL_CFG,
+			       i << ICM20649_ACCEL_FS_SHIFT) < 0) {
 		LOG_ERR("Failed to write accel full-scale range.");
 		return -EIO;
 	}
@@ -192,7 +192,7 @@ int mpu6050_init(struct device *dev)
 
 	/* set gyroscope full-scale range */
 	for (i = 0U; i < 4; i++) {
-		if (BIT(i) * 250 == CONFIG_MPU6050_GYRO_FS) {
+		if (BIT(i) * 250 == CONFIG_ICM20649_GYRO_FS) {
 			break;
 		}
 	}
@@ -202,17 +202,17 @@ int mpu6050_init(struct device *dev)
 		return -EINVAL;
 	}
 
-	if (i2c_reg_write_byte(drv_data->i2c, CONFIG_MPU6050_I2C_ADDR,
-			       MPU6050_REG_GYRO_CFG,
-			       i << MPU6050_GYRO_FS_SHIFT) < 0) {
+	if (i2c_reg_write_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
+			       ICM20649_REG_GYRO_CFG,
+			       i << ICM20649_GYRO_FS_SHIFT) < 0) {
 		LOG_ERR("Failed to write gyro full-scale range.");
 		return -EIO;
 	}
 
-	drv_data->gyro_sensitivity_x10 = mpu6050_gyro_sensitivity_x10[i];
+	drv_data->gyro_sensitivity_x10 = icm20649_gyro_sensitivity_x10[i];
 
-#ifdef CONFIG_MPU6050_TRIGGER
-	if (mpu6050_init_interrupt(dev) < 0) {
+#ifdef CONFIG_ICM20649_TRIGGER
+	if (icm20649_init_interrupt(dev) < 0) {
 		LOG_DBG("Failed to initialize interrupts.");
 		return -EIO;
 	}
@@ -221,8 +221,8 @@ int mpu6050_init(struct device *dev)
 	return 0;
 }
 
-struct mpu6050_data mpu6050_driver;
+struct icm20649_data icm20649_driver;
 
-DEVICE_AND_API_INIT(mpu6050, CONFIG_MPU6050_NAME, mpu6050_init, &mpu6050_driver,
+DEVICE_AND_API_INIT(icm20649, CONFIG_ICM20649_NAME, icm20649_init, &icm20649_driver,
 		    NULL, POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,
-		    &mpu6050_driver_api);
+		    &icm20649_driver_api);

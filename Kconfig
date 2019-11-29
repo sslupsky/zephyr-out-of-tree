@@ -1,93 +1,93 @@
-# MPU6050 Six-Axis Motion Tracking device configuration options
+# ICM20649 Six-Axis Motion Tracking device configuration options
 
 # Copyright (c) 2016 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-menuconfig MPU6050
-	bool "MPU6050 Six-Axis Motion Tracking Device"
+menuconfig ICM20649
+	bool "ICM20649 Six-Axis Motion Tracking Device"
 	depends on I2C
 	help
-	  Enable driver for MPU6050 I2C-based six-axis motion tracking device.
+	  Enable driver for ICM20649 I2C-based six-axis motion tracking device.
 
-if MPU6050
+if ICM20649
 
-config MPU6050_NAME
+config ICM20649_NAME
 	string "Driver name"
-	default "MPU6050"
+	default "ICM20649"
 	help
-	  Device name with which the MPU6050 sensor is identified.
+	  Device name with which the ICM20649 sensor is identified.
 
-config MPU6050_I2C_ADDR
+config ICM20649_I2C_ADDR
 	hex "I2C address"
 	default 0x68
 	range 0x68 0x69
 	help
-	  I2C address of the MPU6050 sensor.
+	  I2C address of the ICM20649 sensor.
 	  Choose 0x68 if the AD0 pin is pulled to GND or 0x69 if the AD0 pin
 	  is pulled to VDD.
 
-config MPU6050_I2C_MASTER_DEV_NAME
-	string "I2C master where MPU6050 is connected"
+config ICM20649_I2C_MASTER_DEV_NAME
+	string "I2C master where ICM20649 is connected"
 	default "I2C_0"
 	help
-	  Specify the device name of the I2C master device to which MPU6050 is
+	  Specify the device name of the I2C master device to which ICM20649 is
 	  connected.
 
 choice
 	prompt "Trigger mode"
-	default MPU6050_TRIGGER_GLOBAL_THREAD
+	default ICM20649_TRIGGER_GLOBAL_THREAD
 	help
 	  Specify the type of triggering to be used by the driver.
 
-config MPU6050_TRIGGER_NONE
+config ICM20649_TRIGGER_NONE
 	bool "No trigger"
 
-config MPU6050_TRIGGER_GLOBAL_THREAD
+config ICM20649_TRIGGER_GLOBAL_THREAD
 	bool "Use global thread"
 	depends on GPIO
-	select MPU6050_TRIGGER
+	select ICM20649_TRIGGER
 
-config MPU6050_TRIGGER_OWN_THREAD
+config ICM20649_TRIGGER_OWN_THREAD
 	bool "Use own thread"
 	depends on GPIO
-	select MPU6050_TRIGGER
+	select ICM20649_TRIGGER
 
 endchoice
 
-config MPU6050_TRIGGER
+config ICM20649_TRIGGER
 	bool
 
-config MPU6050_GPIO_DEV_NAME
+config ICM20649_GPIO_DEV_NAME
 	string "GPIO device"
 	default "GPIO_0"
-	depends on MPU6050_TRIGGER
+	depends on ICM20649_TRIGGER
 	help
-	  The device name of the GPIO device to which the MPU6050 interrupt pin
+	  The device name of the GPIO device to which the ICM20649 interrupt pin
 	  is connected.
 
-config MPU6050_GPIO_PIN_NUM
+config ICM20649_GPIO_PIN_NUM
 	int "Interrupt GPIO pin number"
 	default 0
-	depends on MPU6050_TRIGGER
+	depends on ICM20649_TRIGGER
 	help
-	  The number of the GPIO on which the interrupt signal from the MPU6050
+	  The number of the GPIO on which the interrupt signal from the ICM20649
 	  chip will be received.
 
-config MPU6050_THREAD_PRIORITY
+config ICM20649_THREAD_PRIORITY
 	int "Thread priority"
-	depends on MPU6050_TRIGGER_OWN_THREAD
+	depends on ICM20649_TRIGGER_OWN_THREAD
 	default 10
 	help
 	  Priority of thread used by the driver to handle interrupts.
 
-config MPU6050_THREAD_STACK_SIZE
+config ICM20649_THREAD_STACK_SIZE
 	int "Thread stack size"
-	depends on MPU6050_TRIGGER_OWN_THREAD
+	depends on ICM20649_TRIGGER_OWN_THREAD
 	default 1024
 	help
 	  Stack size of thread used by the driver to handle interrupts.
 
-config MPU6050_ACCEL_FS
+config ICM20649_ACCEL_FS
 	int "Accelerometer full-scale range"
 	default 2
 	help
@@ -95,7 +95,7 @@ config MPU6050_ACCEL_FS
 	  An X value for the config represents a range of +/- X g. Valid
 	  values are 2, 4, 8 and 16.
 
-config MPU6050_GYRO_FS
+config ICM20649_GYRO_FS
 	int "Gyroscope full-scale range"
 	default 250
 	help
@@ -103,4 +103,4 @@ config MPU6050_GYRO_FS
 	  An X value for the config represents a range of +/- X degrees/second.
 	  Valid values are 250, 500, 1000, 2000.
 
-endif # MPU6050
+endif # ICM20649
