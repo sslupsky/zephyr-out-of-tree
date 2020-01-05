@@ -22,8 +22,8 @@ static inline void rtc_sync(void)
 
 /*
  * Power state map:
- * SYS_POWER_STATE_SLEEP_1: Sleep
- * SYS_POWER_STATE_SLEEP_2: Deep Sleep
+ * SYS_POWER_STATE_SLEEP_1: IDLE
+ * SYS_POWER_STATE_SLEEP_2: STANDBY
  * SYS_POWER_STATE_SLEEP_3: Stop
  */
 
