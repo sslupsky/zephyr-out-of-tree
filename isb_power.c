@@ -11,6 +11,16 @@
 LOG_MODULE_REGISTER(soc, CONFIG_SOC_LOG_LEVEL);
 
 /*
+ * Waits for RTC bus synchronization.
+ */
+static inline void rtc_sync(void)
+{
+	while (RTC->MODE0.STATUS.reg & RTC_STATUS_SYNCBUSY) {
+		/* Wait for bus synchronization... */
+	}
+}
+
+/*
  * Power state map:
  * SYS_POWER_STATE_SLEEP_1: Sleep
  * SYS_POWER_STATE_SLEEP_2: Deep Sleep
