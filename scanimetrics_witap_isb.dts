@@ -167,6 +167,10 @@
 
 &rtc {
     status = "okay";
+    /*  use GCLK1 (xosc32k) as the source for the rtc  */
+	clock-generator = <1>;
+};
+
 &adc {
     status = "okay";
 };
