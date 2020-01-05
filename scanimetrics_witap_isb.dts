@@ -82,6 +82,7 @@
     clock-frequency = <I2C_BITRATE_STANDARD>;
 	#address-cells = <1>;
 	#size-cells = <0>;
+    dma = <0>;
 
 	ths0: sht3xd@44 {
 		compatible = "sensirion,sht3xd";
