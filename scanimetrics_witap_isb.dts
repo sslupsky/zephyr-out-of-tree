@@ -22,8 +22,8 @@
 	compatible = "scanimetrics,witap_isb", "atmel,samd21g18a", "atmel,samd21";
 
 	chosen {
-		zephyr,console = &sercom1;
-		zephyr,shell-uart = &sercom1;
+		zephyr,console = &sercom2;
+		zephyr,shell-uart = &sercom2;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
         zephyr,code-partition = &code_partition;
@@ -67,7 +67,7 @@
     clock-frequency = <I2C_BITRATE_STANDARD>;
 };
 
-&sercom1 {
+&sercom2 {
 	status = "okay";
 	compatible = "atmel,sam0-uart";
 	current-speed = <115200>;
@@ -159,5 +159,7 @@
 };
 
 &rtc {
+    status = "okay";
+&adc {
     status = "okay";
 };
