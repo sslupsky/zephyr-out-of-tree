@@ -101,6 +101,13 @@
 		label = "OPT3001";
 		reg = <0x45>;
     };
+
+	imu0: icm20649@68 {
+		compatible = "invensense,icm20649";
+        label = "ICM20649";
+		reg = <0x68>;
+        irq-gpios = <&porta 15 0>;
+    };
 };
 
 &sercom5 {
