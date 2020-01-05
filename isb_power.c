@@ -49,7 +49,7 @@ void sys_set_power_state(enum power_states state)
 #ifdef CONFIG_HAS_SYS_POWER_STATE_SLEEP_1
 	case SYS_POWER_STATE_SLEEP_1:
         SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-        PM->SLEEP.reg = 2;
+        PM->SLEEP.reg = 1;
         __DSB();
         __WFI();
 		break;
