@@ -8,7 +8,7 @@
 #include <soc.h>
 
 #include <logging/log.h>
-LOG_MODULE_DECLARE(soc, CONFIG_SOC_LOG_LEVEL);
+LOG_MODULE_REGISTER(soc, CONFIG_SOC_LOG_LEVEL);
 
 /*
  * Power state map:
