@@ -24,7 +24,7 @@ int icm20649_trigger_set(struct device *dev,
 		return -ENOTSUP;
 	}
 
-	gpio_pin_disable_callback(drv_data->gpio, CONFIG_ICM20649_GPIO_PIN_NUM);
+	gpio_pin_disable_callback(drv_data->gpio, DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_PIN);
 
 	drv_data->data_ready_handler = handler;
 	if (handler == NULL) {
@@ -33,7 +33,7 @@ int icm20649_trigger_set(struct device *dev,
 
 	drv_data->data_ready_trigger = *trig;
 
-	gpio_pin_enable_callback(drv_data->gpio, CONFIG_ICM20649_GPIO_PIN_NUM);
+	gpio_pin_enable_callback(drv_data->gpio, DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_PIN);
 
 	return 0;
 }
@@ -46,7 +46,7 @@ static void icm20649_gpio_callback(struct device *dev,
 
 	ARG_UNUSED(pins);
 
-	gpio_pin_disable_callback(dev, CONFIG_ICM20649_GPIO_PIN_NUM);
+	gpio_pin_disable_callback(dev, DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_PIN);
 
 #if defined(CONFIG_ICM20649_TRIGGER_OWN_THREAD)
 	k_sem_give(&drv_data->gpio_sem);
@@ -65,7 +65,7 @@ static void icm20649_thread_cb(void *arg)
 					     &drv_data->data_ready_trigger);
 	}
 
-	gpio_pin_enable_callback(drv_data->gpio, CONFIG_ICM20649_GPIO_PIN_NUM);
+	gpio_pin_enable_callback(drv_data->gpio, DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_PIN);
 }
 
 #ifdef CONFIG_ICM20649_TRIGGER_OWN_THREAD
@@ -98,29 +98,34 @@ int icm20649_init_interrupt(struct device *dev)
 	struct icm20649_data *drv_data = dev->driver_data;
 
 	/* setup data ready gpio interrupt */
-	drv_data->gpio = device_get_binding(CONFIG_ICM20649_GPIO_DEV_NAME);
+	drv_data->gpio = device_get_binding(DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_CONTROLLER);
 	if (drv_data->gpio == NULL) {
 		LOG_ERR("Failed to get pointer to %s device",
-			    CONFIG_ICM20649_GPIO_DEV_NAME);
+			    DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_CONTROLLER);
 		return -EINVAL;
 	}
 
-	gpio_pin_configure(drv_data->gpio, CONFIG_ICM20649_GPIO_PIN_NUM,
+	gpio_pin_configure(drv_data->gpio, DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_PIN,
 			   GPIO_DIR_IN | GPIO_INT | GPIO_INT_EDGE |
 			   GPIO_INT_ACTIVE_HIGH | GPIO_INT_DEBOUNCE);
 
 	gpio_init_callback(&drv_data->gpio_cb,
 			   icm20649_gpio_callback,
-			   BIT(CONFIG_ICM20649_GPIO_PIN_NUM));
+			   BIT(DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_PIN));
 
 	if (gpio_add_callback(drv_data->gpio, &drv_data->gpio_cb) < 0) {
 		LOG_ERR("Failed to set gpio callback");
 		return -EIO;
 	}
 
+    //  Select Bank 0
+    if ( icm20649_set_reg_bank(drv_data, 0) < 0 ) {
+        return -EIO;
+    }
+
 	/* enable data ready interrupt */
-	if (i2c_reg_write_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
-			       ICM20649_REG_INT_EN, ICM20649_DRDY_EN) < 0) {
+	if (i2c_reg_update_byte(drv_data->i2c, drv_data->i2c_slave_addr,
+			       ICM20649_REG_INT_ENABLE_1, ICM20649_RAW_DATA_0_RDY_EN, ICM20649_RAW_DATA_0_RDY_EN) < 0) {
 		LOG_ERR("Failed to enable data ready interrupt.");
 		return -EIO;
 	}
@@ -138,7 +143,9 @@ int icm20649_init_interrupt(struct device *dev)
 	drv_data->dev = dev;
 #endif
 
-	gpio_pin_enable_callback(drv_data->gpio, CONFIG_ICM20649_GPIO_PIN_NUM);
+	gpio_pin_enable_callback(drv_data->gpio, DT_INST_0_INVENSENSE_ICM20649_IRQ_GPIOS_PIN);
+
+    LOG_DBG("Data ready interrupt initialized.");
 
 	return 0;
 }
