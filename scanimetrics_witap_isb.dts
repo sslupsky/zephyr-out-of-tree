@@ -58,15 +58,27 @@
 	clock-frequency = <48000000>;
 };
 
+//  SERCOM0 is used for board to board communication between ISB and MKR WAN (DOCK)
 &sercom0 {
-	status = "disabled";
+	status = "okay";
 	compatible = "atmel,sam0-i2c";
 	#address-cells = <1>;
 	#size-cells = <0>;
     //  see ZEPHYR_INCLUDE_DT_BINDINGS_I2C_I2C_H_ for frequency defines
     clock-frequency = <I2C_BITRATE_STANDARD>;
+
+	eeprom@54 {
+		compatible = "atmel,at24";
+		reg = <0x54>;
+		label = "EEPROM_SLAVE_0";
+		size = <256>;
+		pagesize = <16>;
+		address-width = <8>;
+		timeout = <5>;
+	};
 };
 
+//  use SERCOM2 as UART for console and USB CDC
 &sercom2 {
 	status = "okay";
 	compatible = "atmel,sam0-uart";
@@ -75,6 +87,7 @@
 	txpo = <0>;
 };
 
+//  SERCOM3 is the local bus for onboard sensors
 &sercom3 {
 	status = "okay";
 	compatible = "atmel,sam0-i2c";
@@ -111,6 +124,7 @@
     };
 };
 
+//  SERCOM5 is connected to the onboard GPS module
 &sercom5 {
 	status = "disabled";
 	compatible = "atmel,sam0-i2c";
@@ -169,6 +183,7 @@
     status = "okay";
     /*  use GCLK1 (xosc32k) as the source for the rtc  */
 	clock-generator = <1>;
+//	interrupts = <3 1>;
 };
 
 &adc {
