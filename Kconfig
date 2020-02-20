@@ -28,7 +28,7 @@ config ICM20649_I2C_ADDR
 
 config ICM20649_I2C_MASTER_DEV_NAME
 	string "I2C master where ICM20649 is connected"
-	default "I2C_0"
+	default "SERCOM3"
 	help
 	  Specify the device name of the I2C master device to which ICM20649 is
 	  connected.
@@ -89,18 +89,18 @@ config ICM20649_THREAD_STACK_SIZE
 
 config ICM20649_ACCEL_FS
 	int "Accelerometer full-scale range"
-	default 2
+	default 4
 	help
-	  Magnetometer full-scale range.
-	  An X value for the config represents a range of +/- X g. Valid
-	  values are 2, 4, 8 and 16.
+	  Accelerometer full-scale range.
+	  An X value for the config represents a range of +/- X g.
+	  Valid values are 4, 8, 16 and 30.
 
 config ICM20649_GYRO_FS
 	int "Gyroscope full-scale range"
-	default 250
+	default 500
 	help
 	  Gyroscope full-scale range.
-	  An X value for the config represents a range of +/- X degrees/second.
-	  Valid values are 250, 500, 1000, 2000.
+	  An X value for the config represents a range of +/- X degrees per second.
+	  Valid values are 500, 1000, 2000, 4000.
 
 endif # ICM20649
