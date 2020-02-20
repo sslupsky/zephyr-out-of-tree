@@ -14,6 +14,17 @@
 
 LOG_MODULE_REGISTER(ICM20649, CONFIG_SENSOR_LOG_LEVEL);
 
+int icm20649_set_reg_bank(struct icm20649_data *drv_data, int bank) 
+{
+	if (i2c_reg_write_byte(drv_data->i2c, drv_data->i2c_slave_addr,
+			       ICM20649_REG_BANK_SEL,
+			       bank << ICM20649_USER_BANK_POS) < 0) {
+		LOG_ERR("Failed to write bank select.");
+		return -EIO;
+	}
+    return 0;
+}
+
 /* see "Accelerometer Measurements" section from register map description */
 static void icm20649_convert_accel(struct sensor_value *val, s16_t raw_val,
 				  u16_t sensitivity_shift)
@@ -112,7 +123,12 @@ static int icm20649_sample_fetch(struct device *dev, enum sensor_channel chan)
 	struct icm20649_data *drv_data = dev->driver_data;
 	s16_t buf[7];
 
-	if (i2c_burst_read(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
+    //  Select Bank 0
+    if ( icm20649_set_reg_bank(drv_data, 0) < 0 ) {
+        return -EIO;
+    }
+
+	if (i2c_burst_read(drv_data->i2c, drv_data->i2c_slave_addr,
 			   ICM20649_REG_DATA_START, (u8_t *)buf, 14) < 0) {
 		LOG_ERR("Failed to read data sample.");
 		return -EIO;
@@ -121,10 +137,10 @@ static int icm20649_sample_fetch(struct device *dev, enum sensor_channel chan)
 	drv_data->accel_x = sys_be16_to_cpu(buf[0]);
 	drv_data->accel_y = sys_be16_to_cpu(buf[1]);
 	drv_data->accel_z = sys_be16_to_cpu(buf[2]);
-	drv_data->temp = sys_be16_to_cpu(buf[3]);
-	drv_data->gyro_x = sys_be16_to_cpu(buf[4]);
-	drv_data->gyro_y = sys_be16_to_cpu(buf[5]);
-	drv_data->gyro_z = sys_be16_to_cpu(buf[6]);
+	drv_data->gyro_x  = sys_be16_to_cpu(buf[3]);
+	drv_data->gyro_y  = sys_be16_to_cpu(buf[4]);
+	drv_data->gyro_z  = sys_be16_to_cpu(buf[5]);
+	drv_data->temp    = sys_be16_to_cpu(buf[6]);
 
 	return 0;
 }
@@ -141,16 +157,28 @@ int icm20649_init(struct device *dev)
 {
 	struct icm20649_data *drv_data = dev->driver_data;
 	u8_t id, i;
+    s64_t now;
 
-	drv_data->i2c = device_get_binding(CONFIG_ICM20649_I2C_MASTER_DEV_NAME);
+    now = k_uptime_get() * 1000;
+    if (now < ICM20648_STARTUP_TIME_USEC ) {
+        k_busy_wait(ICM20648_STARTUP_TIME_USEC - now);
+    }
+
+	drv_data->i2c = device_get_binding(DT_INST_0_INVENSENSE_ICM20649_BUS_NAME);
 	if (drv_data->i2c == NULL) {
 		LOG_ERR("Failed to get pointer to %s device",
-			    CONFIG_ICM20649_I2C_MASTER_DEV_NAME);
+			    DT_INST_0_INVENSENSE_ICM20649_BUS_NAME);
 		return -EINVAL;
 	}
+	drv_data->i2c_slave_addr = DT_INST_0_INVENSENSE_ICM20649_BASE_ADDRESS;
+
+    //  Select Bank 0
+    if ( icm20649_set_reg_bank(drv_data, 0) < 0 ) {
+        return -EIO;
+    }
 
 	/* check chip ID */
-	if (i2c_reg_read_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
+	if (i2c_reg_read_byte(drv_data->i2c, drv_data->i2c_slave_addr,
 			      ICM20649_REG_CHIP_ID, &id) < 0) {
 		LOG_ERR("Failed to read chip ID.");
 		return -EIO;
@@ -161,11 +189,22 @@ int icm20649_init(struct device *dev)
 		return -EINVAL;
 	}
 
+    LOG_DBG("ICM20648 chip detected");
+
 	/* wake up chip */
-	if (i2c_reg_update_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
-				ICM20649_REG_PWR_MGMT1, ICM20649_SLEEP_EN,
+	if (i2c_reg_update_byte(drv_data->i2c, drv_data->i2c_slave_addr,
+				ICM20649_REG_PWR_MGMT_1, ICM20649_SLEEP_EN,
 				0) < 0) {
 		LOG_ERR("Failed to wake up chip.");
+		return -EIO;
+	}
+
+    // Set duty cycle mode
+	if (i2c_reg_update_byte(drv_data->i2c, drv_data->i2c_slave_addr,
+				ICM20649_REG_LP_CONFIG, 
+                ICM20649_ACCEL_CYCLE | ICM20649_GYRO_CYCLE | ICM20649_MST_CYCLE,
+				0) < 0) {
+		LOG_ERR("Failed to set duty cycle mode.");
 		return -EIO;
 	}
 
@@ -181,18 +220,23 @@ int icm20649_init(struct device *dev)
 		return -EINVAL;
 	}
 
-	if (i2c_reg_write_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
-			       ICM20649_REG_ACCEL_CFG,
-			       i << ICM20649_ACCEL_FS_SHIFT) < 0) {
+    //  Select Bank 2
+    if ( icm20649_set_reg_bank(drv_data, 2) < 0 ) {
+        return -EIO;
+    }
+
+	if (i2c_reg_write_byte(drv_data->i2c, drv_data->i2c_slave_addr,
+			       ICM20649_REG_ACCEL_CONFIG_1,
+			       i << ICM20649_ACCEL_FS_POS) < 0) {
 		LOG_ERR("Failed to write accel full-scale range.");
 		return -EIO;
 	}
 
-	drv_data->accel_sensitivity_shift = 14 - i;
+	drv_data->accel_sensitivity_shift = 13 - i;
 
 	/* set gyroscope full-scale range */
 	for (i = 0U; i < 4; i++) {
-		if (BIT(i) * 250 == CONFIG_ICM20649_GYRO_FS) {
+		if (BIT(i) * 500 == CONFIG_ICM20649_GYRO_FS) {
 			break;
 		}
 	}
@@ -202,9 +246,9 @@ int icm20649_init(struct device *dev)
 		return -EINVAL;
 	}
 
-	if (i2c_reg_write_byte(drv_data->i2c, CONFIG_ICM20649_I2C_ADDR,
-			       ICM20649_REG_GYRO_CFG,
-			       i << ICM20649_GYRO_FS_SHIFT) < 0) {
+	if (i2c_reg_write_byte(drv_data->i2c, drv_data->i2c_slave_addr,
+			       ICM20649_REG_GYRO_CONFIG_1,
+			       i << ICM20649_GYRO_FS_POS) < 0) {
 		LOG_ERR("Failed to write gyro full-scale range.");
 		return -EIO;
 	}
