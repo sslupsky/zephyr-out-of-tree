@@ -1,0 +1,17 @@
+# Copyright (c) 2019 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+title: InvenSense MEMS sensors ICM20649
+
+description: |
+    This binding gives a base representation of ICM20649 6-axis IMU
+    sensor accessed through I2C bus
+
+compatible: "invensense,icm20649"
+
+include: i2c-device.yaml
+
+properties:
+    irq-gpios:
+      type: phandle-array
+      required: false
