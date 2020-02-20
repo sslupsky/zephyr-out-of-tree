@@ -18,10 +18,13 @@ static int board_pinmux_init(struct device *dev)
 #error Pin mapping is not configured
 #endif
 #if DT_ATMEL_SAM0_UART_SERCOM_1_BASE_ADDRESS
-//  dummy sercom uart for console and shell via usb
+#error Pin mapping is not configured
 #endif
 #if DT_ATMEL_SAM0_UART_SERCOM_2_BASE_ADDRESS
-#error Pin mapping is not configured
+//  virtual sercom uart for console and shell via usb
+//  these pins are not mapped to external pins  since this port is virtual
+//  also note, the default pins (PA12 and PA13) are not connected on the ISB board.
+// #error Pin mapping is not configured
 #endif
 #if DT_ATMEL_SAM0_UART_SERCOM_3_BASE_ADDRESS
 #error Pin mapping is not configured
