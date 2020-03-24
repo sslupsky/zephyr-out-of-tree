@@ -68,19 +68,19 @@
 		compatible = "gpio-gpsio";
 		gps0: gps_reset {
 			gpios = <&portb 8 0>;
-			label = "Reset";
+			label = "gos-reset";
 		};
 		gps1: gps_extint {
 			gpios = <&portb 9 0>;
-			label = "Extint";
+			label = "gps-extint";
 		};
 		gps2: gps_timepulse {
 			gpios = <&porta 27 0>;
-			label = "Timepulse";
+			label = "gps-timepulse";
 		};
 		gps3: gps_safeboot {
 			gpios = <&porta 28 0>;
-			label = "Safeboot";
+			label = "gps-safeboot";
 		};
 	};
 
@@ -88,11 +88,11 @@
 		compatible = "gpio-gpsio";
 		hostint1: host_int1 {
 			gpios = <&porta 10 0>;
-			label = "Reset";
+			label = "hostint1";
 		};
 		hostint2: host_int2 {
 			gpios = <&porta 11 0>;
-			label = "Reset";
+			label = "hostint2";
 		};
 	};
 };
