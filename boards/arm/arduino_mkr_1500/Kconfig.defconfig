@@ -1,0 +1,11 @@
+# Arduino MKR 1500 board configuration
+
+# Copyright (c) 2017 Google LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_ARDUINO_MKR_1500
+
+config BOARD
+	default "arduino_mkr_1500"
+
+endif # BOARD_ARDUINO_MKR_1500

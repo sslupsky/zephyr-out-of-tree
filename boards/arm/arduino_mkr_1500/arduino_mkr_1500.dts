@@ -1,0 +1,178 @@
+/*
+ * Copyright (c) 2020 Scanimetrics Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ *
+ *  See this guide for device tree info
+ *  https://docs.zephyrproject.org/latest/guides/dts/index.html
+ *
+ *  The device tree specification is here:
+ *  https://www.devicetree.org/specifications/
+ *
+ */
+
+/dts-v1/;
+#include <atmel/samd21.dtsi>
+
+/ {
+	model = "Arduino MKR 1500";
+	compatible = "arduino,mkr_1500", "atmel,samd21g18a", "atmel,samd21";
+
+	chosen {
+		zephyr,console = &sercom5;
+		zephyr,shell-uart = &sercom5;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &code_partition;
+	};
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		led0 = &led0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&porta 20 GPIO_POL_NORMAL>;
+			label = "Yellow";
+		};
+	};
+};
+
+&cpu0 {
+	clock-frequency = <48000000>;
+};
+
+//  SERCOM0 is "Wire"
+&sercom0 {
+	status = "okay";
+	compatible = "atmel,sam0-i2c";
+	//  see zephyr/include/dt-bindings/i2c/i2c.h for device tree frequency defines
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	dma = <0>;
+	// interrupts = <9 0>;
+
+	// ecc0: ecc508@c0 {
+	// 	compatible = "microchip,ecc508";
+	// 	label = "ECC508";
+	// 	reg = <0xc0>;
+	// };
+};
+
+//  SERCOM1 is "SPI"
+&sercom1 {
+	status = "okay";
+	compatible = "atmel,sam0-spi";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	dopo = <0>;
+	dipo = <3>;
+	// rxdma = 0;
+	// txdma = 0;
+	// cs-gpios = <&porta 14 GPIO_POL_NORMAL>, <&portb 8 GPIO_POL_NORMAL>;
+	// interrupts = <10 0>;
+};
+
+//  SERCOM2 is alternate for SERCOM0
+&sercom2 {
+	status = "disabled";
+	compatible = "atmel,sam0-i2c";
+	//  see zephyr/include/dt-bindings/i2c/i2c.h for device tree frequency defines
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	dma = <0>;
+	// interrupts = <11 0>;
+};
+
+&sercom3 {
+	status = "disabled";
+};
+
+//  SERCOM4 is "SerialSara" / "Serial2"
+&sercom4 {
+	status = "okay";
+	compatible = "atmel,sam0-uart";
+	// #address-cells = <1>;
+	// #size-cells = <0>;
+	current-speed = <115200>;
+	// RX=PAD1
+	rxpo = <1>;
+	// TX=PAD0, RTS=PAD2, CTS=PAD3
+	// See 26.8.1, TXPO
+	txpo = <2>;
+	// interrupts = <13 0>;
+
+	sara_r4 {
+		status = "okay";
+		compatible = "ublox,sara-r4";
+		label = "ublox-sara-r4";
+		mdm-power-gpios = <&porta 28 GPIO_POL_NORMAL>;
+		mdm-reset-gpios = <&portb 8 GPIO_POL_NORMAL>;
+		// mdm-vint-gpios = <>;
+	};
+};
+
+//  SERCOM5 is "Serial1"
+&sercom5 {
+	status = "okay";
+	compatible = "atmel,sam0-uart";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	current-speed = <115200>;
+	// RX=PAD3
+	rxpo = <3>;
+	// TX=PAD2
+	txpo = <1>;
+	// interrupts = <14 0>;
+};
+
+/*
+ *  See this link for additional info on flash partitions
+ *  https://github.com/zephyrproject-rtos/zephyr/blob/master/doc/guides/dts/flash_partitions.inc
+ *
+ *  Note, for some reason, code is not place automatically in the code partition
+ *  To do so, you need to ensure that the base address is set in your project config
+ *  For example:
+ *    CONFIG_FLASH_BASE_ADDRESS=0x2000
+ *
+ */
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "sam-ba";
+			reg = <0x00000000 0x2000>;
+			read-only;
+		};
+
+		code_partition: partition@2000 {
+			label = "code";
+			reg = <0x2000 0x3a000>;
+			read-only;
+		};
+
+		/*
+		 * The final 16 KiB is reserved for the application
+		 * and is used by NFFS or LittleFS if enabled.
+		 */
+		storage_partition: partition@3c000 {
+			label = "storage";
+			reg = <0x0003c000 0x00004000>;
+		};
+	};
+};
+
+&usb0 {
+	status = "okay";
+};
