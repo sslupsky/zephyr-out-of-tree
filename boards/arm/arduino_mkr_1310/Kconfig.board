@@ -1,0 +1,8 @@
+# Arduino MKR 1310 configuration
+
+# Copyright (c) 2017 Google LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_ARDUINO_MKR_1310
+	bool "Arduino MKR 1310"
+	depends on SOC_PART_NUMBER_SAMD21G18A
