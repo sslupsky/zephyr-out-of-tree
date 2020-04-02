@@ -1,9 +1,8 @@
 # Copyright (c) 2019 Scanimetrics Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-title: InvenSense MEMS sensors ICM20649
-
 description: |
+    InvenSense MEMS sensor ICM20649
     This binding gives a base representation of ICM20649 6-axis IMU
     sensor accessed through I2C bus
 

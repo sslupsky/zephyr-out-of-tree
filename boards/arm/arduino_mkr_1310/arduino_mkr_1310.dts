@@ -16,6 +16,7 @@
 
 /dts-v1/;
 #include <atmel/samd21.dtsi>
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	model = "Arduino MKR 1310";
@@ -37,7 +38,7 @@
 	leds {
 		compatible = "gpio-leds";
 		led0: led_0 {
-			gpios = <&porta 20 GPIO_POL_NORMAL>;
+			gpios = <&porta 20 GPIO_ACTIVE_HIGH>;
 			label = "Yellow";
 		};
 	};
@@ -75,7 +76,7 @@
 	dipo = <3>;
 	// rxdma = 0;
 	// txdma = 0;
-	// cs-gpios = <&porta 14 GPIO_POL_NORMAL>, <&portb 8 GPIO_POL_NORMAL>;
+	// cs-gpios = <&porta 14 GPIO_ACTIVE_HIGH>, <&portb 8 GPIO_ACTIVE_HIGH>;
 	// interrupts = <10 0>;
 };
 
@@ -87,8 +88,8 @@
 	#size-cells = <0>;
 	dopo = <0>;
 	dipo = <3>;
-	cs-gpios = <&portb 8 GPIO_POL_NORMAL>;
-	// cs-gpios = <&portb 8 GPIO_POL_NORMAL>, <&porta 14 GPIO_POL_NORMAL>;
+	cs-gpios = <&portb 8 GPIO_ACTIVE_HIGH>;
+	// cs-gpios = <&portb 8 GPIO_ACTIVE_HIGH>, <&porta 14 GPIO_ACTIVE_HIGH>;
 	// interrupts = <11 0>;
 
 	w25q16: w25q16@0 {
@@ -103,15 +104,6 @@
 		t-enter-dpd = <3000>;
 		t-exit-dpd = <3000>;
 	};
-
-	// lora: lora@1 {
-	// 	compatible = "murata,lora-spi.yaml";
-	// 	label = "LORA";
-	// 	spi-max-frequency = <48000000>;
-	// 	reg = <1>;
-	// 	reset-gpios = <&porta 27 0>;
-	// 	irq-gpios = <&porta 28 0>;
-	// };
 };
 
 //  SERCOM4 is "SerialLoRa" / "Serial2"
@@ -120,9 +112,7 @@
 &sercom4 {
 	status = "okay";
 	compatible = "atmel,sam0-uart";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	current-speed = <115200>;
+	current-speed = <19200>;
 	rxpo = <3>;
 	txpo = <0>;
 	// interrupts = <13 0>;
