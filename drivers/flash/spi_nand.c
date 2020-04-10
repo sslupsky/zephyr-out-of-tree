@@ -14,11 +14,15 @@
 #include <init.h>
 #include <string.h>
 #include <logging/log.h>
+#include <sys/util.h>
+
+#include <stdlib.h>
 
 #include "spi_nand.h"
-#include "flash_priv.h"
+// #include "flash_priv.h"
 
-LOG_MODULE_REGISTER(spi_nand, CONFIG_FLASH_LOG_LEVEL);
+// LOG_MODULE_REGISTER(spi_nand, CONFIG_FLASH_LOG_LEVEL);
+LOG_MODULE_REGISTER(spi_nand, LOG_LEVEL_DBG);
 
 /* Device Power Management Notes
  *
@@ -84,6 +88,9 @@ struct spi_nand_data {
 	struct k_sem sem;
 };
 
+static u32_t _chip_page = SPI_NAND_INVALID_PAGE;
+static bool _page_sync_required = false;
+
 /* Capture the time at which the device entered deep power-down. */
 static inline void record_entered_dpd(const struct device *const dev)
 {
@@ -126,7 +133,7 @@ static inline void delay_until_exit_dpd_ok(const struct device *const dev)
 #endif /* DT_INST_NODE_HAS_PROP(0, has_dpd) */
 }
 
-/*
+/**
  * @brief Send an SPI command
  *
  * @param dev Device struct
@@ -139,22 +146,35 @@ static inline void delay_until_exit_dpd_ok(const struct device *const dev)
  * @return 0 on success, negative errno code otherwise
  */
 static int spi_nand_access(const struct device *const dev,
-			  u8_t opcode, bool is_addressed, off_t addr,
+			  u8_t opcode, size_t addr_size, off_t addr,
 			  void *data, size_t length, bool is_write)
 {
 	struct spi_nand_data *const driver_data = dev->driver_data;
 
-	u8_t buf[4] = {
-		opcode,
-		(addr & 0xFF0000) >> 16,
-		(addr & 0xFF00) >> 8,
-		(addr & 0xFF),
-	};
+	u8_t buf[4];
+	
+	buf[0] = opcode;
+	switch (addr_size) {
+	case 3:
+		buf[1] = (addr & 0xFF0000) >> 16;
+		buf[2] = (addr & 0xFF00) >> 8;
+		buf[3] = (addr & 0xFF);
+		break;
+	case 2:
+		buf[1] = (addr & 0xFF00) >> 8;
+		buf[2] = (addr & 0xFF);
+		break;
+	case 1:
+		buf[1] = (addr & 0xFF);
+		break;
+	default:
+		break;
+	}
 
 	struct spi_buf spi_buf[2] = {
 		{
 			.buf = buf,
-			.len = (is_addressed) ? 4 : 1,
+			.len = addr_size + 1,
 		},
 		{
 			.buf = data,
@@ -181,13 +201,46 @@ static int spi_nand_access(const struct device *const dev,
 }
 
 #define spi_nand_cmd_read(dev, opcode, dest, length) \
-	spi_nand_access(dev, opcode, false, 0, dest, length, false)
-#define spi_nand_cmd_addr_read(dev, opcode, addr, dest, length) \
-	spi_nand_access(dev, opcode, true, addr, dest, length, false)
+	spi_nand_access(dev, opcode, 0, 0, dest, length, false)
+#define spi_nand_cmd_addr_read(dev, opcode, addr_size, addr, dest, length) \
+	spi_nand_access(dev, opcode, addr_size, addr, dest, length, false)
 #define spi_nand_cmd_write(dev, opcode) \
-	spi_nand_access(dev, opcode, false, 0, NULL, 0, true)
-#define spi_nand_cmd_addr_write(dev, opcode, addr, src, length) \
-	spi_nand_access(dev, opcode, true, addr, (void *)src, length, true)
+	spi_nand_access(dev, opcode, 0, 0, NULL, 0, true)
+#define spi_nand_cmd_addr_write(dev, opcode, addr_size, addr, src, length) \
+	spi_nand_access(dev, opcode, addr_size, addr, (void *)src, length, true)
+
+#define spi_nand_read_page_buf(dev, page_offset, dest, length) \
+	spi_nand_access(dev, SPI_NAND_CMD_RDPB, SPI_NAND_ROW_ADDR_SIZE, page_offset << 8, dest, length, false)
+
+#define spi_nand_write_page_buf(dev, row_addr, src, length) \
+	spi_nand_access(dev, SPI_NAND_CMD_LDPBRDSPI, SPI_NAND_COLUMN_ADDR_SIZE, row_addr, (void *)src, length, true)
+
+#define spi_nand_cmd_read_flash_array(dev, row_addr) \
+	spi_nand_access(dev, SPI_NAND_CMD_LDPBFCA, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true)
+
+#define spi_nand_cmd_write_flash_array(dev, row_addr) \
+	spi_nand_access(dev, SPI_NAND_CMD_WRPBFCA, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true)
+
+#define spi_nand_erase_block(dev, row_addr) \
+	spi_nand_access(dev, SPI_NAND_CMD_BLKERASE, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true)
+
+#define spi_nand_read_status(dev, dest) \
+	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_STATUS, dest, 1, false)
+
+#define spi_nand_write_status(dev, src) \
+	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_STATUS, (void *)src, 1, true)
+
+#define spi_nand_read_lock(dev, dest) \
+	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_LOCK, dest, 1, false)
+
+#define spi_nand_write_lock(dev, src) \
+	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_LOCK, (void *)src, 1, true)
+
+#define spi_nand_read_ctrl(dev, dest) \
+	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_CTRL, dest, 1, false)
+
+#define spi_nand_write_ctrl(dev, src) \
+	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_CTRL, (void *)src, 1, true)
 
 static int enter_dpd(const struct device *const dev)
 {
@@ -295,6 +348,66 @@ static inline int spi_nand_read_id(struct device *dev,
 	return 0;
 }
 
+static int spi_nand_idre_set(struct device *dev, bool val)
+{
+	int ret;
+	u8_t reg;
+
+	ret = spi_nand_read_ctrl(dev, &reg);
+	if (ret < 0) {
+		goto done;
+	}
+
+	if ( val ) {
+		reg |= SPI_NAND_CTRL_IDRE_BIT;
+	} else {
+		reg &= ~SPI_NAND_CTRL_IDRE_BIT;
+	}
+
+	ret = spi_nand_write_ctrl(dev, &reg);
+done:
+	return ret;
+}
+
+static int spi_nand_hse_set(struct device *dev, bool val)
+{
+	int ret;
+	u8_t reg;
+
+	ret = spi_nand_read_ctrl(dev, &reg);
+	if (ret < 0) {
+		goto done;
+	}
+
+	if ( val ) {
+		reg |= SPI_NAND_CTRL_HSE_BIT;
+	} else {
+		reg &= ~SPI_NAND_CTRL_HSE_BIT;
+	}
+
+	ret = spi_nand_write_ctrl(dev, &reg);
+done:
+	return ret;
+}
+
+static int spi_nand_bl_set(struct device *dev, u8_t val)
+{
+	int ret;
+	u8_t reg;
+
+	ret = spi_nand_read_lock(dev, &reg);
+	if (ret < 0) {
+		goto done;
+	}
+
+	reg &= ~SPI_NAND_LOCK_BL_BIT;
+	reg |= (val << SPI_NAND_LOCK_BL_POS) & SPI_NAND_LOCK_BL_BIT;
+
+	ret = spi_nand_write_lock(dev, &reg);
+done:
+	return ret;
+}
+
 /**
  * @brief Wait until the flash is ready
  *
@@ -307,17 +420,205 @@ static int spi_nand_wait_until_ready(struct device *dev)
 	u8_t reg;
 
 	do {
-		ret = spi_nand_cmd_read(dev, SPI_NAND_CMD_RDSR, &reg, 1);
-	} while (!ret && (reg & SPI_NAND_WIP_BIT));
-
+		ret = spi_nand_read_status(dev, &reg);
+	} while (!ret && (reg & SPI_NAND_STATUS_OIP_BIT));
 	return ret;
+}
+
+/**
+ * @brief program data buffer content into the physical memory page
+ * 
+ * @param row_addr 
+ * @return int8_t 
+ */
+static int spi_nand_page_write(struct device *dev, u32_t row_addr)
+{
+	int ret;
+	u8_t reg;
+	
+	LOG_DBG("page write: 0x%x", row_addr);
+
+	if (_chip_page != row_addr) {
+		LOG_DBG("invalid page");
+		return -EINVAL;
+	}
+	// ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
+	// if (ret < 0) {
+	// 	 goto done;
+	// }
+	ret = spi_nand_read_status(dev, &reg);
+	if (ret < 0) {
+		goto done;
+	}
+	if (!(reg & SPI_NAND_STATUS_WEL_BIT)) {
+		LOG_ERR("write enable error");
+		ret = -EIO;
+		goto done;
+	}
+
+	/* write the flash cell array */
+	ret = spi_nand_cmd_write_flash_array(dev, row_addr);
+	if (ret < 0) {
+		 goto done;
+	}
+
+	ret = spi_nand_wait_until_ready(dev);
+	if (ret < 0) {
+		 goto done;
+	}
+
+	ret = spi_nand_read_status(dev, &reg);
+	if (ret < 0) {
+		 goto done;
+	}
+
+	if (reg &  SPI_NAND_STATUS_PROGF_BIT) {
+		LOG_DBG("page write failed");
+		ret = -EIO;
+	} else {
+		_chip_page = SPI_NAND_INVALID_PAGE;
+		_page_sync_required = false;
+	}
+done:
+	return ret;
+}
+
+
+/**
+ * @brief Write the on chip buffer to the NAND array
+ * 
+ * @return int8_t 
+ */
+static int spi_nand_page_flush(struct device *dev)
+{
+	int ret;
+
+	LOG_DBG("flush: 0x%x", _chip_page);
+	if (_chip_page == SPI_NAND_INVALID_PAGE) {
+		return 0;
+	}
+	ret = spi_nand_page_write(dev, _chip_page);
+	return ret;
+}
+
+/**
+ * @brief Read a page from the NAND array into the on chip buffer
+ * 
+ * @param row_addr 
+ * @return int8_t 
+ */
+static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
+{
+	int ret, ecc;
+	u8_t reg;
+
+	ret = spi_nand_cmd_read_flash_array(dev, row_addr);
+	if (ret < 0) {
+		goto done;
+	}
+
+	ret = spi_nand_wait_until_ready(dev);
+	if (ret < 0) {
+		 goto done;
+	}
+
+	ret = spi_nand_read_status(dev, &reg);
+	if (ret < 0) {
+		 goto done;
+	}
+
+	/* check ecc bits */
+	ecc = ((reg &  SPI_NAND_STATUS_ECC_BIT) >> SPI_NAND_STATUS_ECC_POS);
+	if (ecc > 1) {
+		LOG_DBG("ecc error: %d", ecc);
+		ret = -EIO;
+	}
+	_chip_page = row_addr;
+
+	// u8_t buf[64];
+	// spi_nand_read_page_buf(dev, 0, buf, sizeof(buf));
+	// LOG_HEXDUMP_DBG(buf, sizeof(buf), "page buffer");
+done:
+    	return ret;
+}
+
+int spi_nand_read_parameter_page(struct device *dev)
+{
+	int ret;
+	union {
+		char str[21];
+		u32_t i32;
+		u16_t i16;
+		char c;
+	} params;
+
+	ret = spi_nand_idre_set(dev, true);
+	if (ret < 0) {
+		goto done;
+	}
+	ret = spi_nand_read_cell_array(dev, 1);
+	if (ret < 0) {
+		goto cleanup;
+	}
+	spi_nand_read_page_buf(dev, 0, params.str, 16);
+	params.str[16] = '\0';
+	LOG_INF("Signature: %s", log_strdup(params.str));
+	spi_nand_read_page_buf(dev, 32, params.str, 12);
+	params.str[12] = '\0';
+	LOG_DBG("Manufacturer: %s", log_strdup(params.str));
+	spi_nand_read_page_buf(dev, 44, params.str, 20);
+	params.str[20] = '\0';
+	LOG_DBG("Device model: %s", log_strdup(params.str));
+	spi_nand_read_page_buf(dev, 80, &params.i32, sizeof(params.i32));
+	LOG_DBG("bytes per page: %d", params.i32);
+	spi_nand_read_page_buf(dev, 92, &params.i32, sizeof(params.i32));
+	LOG_DBG("pages per block: %d", params.i32);
+	spi_nand_read_page_buf(dev, 96, &params.i32, sizeof(params.i32));
+	LOG_DBG("blocks per unit: %d", params.i32);
+	spi_nand_read_page_buf(dev, 105, &params.i16, sizeof(params.i16));
+	LOG_DBG("block endurance: %d", params.i16);
+	spi_nand_read_page_buf(dev, 110, &params.c, sizeof(params.c));
+	LOG_DBG("programs per page: %d", params.c);
+
+cleanup:
+	_chip_page = SPI_NAND_INVALID_PAGE;
+	ret = spi_nand_idre_set(dev, false);
+	if (ret < 0) {
+		goto done;
+	}
+done:
+	return ret;
+}
+
+/*  TODO:  THIS NEEDS TO BE TESTED  */
+static int spi_nand_get_back_blocks(struct device *dev, u32_t Bad_Block_Table[])
+{
+	u32_t block;
+	u8_t data;
+	int ret;
+
+	block = 0;
+	for (block = 0; block < 2048; block++) {
+		ret = spi_nand_read_cell_array(dev, block * 64);                                 ///<  Load nand page into chip buffer
+		spi_nand_read_page_buf(dev, 0, &data, sizeof(data));
+
+		//Check bad block
+		if (data == 0) {
+			Bad_Block_Table[block / (sizeof(Bad_Block_Table[0]) * 8)] |= 1 << (block % (sizeof(Bad_Block_Table[0]) * 8));
+		}
+	}
+	return 0;
 }
 
 static int spi_nand_read(struct device *dev, off_t addr, void *dest,
 			size_t size)
 {
 	const struct spi_nand_config *params = dev->config->config_info;
-	int ret;
+	int ret = 0;
+	u32_t row_addr = addr / SPI_NAND_PAGE_SIZE;
+	u32_t page_offset = page_offset_of(addr);
+	u32_t rd_bytes = MIN(SPI_NAND_PAGE_SIZE - page_offset, size);
+	u32_t remain = size;
 
 	/* should be between 0 and flash size */
 	if ((addr < 0) || ((addr + size) > params->size)) {
@@ -326,10 +627,32 @@ static int spi_nand_read(struct device *dev, off_t addr, void *dest,
 
 	acquire_device(dev);
 
-	spi_nand_wait_until_ready(dev);
-
-	ret = spi_nand_cmd_addr_read(dev, SPI_NAND_CMD_READ, addr, dest, size);
-
+	while (remain) {
+		if (_chip_page != row_addr) {
+			if (_page_sync_required) {
+				/* write the page buffer to the flash cell array */
+				ret = spi_nand_page_flush(dev);
+				if (ret < 0) {
+					goto done;
+				}
+			}
+			/* load the page into the page buffer from flash */
+			ret = spi_nand_read_cell_array(dev, row_addr);
+			if (ret < 0) {
+				goto done;
+			}
+		}
+		ret = spi_nand_read_page_buf(dev, page_offset, dest, rd_bytes);
+		if (ret < 0) {
+			goto done;
+		}
+		dest = (u8_t *)dest + rd_bytes;
+		remain -= rd_bytes;
+		row_addr++;
+		page_offset = 0;
+		rd_bytes = MIN(addr + size - (row_addr * SPI_NAND_PAGE_SIZE), SPI_NAND_PAGE_SIZE);
+	}
+done:
 	release_device(dev);
 	return ret;
 }
@@ -339,6 +662,10 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 {
 	const struct spi_nand_config *params = dev->config->config_info;
 	int ret = 0;
+	u32_t row_addr = addr / SPI_NAND_PAGE_SIZE;
+	u32_t page_offset = page_offset_of(addr);
+	u32_t wr_bytes = MIN(SPI_NAND_PAGE_SIZE - page_offset, size);
+	u32_t remain = size;
 
 	/* should be between 0 and flash size */
 	if ((addr < 0) || ((size + addr) > params->size)) {
@@ -346,36 +673,38 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 	}
 
 	acquire_device(dev);
+	ret = spi_nand_hse_set(dev, false);
 
-	while (size > 0) {
-		size_t to_write = size;
-
-		/* Don't write more than a page. */
-		if (to_write >= SPI_NAND_PAGE_SIZE) {
-			to_write = SPI_NAND_PAGE_SIZE;
+	while (remain > 0) {
+		// Fill page buffer
+		if (_chip_page != row_addr) {
+			/* write the page buffer to the flash cell array */
+			ret = spi_nand_page_flush(dev);
+			if (ret < 0) {
+				goto cleanup;
+			}
+			/* load the page into the page buffer from flash */
+			ret = spi_nand_read_cell_array(dev, row_addr);
+			if (ret < 0) {
+				goto cleanup;
+			}
 		}
 
-		/* Don't write across a page boundary */
-		if (((addr + to_write - 1U) / SPI_NAND_PAGE_SIZE)
-		    != (addr / SPI_NAND_PAGE_SIZE)) {
-			to_write = SPI_NAND_PAGE_SIZE - (addr % SPI_NAND_PAGE_SIZE);
+		ret = spi_nand_write_page_buf(dev, page_offset, src, wr_bytes);
+		_page_sync_required = true;
+		if (ret < 0) {
+			goto cleanup;
 		}
 
-		spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
-		ret = spi_nand_cmd_addr_write(dev, SPI_NAND_CMD_PP, addr,
-					     src, to_write);
-		if (ret != 0) {
-			goto out;
-		}
-
-		size -= to_write;
-		src = (const u8_t *)src + to_write;
-		addr += to_write;
-
-		spi_nand_wait_until_ready(dev);
+		src = (const u8_t *)src + wr_bytes;
+		remain -= wr_bytes;
+		row_addr++;
+		page_offset = 0;
+		wr_bytes = MIN(addr + size - (row_addr * SPI_NAND_PAGE_SIZE), SPI_NAND_PAGE_SIZE);
 	}
 
-out:
+cleanup:
+	ret = spi_nand_hse_set(dev, true);
 	release_device(dev);
 	return ret;
 }
@@ -384,6 +713,7 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 {
 	const struct spi_nand_config *params = dev->config->config_info;
 	int ret = 0;
+	u8_t reg;
 
 	/* should be between 0 and flash size */
 	if ((addr < 0) || ((size + addr) > params->size)) {
@@ -392,47 +722,65 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 
 	acquire_device(dev);
 
-	while (size) {
-		/* write enable */
-		spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
+	/* write enable */
+	// ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
+	// if (ret < 0) {
+	// 	goto out;
+	// }
+	ret = spi_nand_read_status(dev, &reg);
+	if (ret < 0) {
+		goto out;
+	}
+	if (!(reg & SPI_NAND_STATUS_WEL_BIT)) {
+		LOG_ERR("write enable error");
+		ret = -EIO;
+		goto out;
+	}
 
-		if (size == params->size) {
-			/* chip erase */
-			spi_nand_cmd_write(dev, SPI_NAND_CMD_CE);
-			size -= params->size;
-		} else if ((size >= SPI_NAND_BLOCK_SIZE)
-			   && SPI_NAND_IS_BLOCK_ALIGNED(addr)) {
-			/* 64 KiB block erase */
-			spi_nand_cmd_addr_write(dev, SPI_NAND_CMD_BE, addr,
-			NULL, 0);
+	while (size) {
+		if ((size >= SPI_NAND_BLOCK_SIZE)
+			  && SPI_NAND_IS_BLOCK_ALIGNED(addr)) {
+			/* 256 KiB block erase */
+			spi_nand_erase_block(dev, addr / SPI_NAND_PAGE_SIZE);
+			/* wait for OIP */
+			spi_nand_wait_until_ready(dev);
+			/* check ERS_F */
+			ret = spi_nand_read_status(dev, &reg);
+			if (ret < 0) {
+				goto out;
+			}
+			if (reg & SPI_NAND_STATUS_ERASEF_BIT) {
+				LOG_ERR("erase error: 0x%08x", addr);
+				// ret = -EIO;
+				// goto out;
+			}
 			addr += SPI_NAND_BLOCK_SIZE;
 			size -= SPI_NAND_BLOCK_SIZE;
-		} else if ((size >= SPI_NAND_BLOCK32_SIZE)
-			   && SPI_NAND_IS_BLOCK32_ALIGNED(addr)) {
-			/* 32 KiB block erase */
-			spi_nand_cmd_addr_write(dev, SPI_NAND_CMD_BE_32K, addr,
-					       NULL, 0);
-			addr += SPI_NAND_BLOCK32_SIZE;
-			size -= SPI_NAND_BLOCK32_SIZE;
-		} else if ((size >= SPI_NAND_SECTOR_SIZE)
-			   && SPI_NAND_IS_SECTOR_ALIGNED(addr)) {
-			/* sector erase */
-			spi_nand_cmd_addr_write(dev, SPI_NAND_CMD_SE, addr,
-					       NULL, 0);
-			addr += SPI_NAND_SECTOR_SIZE;
-			size -= SPI_NAND_SECTOR_SIZE;
 		} else {
-			/* minimal erase size is at least a sector size */
+			/* minimal erase size is at least a block size */
 			LOG_DBG("unsupported at 0x%lx size %zu", (long)addr,
 				size);
 			ret = -EINVAL;
 			goto out;
 		}
-
-		spi_nand_wait_until_ready(dev);
 	}
 
 out:
+	/* write disable */
+	// spi_nand_cmd_write(dev, SPI_NAND_CMD_WRDI);
+	release_device(dev);
+
+	return ret;
+}
+
+static int spi_nand_sync(struct device *dev)
+{
+	int ret;
+
+	acquire_device(dev);
+	
+	ret = spi_nand_page_flush(dev);
+
 	release_device(dev);
 
 	return ret;
@@ -502,6 +850,19 @@ static int spi_nand_configure(struct device *dev)
 		return -ENODEV;
 	}
 
+	LOG_DBG("device id ok");
+
+	if (spi_nand_read_parameter_page(dev) < 0) {
+		return -ENODEV;
+	};
+
+	/* all flash blocks are locked at power on */
+	/* so unlock them */
+	/* see datasheet 4.10 */
+	if (spi_nand_bl_set(dev, 0) < 0) {
+		return -ENODEV;
+	}
+	
 	if (IS_ENABLED(CONFIG_SPI_NAND_IDLE_IN_DPD)
 	    && (enter_dpd(dev) != 0)) {
 		return -ENODEV;
@@ -561,11 +922,12 @@ static const struct flash_driver_api spi_nand_api = {
 	.read = spi_nand_read,
 	.write = spi_nand_write,
 	.erase = spi_nand_erase,
+	.sync = spi_nand_sync,
 	.write_protection = spi_nand_write_protection_set,
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
 	.page_layout = spi_nand_pages_layout,
 #endif
-	.write_block_size = 1,
+	.write_block_size = SPI_NAND_PARTIAL_PAGE_SIZE,
 };
 
 static const struct spi_nand_config flash_id = {
@@ -573,7 +935,7 @@ static const struct spi_nand_config flash_id = {
 #if DT_INST_NODE_HAS_PROP(0, has_be32k)
 	.has_be32k = true,
 #endif /* DT_INST_NODE_HAS_PROP(0, has_be32k) */
-	.size = DT_INST_PROP(0, size) / 8,
+	.size = DT_INST_PROP(0, size),
 };
 
 static struct spi_nand_data spi_nand_memory_data;
