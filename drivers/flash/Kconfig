@@ -1,0 +1,10 @@
+# Modem configuration options
+
+# Copyright (c) 2018 Foundries.io
+# SPDX-License-Identifier: Apache-2.0
+
+menu "OOT Flash Drivers"
+
+rsource "Kconfig.nand"
+
+endmenu # FLASH
