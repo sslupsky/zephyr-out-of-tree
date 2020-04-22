@@ -36,63 +36,115 @@
 		led2 = &led2;
 	};
 
-	leds {
+	led-pins {
 		compatible = "gpio-leds";
 		led0: led_0 {
-			gpios = <&porta 20 0>;
+			gpios = <&porta 20 (GPIO_ACTIVE_HIGH)>;
 			label = "Red";
 		};
 		led1: led_1 {
-			gpios = <&porta 19 0>;
+			gpios = <&porta 19 (GPIO_ACTIVE_HIGH)>;
 			label = "Green";
 		};
 		led2: led_2 {
-			gpios = <&porta 21 0>;
+			gpios = <&porta 21 (GPIO_ACTIVE_HIGH)>;
 			label = "Blue";
 		};
 	};
 
-	enables {
-		compatible = "gpio-pwrpins";
-		sensor1: sensor_1_pwr_en {
-			gpios = <&porta 6 GPIO_DIR_OUT>;
-			label = "Sensor1";
+	enable-pins {
+		compatible = "gpio";
+		sensor1: pa6 {
+			gpios = <&porta 6 (GPIO_ACTIVE_HIGH)>;
+			label = "sensor-en1";
 		};
-		sensor2: sensor_2_pwr_en {
-			gpios = <&porta 2 GPIO_DIR_OUT>;
-			label = "Sensor2";
+		sensor2: pa2 {
+			gpios = <&porta 2 (GPIO_ACTIVE_HIGH)>;
+			label = "sensor-en2";
 		};
 	};
 
-	gps-io {
-		compatible = "gpio-gpsio";
-		gps0: gps_reset {
-			gpios = <&portb 8 0>;
-			label = "gos-reset";
+	gps-pins {
+		compatible = "gpio";
+		gpsreset: pb8 {
+			gpios = <&portb 8 (GPIO_ACTIVE_LOW)>;
+			label = "gps-reset";
 		};
-		gps1: gps_extint {
-			gpios = <&portb 9 0>;
+		gpsextint: pb9 {
+			gpios = <&portb 9 (GPIO_ACTIVE_LOW)>;
 			label = "gps-extint";
 		};
-		gps2: gps_timepulse {
-			gpios = <&porta 27 0>;
+		gpstimepulse: pa27 {
+			gpios = <&porta 27 (GPIO_ACTIVE_HIGH)>;
 			label = "gps-timepulse";
 		};
-		gps3: gps_safeboot {
-			gpios = <&porta 28 0>;
+		gpssafeboot: pa28 {
+			gpios = <&porta 28 (GPIO_ACTIVE_LOW)>;
 			label = "gps-safeboot";
+		};
+		gpsrxd: pb22 {
+			gpios = <&portb 22 (GPIO_ACTIVE_HIGH)>;
+			label = "gps-rxd";
 		};
 	};
 
-	host-io {
-		compatible = "gpio-gpsio";
-		hostint1: host_int1 {
-			gpios = <&porta 10 0>;
-			label = "hostint1";
+	host-pins {
+		compatible = "gpio";
+		hostint1: pa10 {
+			gpios = <&porta 10 (GPIO_ACTIVE_HIGH)>;
+			label = "host-int1";
 		};
-		hostint2: host_int2 {
-			gpios = <&porta 11 0>;
-			label = "hostint2";
+		hostint2: pa11 {
+			gpios = <&porta 11 (GPIO_ACTIVE_HIGH)>;
+			label = "host-int2";
+		};
+	};
+
+	interrupt-pins {
+		compatible = "gpio";
+		imuint1: pa15 {
+			gpios = <&porta 15 (GPIO_ACTIVE_HIGH)>;
+			label = "imu-int1";
+		};
+		imuint2: pa14 {
+			gpios = <&porta 14 (GPIO_ACTIVE_HIGH)>;
+			label = "imu-int2";
+		};
+		alsalert: pa16 {
+			gpios = <&porta 16 (GPIO_ACTIVE_HIGH)>;
+			label = "als-alert";
+		};
+		thsalert: pa17 {
+			gpios = <&porta 17 (GPIO_ACTIVE_HIGH)>;
+			label = "ths-alert";
+		};
+	};
+
+	unused-pins {
+		compatible = "gpio";
+		pa3: pa3 {
+			gpios = <&porta 3 0>;
+			label = "pa3";
+		};
+		pa12: pa12 {
+			gpios = <&porta 12 0>;
+			label = "pa12";
+		};
+		pa13: pa13 {
+			gpios = <&porta 13 0>;
+			label = "pa13";
+		};
+		pa18: pa18 {
+			gpios = <&porta 18 0>;
+			label = "pa18";
+		};
+		pb10: pb10 {
+			gpios = <&portb 10 0>;
+			label = "pb10";
+		};
+		pb11: pb11 {
+			gpios = <&portb 11 0>;
+			label = "pb11";
 		};
 	};
 };
