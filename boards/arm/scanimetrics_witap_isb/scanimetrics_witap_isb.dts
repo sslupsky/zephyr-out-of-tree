@@ -16,6 +16,7 @@
 
 /dts-v1/;
 #include <atmel/samd21.dtsi>
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	model = "Scanimetrics WiTAP ISB";
@@ -31,9 +32,9 @@
 
 	/* These aliases are provided for compatibility with samples */
 	aliases {
-		led0 = &led0;
-		led1 = &led1;
-		led2 = &led2;
+		led-red = &led0;
+		led-green = &led1;
+		led-blue = &led2;
 	};
 
 	led-pins {
