@@ -1,0 +1,18 @@
+# WiTAP configuration options
+
+# Copyright (c) 2020 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config WITAP
+	bool "WiTAP module"
+	depends on I2C
+	help
+	  Enable WITAP module.
+
+config LOG_BACKEND_FILE
+	bool "Log backend log to file"
+	help
+	  Enable Logging to file.
+
+if WITAP
+endif # WITAP
