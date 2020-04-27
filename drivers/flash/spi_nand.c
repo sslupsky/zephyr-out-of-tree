@@ -922,7 +922,9 @@ static int spi_nand_configure(struct device *dev)
 	}
 
 	/* now the spi bus is configured, we can verify the flash id */
-	if (spi_nand_read_id(dev, params) != 0) {
+	ret = spi_nand_read_id(dev, params);
+	if (ret != 0) {
+		LOG_ERR("read id failed");
 		return -ENODEV;
 	}
 

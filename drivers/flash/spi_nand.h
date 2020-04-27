@@ -9,8 +9,9 @@
 
 #include <sys/util.h>
 
-#define SPI_NAND_MAX_ID_LEN	3
 #define SPI_NAND_INVALID_PAGE 0xffffffff
+
+#define SPI_NAND_ID_LEN			2
 
 struct spi_nand_config {
 	/* JEDEC id from devicetree */
