@@ -15,7 +15,7 @@
 
 struct spi_nand_config {
 	/* JEDEC id from devicetree */
-	u8_t id[SPI_NAND_MAX_ID_LEN];
+	u8_t id[SPI_NAND_ID_LEN];
 
 	/* Indicates support for BE32K */
 	bool has_be32k;
@@ -63,12 +63,27 @@ struct spi_nand_config {
 #define SPI_NAND_CMD_DPD         0xB9    /* Deep Power Down */
 #define SPI_NAND_CMD_RDPD        0xAB    /* Release from Deep Power Down */
 #define SPI_NAND_PROTECT	 0x2A    /* Protect Execute */
+#define SPI_NAND_CMD_RESET	 0xFF	 /* Reset operation */
 
 #define SPI_NAND_ROW_ADDR_SIZE		3
 #define SPI_NAND_BLOCK_ADDR_SIZE	2
 #define SPI_NAND_COLUMN_ADDR_SIZE 	2
 #define SPI_NAND_PAGE_ADDR_SIZE		1
 #define SPI_NAND_FEATURE_ADDR_SIZE 	1
+
+#define SPI_NAND_ERASE_TIMEOUT		7000	/* erase time out (us)   */
+#define SPI_NAND_PROG_TIMEOUT		600	/* program time out (us) */
+#define SPI_NAND_READ_TIMEOUT		280	/* read time out (us) */
+
+#define SPI_NAND_MIN_ERASE_TIME 	1000    /* min erase time (us) */
+#define SPI_NAND_MIN_PROG_TIME		225     /* min programming time (us) */
+#define SPI_NAND_MIN_READ_TIME		35      /* min read time (us) */
+#define SPI_NAND_POWER_ON_TIME		1100    /* min power up time (us) */
+
+#define SPI_NAND_OPCODE_LEN		1
+#define SPI_NAND_ADDR_SIZE_MAX		3
+#define SPI_NAND_WAIT_MAX		2
+#define SPI_NAND_HEADER_SIZE_MAX	(SPI_NAND_OPCODE_LEN + SPI_NAND_ADDR_SIZE_MAX + SPI_NAND_WAIT_MAX)
 
 enum SPI_NAND_FEATURE_TABLE_ADDRESS_e {
 	SPI_NAND_FT_ADDR_LOCK       = 0xA0,
