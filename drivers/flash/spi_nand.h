@@ -19,6 +19,9 @@ struct spi_nand_config {
 	/* Indicates support for BE32K */
 	bool has_be32k;
 
+	/* spi mode */
+	u8_t spi_mode;
+
 	/* Size from devicetree, in bytes */
 	u32_t size;
 };

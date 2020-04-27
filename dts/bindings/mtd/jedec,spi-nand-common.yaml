@@ -84,4 +84,17 @@ properties:
   size:
     type: int
     required: true
-    description: flash capacity in bits
+    description: flash capacity in bytes
+
+  spi-transfer-mode:
+    type: int
+    required: false
+    default: 0
+    description: |
+      Configures the SPI clock polarity CPOL and clock phase CPHA.
+
+      MODE  CPOL  CPHA
+        0     0     0
+        1     0     1
+        2     1     0
+        3     1     1

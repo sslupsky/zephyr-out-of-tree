@@ -883,6 +883,23 @@ static int spi_nand_configure(struct device *dev)
 	data->spi_cfg.frequency = DT_INST_PROP(0, spi_max_frequency);
 	data->spi_cfg.operation = SPI_WORD_SET(8);
 	data->spi_cfg.slave = DT_INST_REG_ADDR(0);
+	switch (params->spi_mode) {
+	case 0:
+		break;
+	case 1:
+		data->spi_cfg.operation |= SPI_MODE_CPHA;
+		break;
+	case 2:
+		data->spi_cfg.operation |= SPI_MODE_CPOL;
+		break;
+	case 3:
+		data->spi_cfg.operation |= SPI_MODE_CPOL;
+		data->spi_cfg.operation |= SPI_MODE_CPHA;
+		break;
+	default:
+		LOG_ERR("invalid SPI mode");
+		return -EINVAL;
+	}
 
 #if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
 	data->cs_ctrl.gpio_dev =
@@ -993,9 +1010,7 @@ static const struct flash_driver_api spi_nand_api = {
 
 static const struct spi_nand_config flash_id = {
 	.id = DT_INST_PROP(0, jedec_id),
-#if DT_INST_NODE_HAS_PROP(0, has_be32k)
-	.has_be32k = true,
-#endif /* DT_INST_NODE_HAS_PROP(0, has_be32k) */
+	.spi_mode = DT_INST_PROP(0, spi_transfer_mode),
 	.size = DT_INST_PROP(0, size),
 };
 
