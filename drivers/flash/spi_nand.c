@@ -438,16 +438,27 @@ done:
  * @brief Wait until the flash is ready
  *
  * @param dev The device structure
+ * @param timeout	timeout (microseconds)
  * @return 0 on success, negative errno code otherwise
  */
-static int spi_nand_wait_until_ready(struct device *dev)
+static int spi_nand_wait_until_ready(struct device *dev, u32_t timeout)
 {
 	int ret;
 	u8_t reg;
+	u32_t t;
 
+	t = k_cycle_get_32();
 	do {
 		ret = spi_nand_read_status(dev, &reg);
-	} while (!ret && (reg & SPI_NAND_STATUS_OIP_BIT));
+		if (ret < 0) {
+			break;
+		}
+		if ((k_cycle_get_32() - t) > k_us_to_cyc_ceil32(timeout)) {
+			LOG_ERR("nand timed out");
+			ret = -ETIMEDOUT;
+			break;
+		}
+	} while ((reg & SPI_NAND_STATUS_OIP_BIT));
 	return ret;
 }
 
@@ -488,7 +499,7 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 		 goto done;
 	}
 
-	ret = spi_nand_wait_until_ready(dev);
+	ret = spi_nand_wait_until_ready(dev, SPI_NAND_PROG_TIMEOUT);
 	if (ret < 0) {
 		 goto done;
 	}
@@ -543,7 +554,7 @@ static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
 		goto done;
 	}
 
-	ret = spi_nand_wait_until_ready(dev);
+	ret = spi_nand_wait_until_ready(dev, SPI_NAND_READ_TIMEOUT);
 	if (ret < 0) {
 		 goto done;
 	}
@@ -769,7 +780,7 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 			/* 256 KiB block erase */
 			spi_nand_erase_block(dev, addr / SPI_NAND_PAGE_SIZE);
 			/* wait for OIP */
-			spi_nand_wait_until_ready(dev);
+			spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
 			/* check ERS_F */
 			ret = spi_nand_read_status(dev, &reg);
 			if (ret < 0) {
@@ -818,7 +829,10 @@ static int spi_nand_write_protection_set(struct device *dev, bool write_protect)
 
 	acquire_device(dev);
 
-	spi_nand_wait_until_ready(dev);
+	ret = spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
+	if (ret < 0) {
+		goto done;
+	}
 
 	ret = spi_nand_cmd_write(dev, (write_protect) ?
 	      SPI_NAND_CMD_WRDI : SPI_NAND_CMD_WREN);
@@ -869,7 +883,11 @@ static int spi_nand_configure(struct device *dev)
 #endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
 
 	/* Might be in DPD if system restarted without power cycle. */
-	exit_dpd(dev);
+	ret = spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
+	if (ret < 0) {
+		LOG_ERR("device timed out");
+		return -ETIMEDOUT;
+	}
 
 	/* now the spi bus is configured, we can verify the flash id */
 	if (spi_nand_read_id(dev, params) != 0) {
