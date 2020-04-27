@@ -324,9 +324,9 @@ static void acquire_device(struct device *dev)
 		k_sem_take(&driver_data->sem, K_FOREVER);
 	}
 
-	if (IS_ENABLED(CONFIG_SPI_NAND_IDLE_IN_DPD)) {
-		exit_dpd(dev);
-	}
+	// if (IS_ENABLED(CONFIG_SPI_NAND_IDLE_IN_DPD)) {
+	// 	exit_dpd(dev);
+	// }
 }
 
 /* Everything necessary to release access to the device.
@@ -336,9 +336,9 @@ static void acquire_device(struct device *dev)
  */
 static void release_device(struct device *dev)
 {
-	if (IS_ENABLED(CONFIG_SPI_NAND_IDLE_IN_DPD)) {
-		enter_dpd(dev);
-	}
+	// if (IS_ENABLED(CONFIG_SPI_NAND_IDLE_IN_DPD)) {
+	// 	enter_dpd(dev);
+	// }
 
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 		struct spi_nand_data *const driver_data = dev->driver_data;
@@ -915,6 +915,8 @@ static int spi_nand_configure(struct device *dev)
 #endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
 
 	/* Might be in DPD if system restarted without power cycle. */
+	// exit_dpd(dev);
+
 	ret = spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
 	if (ret < 0) {
 		LOG_ERR("device timed out");
@@ -941,8 +943,12 @@ static int spi_nand_configure(struct device *dev)
 		return -ENODEV;
 	}
 	
-	if (IS_ENABLED(CONFIG_SPI_NAND_IDLE_IN_DPD)
-	    && (enter_dpd(dev) != 0)) {
+	// if (IS_ENABLED(CONFIG_SPI_NAND_IDLE_IN_DPD)
+	//     && (enter_dpd(dev) != 0)) {
+	// 	LOG_ERR("enter dpd failed");
+	// 	return -ENODEV;
+	// }
+
 		return -ENODEV;
 	}
 
