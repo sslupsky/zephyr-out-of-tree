@@ -90,6 +90,7 @@ struct spi_nand_data {
 
 static u32_t _chip_page = SPI_NAND_INVALID_PAGE;
 static bool _page_sync_required = false;
+static bool _write_protect = true;
 
 /* Capture the time at which the device entered deep power-down. */
 static inline void record_entered_dpd(const struct device *const dev)
@@ -534,7 +535,18 @@ static int spi_nand_page_flush(struct device *dev)
 	if (_chip_page == SPI_NAND_INVALID_PAGE) {
 		return 0;
 	}
+
+	if (_write_protect) {
+		/* write enable */
+		spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
+	}
+
 	ret = spi_nand_page_write(dev, _chip_page);
+
+	if (_write_protect) {
+		/* restore write protect */
+		spi_nand_cmd_write(dev, SPI_NAND_CMD_WRDI);
+	}
 	return ret;
 }
 
@@ -836,6 +848,9 @@ static int spi_nand_write_protection_set(struct device *dev, bool write_protect)
 
 	ret = spi_nand_cmd_write(dev, (write_protect) ?
 	      SPI_NAND_CMD_WRDI : SPI_NAND_CMD_WREN);
+	if (ret == 0) {
+		_write_protect = write_protect;
+	}
 
 	if (IS_ENABLED(DT_INST_PROP(0, requires_ulbpr))
 	    && (ret == 0)
@@ -911,6 +926,8 @@ static int spi_nand_configure(struct device *dev)
 	    && (enter_dpd(dev) != 0)) {
 		return -ENODEV;
 	}
+
+	_write_protect = true;
 
 	return 0;
 }
