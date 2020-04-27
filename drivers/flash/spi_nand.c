@@ -21,8 +21,7 @@
 #include "spi_nand.h"
 // #include "flash_priv.h"
 
-// LOG_MODULE_REGISTER(spi_nand, CONFIG_FLASH_LOG_LEVEL);
-LOG_MODULE_REGISTER(spi_nand, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(spi_nand, CONFIG_FLASH_LOG_LEVEL);
 
 /* Device Power Management Notes
  *
@@ -480,17 +479,14 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 		LOG_DBG("invalid page");
 		return -EINVAL;
 	}
-	// ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
-	// if (ret < 0) {
-	// 	 goto done;
-	// }
+
 	ret = spi_nand_read_status(dev, &reg);
 	if (ret < 0) {
 		goto done;
 	}
 	if (!(reg & SPI_NAND_STATUS_WEL_BIT)) {
-		LOG_ERR("write enable error");
-		ret = -EIO;
+		LOG_ERR("writes are disabled");
+		ret = -EROFS;
 		goto done;
 	}
 
@@ -511,7 +507,7 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 	}
 
 	if (reg &  SPI_NAND_STATUS_PROGF_BIT) {
-		LOG_DBG("page write failed");
+		LOG_WRN("page write failed");
 		ret = -EIO;
 	} else {
 		_chip_page = SPI_NAND_INVALID_PAGE;
@@ -601,13 +597,12 @@ int spi_nand_read_parameter_page(struct device *dev)
 		char c;
 	} params;
 
+	acquire_device(dev);
+
 	spi_nand_id_read_enable(dev, true);
-	if (ret < 0) {
-		goto done;
-	}
 	ret = spi_nand_read_cell_array(dev, 1);
 	if (ret < 0) {
-		goto cleanup;
+		goto done;
 	}
 	spi_nand_read_page_buf(dev, 0, params.str, 16);
 	params.str[16] = '\0';
@@ -628,20 +623,17 @@ int spi_nand_read_parameter_page(struct device *dev)
 	LOG_DBG("block endurance: %d", params.i16);
 	spi_nand_read_page_buf(dev, 110, &params.c, sizeof(params.c));
 	LOG_DBG("programs per page: %d", params.c);
-
-cleanup:
-	_chip_page = SPI_NAND_INVALID_PAGE;
-	ret = spi_nand_idre_set(dev, false);
-	if (ret < 0) {
-		goto done;
-	}
 done:
+	_chip_page = SPI_NAND_INVALID_PAGE;
 	spi_nand_id_read_enable(dev, false);
+
+	release_device(dev);
 	return ret;
 }
 
 /*  TODO:  THIS NEEDS TO BE TESTED  */
-static int spi_nand_get_back_blocks(struct device *dev, u32_t Bad_Block_Table[])
+__attribute__((unused))
+static int spi_nand_get_bad_blocks(struct device *dev, u32_t Bad_Block_Table[])
 {
 	u32_t block;
 	u8_t data;
@@ -725,7 +717,7 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 	acquire_device(dev);
 	spi_nand_high_speed_mode(dev, false);
 
-	while (remain > 0) {
+	while (remain) {
 		// Fill page buffer
 		if (_chip_page != row_addr) {
 			/* write the page buffer to the flash cell array */
@@ -772,18 +764,13 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 
 	acquire_device(dev);
 
-	/* write enable */
-	// ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
-	// if (ret < 0) {
-	// 	goto out;
-	// }
 	ret = spi_nand_read_status(dev, &reg);
 	if (ret < 0) {
 		goto out;
 	}
 	if (!(reg & SPI_NAND_STATUS_WEL_BIT)) {
-		LOG_ERR("write enable error");
-		ret = -EIO;
+		LOG_WRN("writes are disabled");
+		ret = -EROFS;
 		goto out;
 	}
 
@@ -800,15 +787,13 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 				goto out;
 			}
 			if (reg & SPI_NAND_STATUS_ERASEF_BIT) {
-				LOG_ERR("erase error: 0x%08x", addr);
-				// ret = -EIO;
-				// goto out;
+				LOG_ERR("block erase failed: 0x%08x", addr);
 			}
 			addr += SPI_NAND_BLOCK_SIZE;
 			size -= SPI_NAND_BLOCK_SIZE;
 		} else {
 			/* minimal erase size is at least a block size */
-			LOG_DBG("unsupported at 0x%lx size %zu", (long)addr,
+			LOG_ERR("unsupported block erase at 0x%lx size %zu", (long)addr,
 				size);
 			ret = -EINVAL;
 			goto out;
@@ -816,8 +801,6 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 	}
 
 out:
-	/* write disable */
-	// spi_nand_cmd_write(dev, SPI_NAND_CMD_WRDI);
 	release_device(dev);
 
 	return ret;
@@ -858,7 +841,7 @@ static int spi_nand_write_protection_set(struct device *dev, bool write_protect)
 	    && !write_protect) {
 		ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_ULBPR);
 	}
-
+done:
 	release_device(dev);
 
 	return ret;
@@ -875,9 +858,11 @@ static int spi_nand_configure(struct device *dev)
 {
 	struct spi_nand_data *data = dev->driver_data;
 	const struct spi_nand_config *params = dev->config->config_info;
+	int ret;
 
 	data->spi = device_get_binding(DT_INST_BUS_LABEL(0));
 	if (!data->spi) {
+		LOG_ERR("could not bind spi bus");
 		return -EINVAL;
 	}
 
@@ -906,6 +891,7 @@ static int spi_nand_configure(struct device *dev)
 	data->cs_ctrl.gpio_dev =
 		device_get_binding(DT_INST_SPI_DEV_CS_GPIOS_LABEL(0));
 	if (!data->cs_ctrl.gpio_dev) {
+		LOG_ERR("could not bind cs gpio");
 		return -ENODEV;
 	}
 
@@ -933,7 +919,9 @@ static int spi_nand_configure(struct device *dev)
 
 	LOG_DBG("device id ok");
 
-	if (spi_nand_read_parameter_page(dev) < 0) {
+	ret = spi_nand_read_parameter_page(dev);
+	if (ret < 0) {
+		LOG_ERR("read parameter page failed");
 		return -ENODEV;
 	};
 
@@ -941,6 +929,8 @@ static int spi_nand_configure(struct device *dev)
 	/* so unlock them */
 	/* see datasheet 4.10 */
 	ret = spi_nand_block_lock(dev, 0);
+	if (ret < 0) {
+		LOG_ERR("block unlock failed");
 		return -ENODEV;
 	}
 	
@@ -966,13 +956,16 @@ static int spi_nand_configure(struct device *dev)
  */
 static int spi_nand_init(struct device *dev)
 {
+	int ret;
+
 	if (IS_ENABLED(CONFIG_MULTITHREADING)) {
 		struct spi_nand_data *const driver_data = dev->driver_data;
 
 		k_sem_init(&driver_data->sem, 1, UINT_MAX);
 	}
 
-	return spi_nand_configure(dev);
+	ret = spi_nand_configure(dev);
+	return ret;
 }
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
