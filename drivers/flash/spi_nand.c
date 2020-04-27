@@ -138,43 +138,62 @@ static inline void delay_until_exit_dpd_ok(const struct device *const dev)
  *
  * @param dev Device struct
  * @param opcode The command to send
- * @param is_addressed A flag to define if the command is addressed
+ * @param addr_size The size of the address to send (bytes)
  * @param addr The address to send
  * @param data The buffer to store or read the value
  * @param length The size of the buffer
  * @param is_write A flag to define if it's a read or a write command
+ * @param wait The number of wait states between the tx and rx
  * @return 0 on success, negative errno code otherwise
  */
 static int spi_nand_access(const struct device *const dev,
 			  u8_t opcode, size_t addr_size, off_t addr,
-			  void *data, size_t length, bool is_write)
+			  void *data, size_t length, bool is_write, u8_t wait)
 {
 	struct spi_nand_data *const driver_data = dev->driver_data;
 
-	u8_t buf[4];
+	/* opcode (1), address (3), wait (2) */
+	u8_t buf[SPI_NAND_HEADER_SIZE_MAX];
 	
 	buf[0] = opcode;
 	switch (addr_size) {
-	case 3:
-		buf[1] = (addr & 0xFF0000) >> 16;
-		buf[2] = (addr & 0xFF00) >> 8;
-		buf[3] = (addr & 0xFF);
-		break;
-	case 2:
-		buf[1] = (addr & 0xFF00) >> 8;
-		buf[2] = (addr & 0xFF);
+	case 0:
 		break;
 	case 1:
-		buf[1] = (addr & 0xFF);
+		buf[SPI_NAND_OPCODE_LEN] = (addr & 0xFF);
+		break;
+	case 2:
+		buf[SPI_NAND_OPCODE_LEN] = (addr & 0xFF00) >> 8;
+		buf[1 + SPI_NAND_OPCODE_LEN] = (addr & 0xFF);
+		break;
+	case 3:
+		buf[SPI_NAND_OPCODE_LEN] = (addr & 0xFF0000) >> 16;
+		buf[1 + SPI_NAND_OPCODE_LEN] = (addr & 0xFF00) >> 8;
+		buf[2 + SPI_NAND_OPCODE_LEN] = (addr & 0xFF);
 		break;
 	default:
-		break;
+		return -EINVAL;
 	}
 
+	switch (wait) {
+	case 0:
+		break;
+	case 1:
+		buf[addr_size + SPI_NAND_OPCODE_LEN] = 0;
+		break;
+	case 2:
+		buf[addr_size + SPI_NAND_OPCODE_LEN] = 0;
+		buf[addr_size + SPI_NAND_OPCODE_LEN] = 0;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* transaction length = opcode + address + wait */
 	struct spi_buf spi_buf[2] = {
 		{
 			.buf = buf,
-			.len = addr_size + 1,
+			.len = SPI_NAND_OPCODE_LEN + addr_size + wait,
 		},
 		{
 			.buf = data,
@@ -200,47 +219,50 @@ static int spi_nand_access(const struct device *const dev,
 		&driver_data->spi_cfg, &tx_set, &rx_set);
 }
 
-#define spi_nand_cmd_read(dev, opcode, dest, length) \
-	spi_nand_access(dev, opcode, 0, 0, dest, length, false)
-#define spi_nand_cmd_addr_read(dev, opcode, addr_size, addr, dest, length) \
-	spi_nand_access(dev, opcode, addr_size, addr, dest, length, false)
+#define spi_nand_cmd_read(dev, opcode, dest, length, wait) \
+	spi_nand_access(dev, opcode, 0, 0, dest, length, false, wait)
+#define spi_nand_cmd_addr_read(dev, opcode, addr_size, addr, dest, length, wait) \
+	spi_nand_access(dev, opcode, addr_size, addr, dest, length, false, wait)
 #define spi_nand_cmd_write(dev, opcode) \
-	spi_nand_access(dev, opcode, 0, 0, NULL, 0, true)
+	spi_nand_access(dev, opcode, 0, 0, NULL, 0, true, 0)
 #define spi_nand_cmd_addr_write(dev, opcode, addr_size, addr, src, length) \
-	spi_nand_access(dev, opcode, addr_size, addr, (void *)src, length, true)
+	spi_nand_access(dev, opcode, addr_size, addr, (void *)src, length, true, 0)
 
+/* tc58cvg2s0 timing requires a "dummy" byte after the column address */
+/* so, we need to insert a wait state */
+/* see datasheet 4.2.2 */
 #define spi_nand_read_page_buf(dev, page_offset, dest, length) \
-	spi_nand_access(dev, SPI_NAND_CMD_RDPB, SPI_NAND_ROW_ADDR_SIZE, page_offset << 8, dest, length, false)
+	spi_nand_access(dev, SPI_NAND_CMD_RDPB, SPI_NAND_COLUMN_ADDR_SIZE, page_offset, dest, length, false, 1)
 
 #define spi_nand_write_page_buf(dev, row_addr, src, length) \
-	spi_nand_access(dev, SPI_NAND_CMD_LDPBRDSPI, SPI_NAND_COLUMN_ADDR_SIZE, row_addr, (void *)src, length, true)
+	spi_nand_access(dev, SPI_NAND_CMD_LDPBRDSPI, SPI_NAND_COLUMN_ADDR_SIZE, row_addr, (void *)src, length, true, 0)
 
 #define spi_nand_cmd_read_flash_array(dev, row_addr) \
-	spi_nand_access(dev, SPI_NAND_CMD_LDPBFCA, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true)
+	spi_nand_access(dev, SPI_NAND_CMD_LDPBFCA, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true, 0)
 
 #define spi_nand_cmd_write_flash_array(dev, row_addr) \
-	spi_nand_access(dev, SPI_NAND_CMD_WRPBFCA, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true)
+	spi_nand_access(dev, SPI_NAND_CMD_WRPBFCA, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true, 0)
 
 #define spi_nand_erase_block(dev, row_addr) \
-	spi_nand_access(dev, SPI_NAND_CMD_BLKERASE, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true)
+	spi_nand_access(dev, SPI_NAND_CMD_BLKERASE, SPI_NAND_ROW_ADDR_SIZE, row_addr, NULL, 0, true, 0)
 
 #define spi_nand_read_status(dev, dest) \
-	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_STATUS, dest, 1, false)
+	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_STATUS, dest, 1, false, 0)
 
 #define spi_nand_write_status(dev, src) \
-	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_STATUS, (void *)src, 1, true)
+	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_STATUS, (void *)src, 1, true, 0)
 
 #define spi_nand_read_lock(dev, dest) \
-	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_LOCK, dest, 1, false)
+	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_LOCK, dest, 1, false, 0)
 
 #define spi_nand_write_lock(dev, src) \
-	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_LOCK, (void *)src, 1, true)
+	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_LOCK, (void *)src, 1, true, 0)
 
 #define spi_nand_read_ctrl(dev, dest) \
-	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_CTRL, dest, 1, false)
+	spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_CTRL, dest, 1, false, 0)
 
 #define spi_nand_write_ctrl(dev, src) \
-	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_CTRL, (void *)src, 1, true)
+	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_CTRL, (void *)src, 1, true, 0)
 
 static int enter_dpd(const struct device *const dev)
 {
@@ -334,14 +356,18 @@ static void release_device(struct device *dev)
 static inline int spi_nand_read_id(struct device *dev,
 				  const struct spi_nand_config *const flash_id)
 {
-	u8_t buf[SPI_NAND_MAX_ID_LEN];
+	u8_t buf[SPI_NAND_ID_LEN];
 
-	if (spi_nand_cmd_read(dev, SPI_NAND_CMD_RDID, buf,
-	    SPI_NAND_MAX_ID_LEN) != 0) {
+	/* tc58cvg2s0 has a "dummy" byte cycle between command and rx */
+	/* So insert wait */
+	if (spi_nand_cmd_read(dev, SPI_NAND_CMD_RDID, buf, SPI_NAND_ID_LEN, 1)
+	    < 0) {
 		return -EIO;
 	}
 
-	if (memcmp(flash_id->id, buf, SPI_NAND_MAX_ID_LEN) != 0) {
+	/* jedec ID is only 2 bytes for tc58cvg2s0 */
+	/* see datasheet 4.13 */
+	if (memcmp(flash_id->id, buf, SPI_NAND_ID_LEN) != 0) {
 		return -ENODEV;
 	}
 
