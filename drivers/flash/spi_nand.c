@@ -940,6 +940,10 @@ static int spi_nand_configure(struct device *dev)
 	// 	return -ENODEV;
 	// }
 
+	/* disable writes */
+	ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_WRDI);
+	if (ret < 0) {
+		LOG_ERR("write disable failed");
 		return -ENODEV;
 	}
 
@@ -964,6 +968,9 @@ static int spi_nand_init(struct device *dev)
 		k_sem_init(&driver_data->sem, 1, UINT_MAX);
 	}
 
+	while (k_cycle_get_32() < k_us_to_cyc_ceil32(SPI_NAND_POWER_ON_TIME)) {
+		/* wait for chip to power up */
+	}
 	ret = spi_nand_configure(dev);
 	return ret;
 }
@@ -1012,6 +1019,7 @@ static const struct flash_driver_api spi_nand_api = {
 
 static const struct spi_nand_config flash_id = {
 	.id = DT_INST_PROP(0, jedec_id),
+	.has_be32k = DT_INST_PROP(0, has_be32k),
 	.spi_mode = DT_INST_PROP(0, spi_transfer_mode),
 	.size = DT_INST_PROP(0, size),
 };
