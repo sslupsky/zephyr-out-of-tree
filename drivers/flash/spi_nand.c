@@ -375,7 +375,7 @@ static inline int spi_nand_read_id(struct device *dev,
 	return 0;
 }
 
-static int spi_nand_idre_set(struct device *dev, bool val)
+static int spi_nand_id_read_enable(struct device *dev, bool val)
 {
 	int ret;
 	u8_t reg;
@@ -396,7 +396,7 @@ done:
 	return ret;
 }
 
-static int spi_nand_hse_set(struct device *dev, bool val)
+static int spi_nand_high_speed_mode(struct device *dev, bool val)
 {
 	int ret;
 	u8_t reg;
@@ -417,7 +417,7 @@ done:
 	return ret;
 }
 
-static int spi_nand_bl_set(struct device *dev, u8_t val)
+static int spi_nand_block_lock(struct device *dev, u8_t val)
 {
 	int ret;
 	u8_t reg;
@@ -601,7 +601,7 @@ int spi_nand_read_parameter_page(struct device *dev)
 		char c;
 	} params;
 
-	ret = spi_nand_idre_set(dev, true);
+	spi_nand_id_read_enable(dev, true);
 	if (ret < 0) {
 		goto done;
 	}
@@ -636,6 +636,7 @@ cleanup:
 		goto done;
 	}
 done:
+	spi_nand_id_read_enable(dev, false);
 	return ret;
 }
 
@@ -722,7 +723,7 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 	}
 
 	acquire_device(dev);
-	ret = spi_nand_hse_set(dev, false);
+	spi_nand_high_speed_mode(dev, false);
 
 	while (remain > 0) {
 		// Fill page buffer
@@ -753,7 +754,7 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 	}
 
 cleanup:
-	ret = spi_nand_hse_set(dev, true);
+	spi_nand_high_speed_mode(dev, true);
 	release_device(dev);
 	return ret;
 }
@@ -939,7 +940,7 @@ static int spi_nand_configure(struct device *dev)
 	/* all flash blocks are locked at power on */
 	/* so unlock them */
 	/* see datasheet 4.10 */
-	if (spi_nand_bl_set(dev, 0) < 0) {
+	ret = spi_nand_block_lock(dev, 0);
 		return -ENODEV;
 	}
 	
