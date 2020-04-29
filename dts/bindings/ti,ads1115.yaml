@@ -1,0 +1,5 @@
+description: Texas Instruments ADS1115
+
+compatible: "ti,ads1115"
+
+include: ti,ads111x-base.yaml

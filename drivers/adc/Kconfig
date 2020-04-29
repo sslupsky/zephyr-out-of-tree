@@ -8,5 +8,5 @@
 #
 
 
-source "drivers/adc/Kconfig.ads111x"
+rsource "Kconfig.ads111x"
 

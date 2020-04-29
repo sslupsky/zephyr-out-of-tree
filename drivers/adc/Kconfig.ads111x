@@ -1,17 +1,16 @@
 # ADS111x ADC configuration options
 
-# Copyright (c) 2020 Vestas Wind Systems A/S
 # Copyright (c) 2020 Scanimetrics Inc.
 # SPDX-License-Identifier: Apache-2.0
 
 config ADC_ADS111X
 	bool "ADS111x driver"
-	depends on SPI
+	depends on I2C
 	help
 	  Enable ADS111x ADC driver.
 
 	  The ADS111x are 2/4 channel 16-bit A/D converters
-	  with SPI interface.
+	  with I2C interface.
 
 if ADC_ADS111X
 

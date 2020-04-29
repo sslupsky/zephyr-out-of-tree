@@ -1,0 +1,21 @@
+# Common fields for Texas Instruments ADS111X
+
+include: [adc-controller.yaml, i2c-device.yaml]
+
+properties:
+    "#io-channel-cells":
+      const: 1
+
+io-channel-cells:
+    - channel
+
+properties:
+    alert-gpios:
+      type: phandle-array
+      required: false
+      description: |
+        ALERT pin.
+
+        This pin signals active high when produced by the sensor.  The
+        property value should ensure the flags properly describe the
+        signal that is presented to the driver.
