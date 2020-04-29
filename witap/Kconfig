@@ -3,13 +3,17 @@
 # Copyright (c) 2020 Scanimetrics Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+module = WITAP
+module-str = witap
+source "subsys/logging/Kconfig.template.log_config"
+
 config WITAP
 	bool "WiTAP module"
 	depends on I2C
 	help
 	  Enable WITAP module.
 
-config LOG_BACKEND_FILE
+config WITAP_LOG_BACKEND
 	bool "Log backend log to file"
 	help
 	  Enable Logging to file.

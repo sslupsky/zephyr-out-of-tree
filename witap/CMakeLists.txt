@@ -10,7 +10,7 @@ zephyr_library()
 zephyr_library_sources(
     witap_led.c
     witap_power.cpp
-    log_backend_file.c
+    witap_log_backend.c
     )
 zephyr_library_link_libraries(WITAP)
 target_link_libraries(WITAP INTERFACE zephyr_interface)
