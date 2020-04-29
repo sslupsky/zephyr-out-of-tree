@@ -426,6 +426,7 @@ static int ads111x_init(struct device *dev)
 	struct ads111x_data *data = dev->driver_data;
 	u8_t rx_bytes[2];
 	u16_t ch_config;
+	k_tid_t thread;
 	int ret;
 
 	k_sem_init(&data->sem, 0, 1);
@@ -483,13 +484,14 @@ static int ads111x_init(struct device *dev)
 	ch_config = sys_get_be16(rx_bytes);
 	LOG_DBG("config reg: %04x", ch_config);
 
-	k_thread_create(&data->thread, data->stack,
+	thread = k_thread_create(&data->thread, data->stack,
 			CONFIG_ADC_ADS111X_ACQUISITION_THREAD_STACK_SIZE,
 			(k_thread_entry_t)ads111x_acquisition_thread,
 			dev, NULL, NULL,
 			CONFIG_ADC_ADS111X_ACQUISITION_THREAD_PRIO,
 			0, K_NO_WAIT);
 
+	k_thread_name_set(thread, "ads111x acq");
 	adc_context_unlock_unconditionally(&data->ctx);
 
 	return 0;
