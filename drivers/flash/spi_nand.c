@@ -454,7 +454,7 @@ static int spi_nand_wait_until_ready(struct device *dev, u32_t timeout)
 			break;
 		}
 		if ((k_cycle_get_32() - t) > k_us_to_cyc_ceil32(timeout)) {
-			LOG_ERR("nand timed out");
+			LOG_ERR("nand timed out, %d (%d)", timeout, k_us_to_cyc_ceil32(timeout));
 			ret = -ETIMEDOUT;
 			break;
 		}
@@ -473,29 +473,26 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 	int ret;
 	u8_t reg;
 	
-	LOG_DBG("page write: 0x%x", row_addr);
+	if (_chip_page == SPI_NAND_INVALID_PAGE) {
+		return 0;
+	}
 
 	if (_chip_page != row_addr) {
 		LOG_DBG("invalid page");
 		return -EINVAL;
 	}
 
-	ret = spi_nand_read_status(dev, &reg);
-	if (ret < 0) {
-		goto done;
-	}
-	if (!(reg & SPI_NAND_STATUS_WEL_BIT)) {
-		LOG_ERR("writes are disabled");
-		ret = -EROFS;
-		goto done;
-	}
+	LOG_DBG("page write: 0x%x", row_addr);
 
+	/* WREN must be set immediately before the cell array write command */
+	spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
 	/* write the flash cell array */
 	ret = spi_nand_cmd_write_flash_array(dev, row_addr);
 	if (ret < 0) {
 		 goto done;
 	}
 
+	// k_busy_wait(SPI_NAND_MIN_PROG_TIME);
 	ret = spi_nand_wait_until_ready(dev, SPI_NAND_PROG_TIMEOUT);
 	if (ret < 0) {
 		 goto done;
@@ -510,41 +507,13 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 		LOG_WRN("page write failed");
 		ret = -EIO;
 	} else {
-		_chip_page = SPI_NAND_INVALID_PAGE;
+		// _chip_page = SPI_NAND_INVALID_PAGE;
 		_page_sync_required = false;
 	}
 done:
 	return ret;
 }
 
-
-/**
- * @brief Write the on chip buffer to the NAND array
- * 
- * @return int8_t 
- */
-static int spi_nand_page_flush(struct device *dev)
-{
-	int ret;
-
-	LOG_DBG("flush: 0x%x", _chip_page);
-	if (_chip_page == SPI_NAND_INVALID_PAGE) {
-		return 0;
-	}
-
-	if (_write_protect) {
-		/* write enable */
-		spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
-	}
-
-	ret = spi_nand_page_write(dev, _chip_page);
-
-	if (_write_protect) {
-		/* restore write protect */
-		spi_nand_cmd_write(dev, SPI_NAND_CMD_WRDI);
-	}
-	return ret;
-}
 
 /**
  * @brief Read a page from the NAND array into the on chip buffer
@@ -562,6 +531,7 @@ static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
 		goto done;
 	}
 
+	// k_busy_wait(SPI_NAND_MIN_READ_TIME);
 	ret = spi_nand_wait_until_ready(dev, SPI_NAND_READ_TIMEOUT);
 	if (ret < 0) {
 		 goto done;
@@ -598,6 +568,14 @@ int spi_nand_read_parameter_page(struct device *dev)
 	} params;
 
 	acquire_device(dev);
+
+	if (_page_sync_required) {
+		/* write the page buffer to the flash cell array */
+		ret = spi_nand_page_write(dev, _chip_page);
+		if (ret < 0) {
+			goto done;
+		}
+	}
 
 	spi_nand_id_read_enable(dev, true);
 	ret = spi_nand_read_cell_array(dev, 1);
@@ -673,7 +651,7 @@ static int spi_nand_read(struct device *dev, off_t addr, void *dest,
 		if (_chip_page != row_addr) {
 			if (_page_sync_required) {
 				/* write the page buffer to the flash cell array */
-				ret = spi_nand_page_flush(dev);
+				ret = spi_nand_page_write(dev, _chip_page);
 				if (ret < 0) {
 					goto done;
 				}
@@ -720,10 +698,12 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 	while (remain) {
 		// Fill page buffer
 		if (_chip_page != row_addr) {
-			/* write the page buffer to the flash cell array */
-			ret = spi_nand_page_flush(dev);
-			if (ret < 0) {
-				goto cleanup;
+			if (_page_sync_required) {
+				/* write the page buffer to the flash cell array */
+				ret = spi_nand_page_write(dev, _chip_page);
+				if (ret < 0) {
+					goto cleanup;
+				}
 			}
 			/* load the page into the page buffer from flash */
 			ret = spi_nand_read_cell_array(dev, row_addr);
@@ -732,10 +712,16 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 			}
 		}
 
+		/* WREN must be set immediately before the page buffer write command */
+		if (!_write_protect) {
+			spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
+		}
 		ret = spi_nand_write_page_buf(dev, page_offset, src, wr_bytes);
-		_page_sync_required = true;
 		if (ret < 0) {
 			goto cleanup;
+		}
+		if (!_write_protect) {
+			_page_sync_required = true;
 		}
 
 		src = (const u8_t *)src + wr_bytes;
@@ -778,16 +764,28 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 		if ((size >= SPI_NAND_BLOCK_SIZE)
 			  && SPI_NAND_IS_BLOCK_ALIGNED(addr)) {
 			/* 256 KiB block erase */
-			spi_nand_erase_block(dev, addr / SPI_NAND_PAGE_SIZE);
+			/* WREN must be set immediately before the block erase command */
+			if (!_write_protect) {
+				spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
+			}
+			ret = spi_nand_erase_block(dev, addr / SPI_NAND_PAGE_SIZE);
+			if (ret < 0) {
+				LOG_ERR("block erase command error");
+			}
+			// k_busy_wait(SPI_NAND_MIN_ERASE_TIME);
 			/* wait for OIP */
-			spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
-			/* check ERS_F */
+			ret = spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
+			if (ret < 0) {
+				LOG_ERR("block erase oip error");
+			}
 			ret = spi_nand_read_status(dev, &reg);
 			if (ret < 0) {
+				LOG_ERR("block erase read status failed");
 				goto out;
 			}
+			/* check ERS_F */
 			if (reg & SPI_NAND_STATUS_ERASEF_BIT) {
-				LOG_ERR("block erase failed: 0x%08x", addr);
+				LOG_ERR("block erase failed at addr: 0x%08x", addr);
 			}
 			addr += SPI_NAND_BLOCK_SIZE;
 			size -= SPI_NAND_BLOCK_SIZE;
@@ -810,9 +808,14 @@ static int spi_nand_sync(struct device *dev)
 {
 	int ret;
 
+	if (!_page_sync_required) {
+		LOG_DBG("sync not required, 0x%x", _chip_page);
+		return 0;
+	}
+
 	acquire_device(dev);
 	
-	ret = spi_nand_page_flush(dev);
+	ret = spi_nand_page_write(dev, _chip_page);
 
 	release_device(dev);
 
@@ -846,6 +849,14 @@ done:
 
 	return ret;
 }
+
+void spi_nand_get_registers(struct device *dev, u8_t *status, u8_t *ctrl, u8_t *lock)
+{
+	spi_nand_read_status(dev, status);
+	spi_nand_read_ctrl(dev, ctrl);
+	spi_nand_read_lock(dev, lock);
+}
+
 
 /**
  * @brief Configure the flash
@@ -924,6 +935,17 @@ static int spi_nand_configure(struct device *dev)
 		LOG_ERR("read parameter page failed");
 		return -ENODEV;
 	};
+
+	/* reset any on-going operation (erase or program) */
+	// ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_RESET);
+	// if (ret != 0) {
+	// 	return -ENODEV;
+	// }
+
+	// ret = spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
+	// if (ret < 0) {
+	// 	return -ENODEV;
+	// }
 
 	/* all flash blocks are locked at power on */
 	/* so unlock them */
