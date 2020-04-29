@@ -76,7 +76,6 @@
 	dipo = <3>;
 	// rxdma = 0;
 	// txdma = 0;
-	// cs-gpios = <&porta 14 GPIO_ACTIVE_HIGH>, <&portb 8 GPIO_ACTIVE_HIGH>;
 	// interrupts = <10 0>;
 };
 
@@ -88,8 +87,7 @@
 	#size-cells = <0>;
 	dopo = <0>;
 	dipo = <3>;
-	cs-gpios = <&portb 8 GPIO_ACTIVE_HIGH>;
-	// cs-gpios = <&portb 8 GPIO_ACTIVE_HIGH>, <&porta 14 GPIO_ACTIVE_HIGH>;
+	cs-gpios = <&portb 8 GPIO_ACTIVE_LOW>, <&porta 14 GPIO_ACTIVE_LOW>;
 	// interrupts = <11 0>;
 
 	w25q16: w25q16@0 {
