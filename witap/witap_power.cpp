@@ -77,7 +77,7 @@ extern "C" enum power_states sys_pm_policy_next_state(s32_t ticks)
 	//     return SYS_POWER_STATE_ACTIVE;
 	// }
 
-	if ((ticks != K_TICKS_FOREVER) && (ticks < pm_min_residency[0])) {
+	if ((ticks != (s32_t) K_TICKS_FOREVER) && (ticks < pm_min_residency[0])) {
 		LOG_DBG("active: < min residency, ticks: %d", ticks);
 		return SYS_POWER_STATE_ACTIVE;
 	}
@@ -88,7 +88,7 @@ extern "C" enum power_states sys_pm_policy_next_state(s32_t ticks)
 			continue;
 		}
 #endif
-		if ((ticks == K_TICKS_FOREVER) ||
+		if ((ticks == (s32_t) K_TICKS_FOREVER) ||
 		    (ticks >= pm_min_residency[i])) {
 			LOG_DBG("sleep: %d, ticks: %d", i, ticks);
 			return (enum power_states)(i);
