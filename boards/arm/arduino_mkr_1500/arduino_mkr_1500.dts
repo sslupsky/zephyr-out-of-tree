@@ -113,8 +113,8 @@
 		status = "okay";
 		compatible = "ublox,sara-r4";
 		label = "ublox-sara-r4";
-		mdm-power-gpios = <&porta 28 GPIO_POL_NORMAL>;
-		mdm-reset-gpios = <&portb 8 GPIO_POL_NORMAL>;
+		mdm-power-gpios = <&porta 28 GPIO_ACTIVE_HIGH>;
+		mdm-reset-gpios = <&portb 8 GPIO_ACTIVE_HIGH>;
 		// mdm-vint-gpios = <>;
 	};
 };
