@@ -86,7 +86,7 @@ const struct led_color_t LED_COLOR_WHITE = {
 
 const struct led_animation_t animation_heartbeat = {
 	.effect = LED_EFFECT_BLINK,
-	.color = &LED_COLOR_RED,
+	.color = (struct led_color_t *)&LED_COLOR_RED,
 	.duration = 1000,
 	.duty_cycle = 100,
 	.repeat = 0,
@@ -94,7 +94,7 @@ const struct led_animation_t animation_heartbeat = {
 
 const struct led_animation_t animation_boot = {
 	.effect = LED_EFFECT_BLINK,
-	.color = &LED_COLOR_RED,
+	.color = (struct led_color_t *)&LED_COLOR_RED,
 	.duration = 200,
 	.duty_cycle = 500,
 	.repeat = 4,
@@ -102,7 +102,7 @@ const struct led_animation_t animation_boot = {
 
 const struct led_animation_t animation_success = {
 	.effect = LED_EFFECT_BLINK,
-	.color = &LED_COLOR_GREEN,
+	.color = (struct led_color_t *)&LED_COLOR_GREEN,
 	.duration = 1000,
 	.duty_cycle = 100,
 	.repeat = 0,
@@ -110,7 +110,7 @@ const struct led_animation_t animation_success = {
 
 const struct led_animation_t animation_wait = {
 	.effect = LED_EFFECT_BLINK,
-	.color = &LED_COLOR_GREEN,
+	.color = (struct led_color_t *)&LED_COLOR_GREEN,
 	.duration = 200,
 	.duty_cycle = 500,
 	.repeat = 2,
@@ -118,7 +118,7 @@ const struct led_animation_t animation_wait = {
 
 const struct led_animation_t animation_error = {
 	.effect = LED_EFFECT_BLINK,
-	.color = &LED_COLOR_RED,
+	.color = (struct led_color_t *)&LED_COLOR_RED,
 	.duration = 1000,
 	.duty_cycle = 200,
 	.repeat = 2,
@@ -266,5 +266,5 @@ done:
 	return;
 }
 
-K_THREAD_DEFINE(led_process_id, LED_THREAD_STACKSIZE, led_process, NULL, NULL, NULL,
+K_THREAD_DEFINE(led, LED_THREAD_STACKSIZE, led_process, NULL, NULL, NULL,
 		LED_THREAD_PRIORITY, 0, 0);
