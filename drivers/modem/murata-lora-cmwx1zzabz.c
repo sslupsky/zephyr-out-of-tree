@@ -13,6 +13,7 @@ LOG_MODULE_REGISTER(modem_lora, CONFIG_MODEM_LOG_LEVEL);
 #include <sys/util.h>
 #include <drivers/console/uart_pipe.h>
 #include <drivers/uart.h>
+#include <soc.h>
 
 #include <net/net_if.h>
 #include <drivers/gpio.h>
@@ -27,6 +28,10 @@ enum mdm_control_pins {
 	MDM_RESET = 0,
 	MDM_BOOT0,
 	MDM_IRQ,
+	MDM_RF_SSN,
+	MDM_SCK,
+	MDM_MOSI_TX,
+	MDM_MISO_RX,
 };
 
 enum lora_mode {
@@ -55,10 +60,34 @@ static struct modem_pin modem_pins[] = {
 		  DT_INST_0_MURATA_LORA_MDM_BOOT0_GPIOS_PIN, GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_HIGH),
 #endif
 
-#if defined(DT_INST_0_MURATA_LORA_MDM_IRQ_GPIOS_CONTROLLER)
+#if defined(DT_INST_0_MURATA_LORA_MDM_RF_SSN_GPIOS_CONTROLLER)
+	/* MDM_RF_SSN */
+	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_RF_SSN_GPIOS_CONTROLLER,
+		  DT_INST_0_MURATA_LORA_MDM_RF_SSN_GPIOS_PIN, GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
+#endif
+
+#if defined(DT_INST_0_MURATA_LORA_MDM_RF_IRQ_GPIOS_CONTROLLER)
 	/* MDM_IRQ */
-	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_IRQ_GPIOS_CONTROLLER,
-		  DT_INST_0_MURATA_LORA_MDM_IRQ_GPIOS_PIN, GPIO_INPUT),
+	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_RF_IRQ_GPIOS_CONTROLLER,
+		  DT_INST_0_MURATA_LORA_MDM_RF_IRQ_GPIOS_PIN, GPIO_DISCONNECTED),
+#endif
+
+#if defined(DT_INST_0_MURATA_LORA_MDM_SCK_GPIOS_CONTROLLER)
+	/* MDM_SCK */
+	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_SCK_GPIOS_CONTROLLER,
+		  DT_INST_0_MURATA_LORA_MDM_SCK_GPIOS_PIN, GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
+#endif
+
+#if defined(DT_INST_0_MURATA_LORA_MDM_MOSI_TX_GPIOS_CONTROLLER)
+	/* MDM_MOSI_TX */
+	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_MOSI_TX_GPIOS_CONTROLLER,
+		  DT_INST_0_MURATA_LORA_MDM_MOSI_TX_GPIOS_PIN, GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
+#endif
+
+#if defined(DT_INST_0_MURATA_LORA_MDM_MISO_RX_GPIOS_CONTROLLER)
+	/* MDM_MISO_RX */
+	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_MISO_RX_GPIOS_CONTROLLER,
+		  DT_INST_0_MURATA_LORA_MDM_MISO_RX_GPIOS_PIN, GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
 #endif
 };
 
@@ -74,7 +103,7 @@ static struct modem_pin modem_pins[] = {
 #define LORA_CMD_SETUP_TIMEOUT  K_SECONDS(6)
 #define LORA_RX_STACK_SIZE      512
 #define LORA_MAX_DATA_LENGTH	128
-#define LORA_RECV_MAX_BUF       8
+#define LORA_RECV_MAX_BUF       4
 #define LORA_RECV_BUF_SIZE      128
 #define LORA_BUF_ALLOC_TIMEOUT  K_SECONDS(1)
 
@@ -261,6 +290,7 @@ static struct modem_info minfo;
  */
 
 /* Handler: <manufacturer> */
+__attribute__((unused))
 MODEM_CMD_DEFINE(on_cmd_atcmdinfo_manufacturer)
 {
 	size_t out_len;
@@ -306,6 +336,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmdinfo_revision)
 }
 
 /* Handler: <IMEI> */
+__attribute__((unused))
 MODEM_CMD_DEFINE(on_cmd_atcmdinfo_imei)
 {
 	size_t out_len;
@@ -349,6 +380,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmdinfo_imei)
 // }
 
 /* AT+DEVEUI Handler: +OK[0]=<DEVEUI>[1] */
+__attribute__((unused))
 MODEM_CMD_DEFINE(on_cmd_atcmd_deveui)
 {
 	size_t out_len;
@@ -363,6 +395,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_deveui)
 }
 
 /* AT+DEVADDR Handler: +OK[0]=<DEVADDR>[1] */
+__attribute__((unused))
 MODEM_CMD_DEFINE(on_cmd_atcmd_devaddr)
 {
 	size_t out_len;
@@ -377,6 +410,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_devaddr)
 }
 
 /* AT+NWKSKEY Handler: +OK[0]=<NWKSKEY>[1] */
+__attribute__((unused))
 MODEM_CMD_DEFINE(on_cmd_atcmd_nwkskey)
 {
 	size_t out_len;
@@ -391,6 +425,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_nwkskey)
 }
 
 /* AT+APPSKEY Handler: +OK[0]=<APPSKEY>[1] */
+__attribute__((unused))
 MODEM_CMD_DEFINE(on_cmd_atcmd_appskey)
 {
 	size_t out_len;
@@ -405,6 +440,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_appskey)
 }
 
 /* AT+APPKEY Handler: +OK[0]=<APPKEY>[1] */
+__attribute__((unused))
 MODEM_CMD_DEFINE(on_cmd_atcmd_appkey)
 {
 	size_t out_len;
@@ -419,6 +455,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_appkey)
 }
 
 /* AT+APPEUI Handler: +OK[0]=<APPEUI>[1] */
+__attribute__((unused))
 MODEM_CMD_DEFINE(on_cmd_atcmd_appeui)
 {
 	size_t out_len;
@@ -839,7 +876,7 @@ static void lora_configure(struct k_work *work)
 	while (r < 0 && timeout < 10) {
 		r = modem_cmd_send(&lora->context.iface,
 					&lora->context.cmd_handler,
-					&response_cmds[0],
+					(struct modem_cmd *)&response_cmds[0],
 					ARRAY_SIZE(response_cmds),
 					"AT", &lora->sem_response,
 					LORA_CMD_AT_TIMEOUT);
@@ -935,6 +972,7 @@ static void lora_configure(struct k_work *work)
 static int lora_init(struct device *device)
 {
 	struct lora_modem *lora = device->driver_data;
+	k_tid_t thread;
 	int r;
 
 	LOG_DBG("Generic LoRa modem (%p)", lora);
@@ -945,9 +983,9 @@ static int lora_init(struct device *device)
 
 	k_sem_init(&lora->ppp_send_sem, 0, 1);
 
-	lora->cmd_handler_data.cmds[CMD_RESP] = response_cmds;
+	lora->cmd_handler_data.cmds[CMD_RESP] = (struct modem_cmd *)response_cmds;
 	lora->cmd_handler_data.cmds_len[CMD_RESP] = ARRAY_SIZE(response_cmds);
-	lora->cmd_handler_data.cmds[CMD_UNSOL] = unsol_cmds;
+	lora->cmd_handler_data.cmds[CMD_UNSOL] = (struct modem_cmd *)unsol_cmds;
 	lora->cmd_handler_data.cmds_len[CMD_UNSOL] = ARRAY_SIZE(unsol_cmds);
 	lora->cmd_handler_data.read_buf = &lora->cmd_read_buf[0];
 	lora->cmd_handler_data.read_buf_len = sizeof(lora->cmd_read_buf);
@@ -1000,11 +1038,12 @@ static int lora_init(struct device *device)
 	k_sleep(K_MSEC(200));
 	modem_pin_write(&lora->context, MDM_RESET, 0);
 
-	k_thread_create(&lora_rx_thread, lora_rx_stack,
+	thread = k_thread_create(&lora_rx_thread, lora_rx_stack,
 			K_THREAD_STACK_SIZEOF(lora_rx_stack),
 			(k_thread_entry_t) lora_rx,
 			lora, NULL, NULL, K_PRIO_COOP(7), 0, K_NO_WAIT);
 
+	k_thread_name_set(thread, "lora rx");
 	k_delayed_work_init(&lora->lora_configure_work, lora_configure);
 
 	(void)k_delayed_work_submit(&lora->lora_configure_work, 0);
