@@ -264,6 +264,7 @@ static int spi_nand_access(const struct device *const dev,
 #define spi_nand_write_ctrl(dev, src) \
 	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_CTRL, (void *)src, 1, true, 0)
 
+__attribute__((unused))
 static int enter_dpd(const struct device *const dev)
 {
 	int ret = 0;
@@ -277,6 +278,7 @@ static int enter_dpd(const struct device *const dev)
 	return ret;
 }
 
+__attribute__((unused))
 static int exit_dpd(const struct device *const dev)
 {
 	int ret = 0;
