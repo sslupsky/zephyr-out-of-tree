@@ -6,8 +6,10 @@
 #ifndef CAYENNE_LPP_H
 #define CAYENNE_LPP_H
 
-#include <Arduino.h>
-#include <ArduinoJson.h>
+// #include <Arduino.h>
+// #include <ArduinoJson.h>
+#include <zephyr.h>
+#include <json.h>
 
 #define LPP_DIGITAL_INPUT               0     // 1 byte
 #define LPP_DIGITAL_OUTPUT              1     // 1 byte
@@ -101,50 +103,50 @@ class CayenneLPP {
 
 public:
 
-  CayenneLPP(uint8_t size);
-  ~CayenneLPP();
+	CayenneLPP(uint8_t size);
+	~CayenneLPP();
 
-  void reset(void);
-  uint8_t getSize(void);
-  uint8_t *getBuffer(void);
-  uint8_t copy(uint8_t *buffer);
-  uint8_t getError();
+	void reset(void);
+	uint8_t getSize(void);
+	uint8_t *getBuffer(void);
+	uint8_t copy(uint8_t *buffer);
+	uint8_t getError();
 
-  // Decoder methods
-  const char * getTypeName(uint8_t type);
-  uint8_t decode(uint8_t *buffer, uint8_t size, JsonArray& root);
-  uint8_t decodeTTN(uint8_t *buffer, uint8_t size, JsonObject& root);
+	// Decoder methods
+	const char * getTypeName(uint8_t type);
+	// uint8_t decode(uint8_t *buffer, uint8_t size, JsonArray& root);
+	// uint8_t decodeTTN(uint8_t *buffer, uint8_t size, JsonObject& root);
 
-  // Original LPPv1 data types
-  uint8_t addDigitalInput(uint8_t channel, uint32_t value);
-  uint8_t addDigitalOutput(uint8_t channel, uint32_t value);
-  uint8_t addAnalogInput(uint8_t channel, float value);
-  uint8_t addAnalogOutput(uint8_t channel, float value);
-  uint8_t addLuminosity(uint8_t channel, uint32_t value);
-  uint8_t addPresence(uint8_t channel, uint32_t value);
-  uint8_t addTemperature(uint8_t channel, float value);
-  uint8_t addRelativeHumidity(uint8_t channel, float value);
-  uint8_t addAccelerometer(uint8_t channel, float x, float y, float z);
-  uint8_t addBarometricPressure(uint8_t channel, float value);
-  uint8_t addGyrometer(uint8_t channel, float x, float y, float z);
-  uint8_t addGPS(uint8_t channel, float latitude, float longitude, float altitude);
-  uint8_t addGPS(uint8_t channel, int32_t latitude, int32_t longitude, int32_t meters);
+	// Original LPPv1 data types
+	uint8_t addDigitalInput(uint8_t channel, uint32_t value);
+	uint8_t addDigitalOutput(uint8_t channel, uint32_t value);
+	uint8_t addAnalogInput(uint8_t channel, float value);
+	uint8_t addAnalogOutput(uint8_t channel, float value);
+	uint8_t addLuminosity(uint8_t channel, uint32_t value);
+	uint8_t addPresence(uint8_t channel, uint32_t value);
+	uint8_t addTemperature(uint8_t channel, float value);
+	uint8_t addRelativeHumidity(uint8_t channel, float value);
+	uint8_t addAccelerometer(uint8_t channel, float x, float y, float z);
+	uint8_t addBarometricPressure(uint8_t channel, float value);
+	uint8_t addGyrometer(uint8_t channel, float x, float y, float z);
+	uint8_t addGPS(uint8_t channel, float latitude, float longitude, float altitude);
+	uint8_t addGPS(uint8_t channel, int32_t latitude, int32_t longitude, int32_t meters);
 
-  // Additional data types
-  uint8_t addUnixTime(uint8_t channel, uint32_t value);
-  uint8_t addGenericSensor(uint8_t channel, float value);
-  uint8_t addVoltage(uint8_t channel, float value);
-  uint8_t addCurrent(uint8_t channel, float value);
-  uint8_t addFrequency(uint8_t channel, uint32_t value);
-  uint8_t addPercentage(uint8_t channel, uint32_t value);
-  uint8_t addAltitude(uint8_t channel, float value);
-  uint8_t addPower(uint8_t channel, uint32_t value);
-  uint8_t addDistance(uint8_t channel, float value);
-  uint8_t addEnergy(uint8_t channel, float value);
-  uint8_t addDirection(uint8_t channel, float value);
-  uint8_t addSwitch(uint8_t channel, uint32_t value);
-  uint8_t addConcentration(uint8_t channel, uint32_t value);
-  uint8_t addColour(uint8_t channel, uint8_t r, uint8_t g, uint8_t b);
+	// Additional data types
+	uint8_t addUnixTime(uint8_t channel, uint32_t value);
+	uint8_t addGenericSensor(uint8_t channel, float value);
+	uint8_t addVoltage(uint8_t channel, float value);
+	uint8_t addCurrent(uint8_t channel, float value);
+	uint8_t addFrequency(uint8_t channel, uint32_t value);
+	uint8_t addPercentage(uint8_t channel, uint32_t value);
+	uint8_t addAltitude(uint8_t channel, float value);
+	uint8_t addPower(uint8_t channel, uint32_t value);
+	uint8_t addDistance(uint8_t channel, float value);
+	uint8_t addEnergy(uint8_t channel, float value);
+	uint8_t addDirection(uint8_t channel, float value);
+	uint8_t addSwitch(uint8_t channel, uint32_t value);
+	uint8_t addConcentration(uint8_t channel, uint32_t value);
+	uint8_t addColour(uint8_t channel, uint8_t r, uint8_t g, uint8_t b);
 
 protected:
 
