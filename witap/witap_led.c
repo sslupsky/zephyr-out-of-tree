@@ -273,7 +273,7 @@ void led_init()
 			&led_data, NULL, NULL,
 			LED_THREAD_PRIORITY,
 			0, K_NO_WAIT);
-	k_thread_name_set(&led_data.led_thread, "led process");
+	k_thread_name_set(&led_data.led_thread, "led");
 
 	k_sem_init(&led_data.animation_sync, 0, LED_MAX_ANIMATIONS);
 	led_initialized = true;
