@@ -56,7 +56,7 @@ static int char_out(u8_t *data, size_t length, void *backend_ctx)
 
 	ret = fs_write(&ctx->file, data, length);
 	if (!ctx->sync_pending) {
-		k_timer_start(&ctx->timer, ctx->timeout, 0);
+		k_timer_start(&ctx->timer, ctx->timeout, K_MSEC(0));
 		ctx->sync_pending = true;
 	}
 
