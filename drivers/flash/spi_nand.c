@@ -999,7 +999,7 @@ static int spi_nand_init(struct device *dev)
 		k_sem_init(&driver_data->sem, 1, UINT_MAX);
 	}
 
-	while (k_cycle_get_32() < k_us_to_cyc_ceil32(SPI_NAND_POWER_ON_TIME)) {
+	while (k_uptime_ticks() < k_us_to_cyc_ceil32(SPI_NAND_POWER_ON_TIME)) {
 		/* wait for chip to power up */
 	}
 	ret = spi_nand_configure(dev);
