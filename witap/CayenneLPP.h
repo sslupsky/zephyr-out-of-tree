@@ -155,9 +155,12 @@ public:
 	uint8_t addLuminosity(uint8_t channel, uint32_t value);
 	uint8_t addPresence(uint8_t channel, uint32_t value);
 	uint8_t addTemperature(uint8_t channel, float value);
+	uint8_t addTemperature(uint8_t channel, s16_t value);
 	uint8_t addRelativeHumidity(uint8_t channel, float value);
+	uint8_t addRelativeHumidity(uint8_t channel, u16_t value);
 	uint8_t addAccelerometer(uint8_t channel, float x, float y, float z);
 	uint8_t addBarometricPressure(uint8_t channel, float value);
+	uint8_t addBarometricPressure(uint8_t channel, u16_t value);
 	uint8_t addGyrometer(uint8_t channel, float x, float y, float z);
 	uint8_t addGPS(uint8_t channel, float latitude, float longitude, float altitude);
 	uint8_t addGPS(uint8_t channel, int32_t latitude, int32_t longitude, int32_t meters);
@@ -187,7 +190,7 @@ protected:
 
   float getValue(uint8_t * buffer, uint8_t size, uint32_t multiplier, bool is_signed);
   uint32_t getValue32(uint8_t * buffer, uint8_t size);
-  template <typename T> uint8_t addField(uint8_t type, uint8_t channel, T value);
+  template <typename T> uint8_t addField(uint8_t type, uint8_t channel, T value, uint32_t divisor = 1);
 
   uint8_t * _buffer;
   uint8_t _maxsize;

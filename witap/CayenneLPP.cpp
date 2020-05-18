@@ -203,7 +203,7 @@ bool CayenneLPP::getTypeSigned(uint8_t type) {
 
 // ----------------------------------------------------------------------------
 
-template <typename T> uint8_t CayenneLPP::addField(uint8_t type, uint8_t channel, T value) {
+template <typename T> uint8_t CayenneLPP::addField(uint8_t type, uint8_t channel, T value, uint32_t divisor) {
 
 	// Check type
 	if (!isType(type)) {
@@ -227,7 +227,7 @@ template <typename T> uint8_t CayenneLPP::addField(uint8_t type, uint8_t channel
 	if (sign) value = -value;
 
 	// get value to store
-	uint32_t v = value * multiplier;
+	uint32_t v = value * multiplier / divisor;
 
 	// format an uint32_t as if it was an int32_t
 	if (is_signed & sign) {
@@ -284,8 +284,16 @@ uint8_t CayenneLPP::addTemperature(uint8_t channel, float value) {
 	return addField(LPP_TEMPERATURE, channel, value);
 }
 
+uint8_t CayenneLPP::addTemperature(uint8_t channel, s16_t value) {
+	return addField(LPP_TEMPERATURE, channel, value, 100);
+}
+
 uint8_t CayenneLPP::addRelativeHumidity(uint8_t channel, float value) {
 	return addField(LPP_RELATIVE_HUMIDITY, channel, value);
+}
+
+uint8_t CayenneLPP::addRelativeHumidity(uint8_t channel, u16_t value) {
+	return addField(LPP_RELATIVE_HUMIDITY, channel, value, 100);
 }
 
 uint8_t CayenneLPP::addVoltage(uint8_t channel, float value) {
@@ -322,6 +330,14 @@ uint8_t CayenneLPP::addEnergy(uint8_t channel, float value) {
 
 uint8_t CayenneLPP::addBarometricPressure(uint8_t channel, float value) {
 	return addField(LPP_BAROMETRIC_PRESSURE, channel, value);
+}
+
+/* lpp assumes standard units of barometric pressure are hPa
+ * bme driver returns units of kPa and isb stores kPa * 100 (dPa)
+ * Our converstion to hPa is divisor = 10
+ */
+uint8_t CayenneLPP::addBarometricPressure(uint8_t channel, u16_t value) {
+	return addField(LPP_BAROMETRIC_PRESSURE, channel, value, 10);
 }
 
 uint8_t CayenneLPP::addUnixTime(uint8_t channel, uint32_t value) {
