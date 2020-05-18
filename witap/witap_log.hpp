@@ -162,4 +162,46 @@ out:
 	return ret;
 }
 
+/**
+ * @brief	write a string to test log
+ * 
+ * @param mp 
+ * @return int 
+ */
+int WITAP_LOG::update_testlog(struct fs_mount_t *mp) {
+	char fname[20];
+	struct fs_file_t file;
+	int ret;
+
+	snprintf(fname, sizeof(fname), "%s%s", mp->mnt_point, test_log_fname);
+	LOG_DBG("opening file: %s", log_strdup(fname));
+
+	ret = fs_open(&file, fname);
+	if (ret < 0) {
+		LOG_ERR("file open error, ret=%d", ret);
+		goto out;
+	}
+
+	ret = fs_seek(&file, 0, FS_SEEK_END);
+	if (ret < 0) {
+		LOG_ERR("file seek error, ret=%d", ret);
+		goto out;
+	}
+
+	/* do not print string null */
+	ret = fs_write(&file, test_string, sizeof(test_string) - 1);
+	if (ret < 0) {
+		LOG_ERR("file write error, ret=%d", ret);
+		goto out;
+	}
+
+	ret = fs_close(&file);
+	if (ret < 0) {
+		LOG_ERR("file close error, ret=%d", ret);
+		goto out;
+	}
+
+out:
+	return ret;
+}
 #endif /* WITAP_LOG_H */
