@@ -24,6 +24,8 @@
 #include <zephyr.h>
 #include <soc.h>
 #include <fs/fs.h>
+#include <posix/time.h>
+#include <sys/timeutil.h>
 
 #include "witap_types.h"
 
@@ -46,9 +48,10 @@ class WITAP_LOG
 public:
     WITAP_LOG() {}
     ~WITAP_LOG() {}
-    void begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, k_timeout_t timeout);
-    int update_bootcount(struct fs_mount_t *mp);
-    int update_bootlog(struct fs_mount_t *mp);
+    void begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct BOOT_STATUS *boot, k_timeout_t timeout);
+    int update_bootcount(struct fs_mount_t *mp, struct BOOT_STATUS *boot);
+    int update_bootlog(struct fs_mount_t *mp, struct BOOT_STATUS *boot);
+    int update_testlog(struct fs_mount_t *mp);
     bool initialized = false;
 
 private:
@@ -56,12 +59,13 @@ private:
     BOOT_STATUS bootStatus;
 };
 
-void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, k_timeout_t timeout)
+void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct BOOT_STATUS *boot, k_timeout_t timeout)
 {
 	char fname[20];
 
 	snprintf(fname, sizeof(fname), "%s%s", log_mp->mnt_point, witap_log_fname);
 	witap_log_backend_enable(fname, CONFIG_MODEM_LOG_LEVEL, timeout);
+	update_bootcount(boot_mp, boot);
 	// Initialize Internal File System
 	initialized = true;
 }
@@ -72,10 +76,9 @@ void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, k_t
  * @param mp 
  * @return int 
  */
-int WITAP_LOG::update_bootcount(struct fs_mount_t *mp) {
+int WITAP_LOG::update_bootcount(struct fs_mount_t *mp, struct BOOT_STATUS *boot) {
 	char fname[20];
 	struct fs_file_t file;
-	u32_t boot_count = 0;
 	int ret;
 
 	snprintf(fname, sizeof(fname), "%s%s", mp->mnt_point, boot_count_fname);
@@ -87,9 +90,9 @@ int WITAP_LOG::update_bootcount(struct fs_mount_t *mp) {
 		goto out;
 	}
 
-	ret = fs_read(&file, &boot_count, sizeof(boot_count));
+	ret = fs_read(&file, &boot->count, sizeof(boot->count));
 	if (ret < 0) {
-		LOG_ERR("file read error, count %u, ret=%d", boot_count, ret);
+		LOG_ERR("file read error, count %u, ret=%d", boot->count, ret);
 		goto out;
 	}
 
@@ -99,11 +102,11 @@ int WITAP_LOG::update_bootcount(struct fs_mount_t *mp) {
 		goto out;
 	}
 
-	boot_count += 1;
+	boot->count += 1;
 
-	ret = fs_write(&file, &boot_count, sizeof(boot_count));
+	ret = fs_write(&file, &boot->count, sizeof(boot->count));
 	if (ret < 0) {
-		LOG_ERR("file write error, count %u, ret=%d", boot_count, ret);
+		LOG_ERR("file write error, count %u, ret=%d", boot->count, ret);
 		goto out;
 	}
 
@@ -113,7 +116,7 @@ int WITAP_LOG::update_bootcount(struct fs_mount_t *mp) {
 		goto out;
 	}
 
-	LOG_INF("Boot count: %d", boot_count);
+	LOG_DBG("Boot count: %d", boot->count);
 
 out:
 	return ret;
@@ -125,11 +128,15 @@ out:
  * @param mp 
  * @return int 
  */
-int WITAP_LOG::update_bootlog(struct fs_mount_t *mp) {
-	char fname[20];
+int WITAP_LOG::update_bootlog(struct fs_mount_t *mp, struct BOOT_STATUS *boot) {
+	char fname[20], buf[43];
 	struct fs_file_t file;
-	u32_t boot_count = 0;
 	int ret;
+	struct timespec tp;
+	struct tm tm;
+
+	clock_gettime(CLOCK_REALTIME, &tp);
+	gmtime_r(&tp.tv_sec, &tm);
 
 	snprintf(fname, sizeof(fname), "%s%s", mp->mnt_point, boot_log_fname);
 	LOG_DBG("opening file: %s", log_strdup(fname));
@@ -146,9 +153,11 @@ int WITAP_LOG::update_bootlog(struct fs_mount_t *mp) {
 		goto out;
 	}
 
-	ret = fs_write(&file, &boot_test_string, sizeof(boot_test_string));
+	/* convert time to seconds */
+	snprintf(buf, sizeof(buf), "[%09d] cause: %#02x, count: %d\n", (u32_t) (boot->time / 1000), boot->cause, boot->count);
+	ret = fs_write(&file, buf, strlen(buf));
 	if (ret < 0) {
-		LOG_ERR("file write error, count %u, ret=%d", boot_count, ret);
+		LOG_ERR("file write error, ret=%d", ret);
 		goto out;
 	}
 
