@@ -31,9 +31,10 @@
 #define WITAP_LOG_INITIAL_SYNC_TIMEOUT		K_SECONDS(30)
 
 char const boot_count_fname[] = "/boot_count";
-char const boot_log_fname[] = "/boot_log.txt";
-char const boot_test_string[] = "this is a test string\n";
-char const witap_log_fname[] = "/witap_log.txt";
+char const boot_log_fname[] = "/boot.log";
+char const witap_log_fname[] = "/witap.log";
+char const test_log_fname[] = "/test.log";
+char const test_string[] = "this is a 32 byte test string. \n";
 
 
 extern "C" {
