@@ -8,8 +8,10 @@
 
 // #include <Arduino.h>
 // #include <ArduinoJson.h>
+#include <stdlib.h>
 #include <zephyr.h>
-#include <json.h>
+#include <string.h>
+// #include <json.h>
 
 #define LPP_DIGITAL_INPUT               0     // 1 byte
 #define LPP_DIGITAL_OUTPUT              1     // 1 byte
