@@ -192,7 +192,7 @@ protected:
   uint32_t getValue32(uint8_t * buffer, uint8_t size);
   template <typename T> uint8_t addField(uint8_t type, uint8_t channel, T value, uint32_t divisor = 1);
 
-  uint8_t * _buffer;
+  uint8_t _buffer[128];
   uint8_t _maxsize;
   uint8_t _cursor;
   uint8_t _error = LPP_ERROR_OK;
