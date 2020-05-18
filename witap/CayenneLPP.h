@@ -186,6 +186,7 @@ protected:
   bool isType(uint8_t type);
   uint8_t getTypeSize(uint8_t type);
   uint32_t getTypeMultiplier(uint8_t type);
+  uint32_t getTypeDivisor(uint8_t type);
   bool getTypeSigned(uint8_t type);
 
   float getValue(uint8_t * buffer, uint8_t size, uint32_t multiplier, bool is_signed);
