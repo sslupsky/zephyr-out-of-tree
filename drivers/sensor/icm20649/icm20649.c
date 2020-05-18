@@ -157,12 +157,10 @@ int icm20649_init(struct device *dev)
 {
 	struct icm20649_data *drv_data = dev->driver_data;
 	u8_t id, i;
-    s64_t now;
 
-    now = k_uptime_get() * 1000;
-    if (now < ICM20648_STARTUP_TIME_USEC ) {
-        k_busy_wait(ICM20648_STARTUP_TIME_USEC - now);
-    }
+	while (k_uptime_ticks() < k_us_to_cyc_ceil32(ICM20648_STARTUP_TIME_USEC)) {
+		/* wait for chip to power up */
+	}
 
 	drv_data->i2c = device_get_binding(DT_INST_0_INVENSENSE_ICM20649_BUS_NAME);
 	if (drv_data->i2c == NULL) {
