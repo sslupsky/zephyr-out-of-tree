@@ -60,22 +60,37 @@ static const s32_t pm_min_residency[] = {
 #endif /* CONFIG_SYS_POWER_DEEP_SLEEP_STATES */
 };
 
+atomic_t device_busy = 0;
+
+extern "C" void witap_pm_busy_set(witap_pm_devices dev)
+{
+	atomic_set_bit(&device_busy, dev);
+	return;
+}
+
+extern "C" void witap_pm_busy_clear(witap_pm_devices dev)
+{
+	atomic_clear_bit(&device_busy, dev);
+	return;
+}
+
 extern "C" enum power_states sys_pm_policy_next_state(s32_t ticks)
 {
 	int i;
 
-	if (usbState != USB_DC_DISCONNECTED) {
-		return SYS_POWER_STATE_ACTIVE;
-	}
+	if (!force_sleep) {
+		if (usbState != USB_DC_DISCONNECTED) {
+			return SYS_POWER_STATE_ACTIVE;
+		}
 
-	if (application_boot) {
-		return SYS_POWER_STATE_ACTIVE;
-	}
+		if (application_boot) {
+			return SYS_POWER_STATE_ACTIVE;
+		}
 
-	// if ( device_any_busy_check() ) {
-	//     LOG_DBG("Device busy");
-	//     return SYS_POWER_STATE_ACTIVE;
-	// }
+		if (device_busy) {
+			return SYS_POWER_STATE_ACTIVE;
+		}
+	}
 
 	if ((ticks != (s32_t) K_TICKS_FOREVER) && (ticks < pm_min_residency[0])) {
 		LOG_DBG("active: < min residency, ticks: %d", ticks);
