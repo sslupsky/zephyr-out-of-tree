@@ -1,0 +1,48 @@
+# Copyright (c) 2020, Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    This is a representation of the murata LORA modem.
+
+compatible: "murata,lora"
+
+include: uart-device.yaml
+
+properties:
+    label:
+      required: true
+
+    mdm-reset-gpios:
+      type: phandle-array
+      required: true
+      description: MCU RESETn pin
+
+    mdm-rf-irq-gpios:
+      type: phandle-array
+      required: false
+      description: IRQ pin
+
+    mdm-boot0-gpios:
+      type: phandle-array
+      required: false
+      description: BOOT0 pin
+
+    mdm-rf-ssn-gpios:
+      type: phandle-array
+      required: false
+      description: CSn pin
+
+    mdm-sck-gpios:
+      type: phandle-array
+      required: false
+      description: SCK pin
+
+    mdm-mosi-tx-gpios:
+      type: phandle-array
+      required: false
+      description: TXD pin
+
+    mdm-miso-rx-gpios:
+      type: phandle-array
+      required: false
+      description: RXD pin
