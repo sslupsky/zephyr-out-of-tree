@@ -71,10 +71,10 @@ struct spi_nand_config {
 #define SPI_NAND_PAGE_ADDR_SIZE		1
 #define SPI_NAND_FEATURE_ADDR_SIZE 	1
 
-#define SPI_NAND_ERASE_TIMEOUT		14000	/* erase time out (us)   */
-#define SPI_NAND_PROG_TIMEOUT		1200	/* program time out (us) */
-#define SPI_NAND_READ_TIMEOUT		560	/* read time out (us) */
-#define SPI_NAND_RESET_TIMEOUT		20000	/* reset time out */
+#define SPI_NAND_ERASE_TIMEOUT		100000	/* erase time out (us)   */
+#define SPI_NAND_PROG_TIMEOUT		100000	/* program time out (us) */
+#define SPI_NAND_READ_TIMEOUT		100000	/* read time out (us) */
+#define SPI_NAND_RESET_TIMEOUT		100000	/* reset time out */
 
 #define SPI_NAND_MIN_ERASE_TIME 	1000    /* min erase time (us) */
 #define SPI_NAND_MIN_PROG_TIME		225     /* min programming time (us) */
