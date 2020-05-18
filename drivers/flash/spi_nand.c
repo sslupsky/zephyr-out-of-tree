@@ -465,6 +465,27 @@ static int spi_nand_wait_until_ready(struct device *dev, u32_t timeout)
 }
 
 /**
+ * @brief Reset the operation in progress
+ * 
+ * @param dev 
+ * @return 0 on success, negative errno code otherwise
+ */
+static int spi_nand_reset(struct device *dev)
+{
+	int ret;
+
+	/* reset any on-going operation (erase or program) */
+	ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_RESET);
+	if (ret < 0) {
+		LOG_ERR("nand reset error");
+		return ret;
+	}
+
+	ret = spi_nand_wait_until_ready(dev, SPI_NAND_RESET_TIMEOUT);
+	return ret;
+}
+
+/**
  * @brief program data buffer content into the physical memory page
  * 
  * @param row_addr 
@@ -507,11 +528,7 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 
 	if (reg &  SPI_NAND_STATUS_PROGF_BIT) {
 		LOG_WRN("page write failed");
-		ret = -EIO;
-	} else {
-		// _chip_page = SPI_NAND_INVALID_PAGE;
-		_page_sync_required = false;
-	}
+			spi_nand_reset(dev);
 done:
 	return ret;
 }
@@ -788,6 +805,7 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 			/* check ERS_F */
 			if (reg & SPI_NAND_STATUS_ERASEF_BIT) {
 				LOG_ERR("block erase failed at addr: 0x%08lx", (long)addr);
+				spi_nand_reset(dev);
 			}
 			addr += SPI_NAND_BLOCK_SIZE;
 			size -= SPI_NAND_BLOCK_SIZE;
