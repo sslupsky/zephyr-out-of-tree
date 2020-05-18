@@ -507,28 +507,37 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 
 	LOG_DBG("page write: 0x%x", row_addr);
 
-	/* WREN must be set immediately before the cell array write command */
-	spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
-	/* write the flash cell array */
-	ret = spi_nand_cmd_write_flash_array(dev, row_addr);
-	if (ret < 0) {
-		 goto done;
-	}
+	if (_page_sync_required) {
+		/* WREN must be set immediately before the cell array write command */
+		spi_nand_cmd_write(dev, SPI_NAND_CMD_WREN);
+		/* write the flash cell array */
+		ret = spi_nand_cmd_write_flash_array(dev, row_addr);
+		if (ret < 0) {
+			goto done;
+		}
 
-	// k_busy_wait(SPI_NAND_MIN_PROG_TIME);
-	ret = spi_nand_wait_until_ready(dev, SPI_NAND_PROG_TIMEOUT);
-	if (ret < 0) {
-		 goto done;
-	}
+		// k_busy_wait(SPI_NAND_MIN_PROG_TIME);
+		ret = spi_nand_wait_until_ready(dev, SPI_NAND_PROG_TIMEOUT);
+		if (ret < 0) {
+			goto done;
+		}
 
-	ret = spi_nand_read_status(dev, &reg);
-	if (ret < 0) {
-		 goto done;
-	}
+		ret = spi_nand_read_status(dev, &reg);
+		if (ret < 0) {
+			goto done;
+		}
 
-	if (reg &  SPI_NAND_STATUS_PROGF_BIT) {
-		LOG_WRN("page write failed");
+		if (reg &  SPI_NAND_STATUS_PROGF_BIT) {
+			LOG_WRN("page write failed");
 			spi_nand_reset(dev);
+			ret = -EAGAIN;
+		} else {
+			// _chip_page = SPI_NAND_INVALID_PAGE;
+			_page_sync_required = false;
+		}
+	} else {
+		ret = 0;
+	}
 done:
 	return ret;
 }
@@ -588,12 +597,10 @@ int spi_nand_read_parameter_page(struct device *dev)
 
 	acquire_device(dev);
 
-	if (_page_sync_required) {
-		/* write the page buffer to the flash cell array */
-		ret = spi_nand_page_write(dev, _chip_page);
-		if (ret < 0) {
-			goto done;
-		}
+	/* write the page buffer to the flash cell array */
+	ret = spi_nand_page_write(dev, _chip_page);
+	if (ret < 0) {
+		goto done;
 	}
 
 	spi_nand_id_read_enable(dev, true);
@@ -668,12 +675,10 @@ static int spi_nand_read(struct device *dev, off_t addr, void *dest,
 
 	while (remain) {
 		if (_chip_page != row_addr) {
-			if (_page_sync_required) {
-				/* write the page buffer to the flash cell array */
-				ret = spi_nand_page_write(dev, _chip_page);
-				if (ret < 0) {
-					goto done;
-				}
+			/* write the page buffer to the flash cell array */
+			ret = spi_nand_page_write(dev, _chip_page);
+			if (ret < 0) {
+				goto done;
 			}
 			/* load the page into the page buffer from flash */
 			ret = spi_nand_read_cell_array(dev, row_addr);
@@ -717,12 +722,10 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 	while (remain) {
 		// Fill page buffer
 		if (_chip_page != row_addr) {
-			if (_page_sync_required) {
-				/* write the page buffer to the flash cell array */
-				ret = spi_nand_page_write(dev, _chip_page);
-				if (ret < 0) {
-					goto cleanup;
-				}
+			/* write the page buffer to the flash cell array */
+			ret = spi_nand_page_write(dev, _chip_page);
+			if (ret < 0) {
+				goto cleanup;
 			}
 			/* load the page into the page buffer from flash */
 			ret = spi_nand_read_cell_array(dev, row_addr);
@@ -749,6 +752,8 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 		page_offset = 0;
 		wr_bytes = MIN(addr + size - (row_addr * SPI_NAND_PAGE_SIZE), SPI_NAND_PAGE_SIZE);
 	}
+	/* write the page buffer to the flash cell array */
+	ret = spi_nand_page_write(dev, _chip_page);
 
 cleanup:
 	spi_nand_high_speed_mode(dev, true);
@@ -827,11 +832,6 @@ out:
 static int spi_nand_sync(struct device *dev)
 {
 	int ret;
-
-	if (!_page_sync_required) {
-		LOG_DBG("sync not required, 0x%x", _chip_page);
-		return 0;
-	}
 
 	acquire_device(dev);
 	
