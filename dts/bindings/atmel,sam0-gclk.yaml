@@ -4,36 +4,40 @@ compatible: "atmel,sam0-gclk"
 
 include: [clock-controller.yaml, base.yaml]
 
-properties:
-    clock-generator:
-      type: int
-      required: false
-      description: generic clock generator
+child-binding:
+    description:  GCLK child node
+    properties:
+        clock-generator:
+            type: int
+            required: false
+            description: generic clock generator
 
-    clock-source:
-      type: int
-      required: false
-      description: generic clock generator source oscillator
+        clock-source:
+            type: int
+            required: false
+            description: generic clock generator source oscillator
 
-    clock-standby:
-      type: int
-      required: false
-      description: generic clock generator run in standby
+        clock-standby:
+            type: int
+            required: false
+            description: generic clock generator run in standby
 
-    clock-divsel:
-      type: int
-      required: false
-      description: generic clock generator divide selection
+        clock-divsel:
+            type: int
+            required: false
+            description: generic clock generator divide selection
 
-    clock-div:
-      type: int
-      required: false
-      description: generic clock generator division factor
+        clock-div:
+            type: int
+            required: false
+            description: generic clock generator division factor
 
-    clock-frequency:
-      type: int
-      description: output clock frequency (Hz)
-      required: false
+        clock-frequency:
+            type: int
+            description: output clock frequency (Hz)
+            required: true
 
-    "#clock-cells":
-      const: 0
+        label:
+            required: true
+            type: string
+            description: Human readable string describing the device (used by Zephyr for API name)
