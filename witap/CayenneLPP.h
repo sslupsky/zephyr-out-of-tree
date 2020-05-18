@@ -95,6 +95,36 @@
 #define LPP_CONCENTRATION_MULT          1
 #define LPP_COLOUR_MULT                 1
 
+/*  the divisors are not used.  TODO:  review and remove */
+// Divisors
+#define LPP_DIGITAL_INPUT_DIV           1
+#define LPP_DIGITAL_OUTPUT_DIV          1
+#define LPP_ANALOG_INPUT_DIV            1
+#define LPP_ANALOG_OUTPUT_DIV           1
+#define LPP_GENERIC_SENSOR_DIV          1
+#define LPP_LUMINOSITY_DIV              1
+#define LPP_PRESENCE_DIV                1
+#define LPP_TEMPERATURE_DIV             100
+#define LPP_RELATIVE_HUMIDITY_DIV       100
+#define LPP_ACCELEROMETER_DIV           1
+#define LPP_BAROMETRIC_PRESSURE_DIV     100
+#define LPP_VOLTAGE_DIV                 1
+#define LPP_CURRENT_DIV                 1
+#define LPP_FREQUENCY_DIV               1
+#define LPP_PERCENTAGE_DIV              1
+#define LPP_ALTITUDE_DIV                1
+#define LPP_POWER_DIV                   1
+#define LPP_DISTANCE_DIV                1
+#define LPP_ENERGY_DIV                  1
+#define LPP_DIRECTION_DIV               1
+#define LPP_UNIXTIME_DIV                1
+#define LPP_GYROMETER_DIV               1000
+#define LPP_GPS_LAT_LON_DIV             1
+#define LPP_GPS_ALT_DIV                 1
+#define LPP_SWITCH_DIV                  1
+#define LPP_CONCENTRATION_DIV           1
+#define LPP_COLOUR_DIV                  1
+
 #define LPP_ERROR_OK                    0
 #define LPP_ERROR_OVERFLOW              1
 #define LPP_ERROR_UNKOWN_TYPE           2

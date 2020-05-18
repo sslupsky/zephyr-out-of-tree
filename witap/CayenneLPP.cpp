@@ -160,6 +160,36 @@ uint32_t CayenneLPP::getTypeMultiplier(uint8_t type) {
 	return 0;
 }
 
+/*  the divisors are not used.  TODO:  review and remove */
+uint32_t CayenneLPP::getTypeDivisor(uint8_t type) {
+	if (LPP_DIGITAL_INPUT == type) return LPP_DIGITAL_INPUT_DIV;
+	if (LPP_DIGITAL_OUTPUT == type) return LPP_DIGITAL_OUTPUT_DIV;
+	if (LPP_ANALOG_INPUT == type) return LPP_ANALOG_INPUT_DIV;
+	if (LPP_ANALOG_OUTPUT == type) return LPP_ANALOG_OUTPUT_DIV;
+	if (LPP_GENERIC_SENSOR == type) return LPP_GENERIC_SENSOR_DIV;
+	if (LPP_LUMINOSITY == type) return LPP_LUMINOSITY_DIV;
+	if (LPP_PRESENCE == type) return LPP_PRESENCE_DIV;
+	if (LPP_TEMPERATURE == type) return LPP_TEMPERATURE_DIV;
+	if (LPP_RELATIVE_HUMIDITY == type) return LPP_RELATIVE_HUMIDITY_DIV;
+	if (LPP_ACCELEROMETER == type) return LPP_ACCELEROMETER_DIV;
+	if (LPP_BAROMETRIC_PRESSURE == type) return LPP_BAROMETRIC_PRESSURE_DIV;
+	if (LPP_VOLTAGE == type) return LPP_VOLTAGE_DIV;
+	if (LPP_CURRENT == type) return LPP_CURRENT_DIV;
+	if (LPP_FREQUENCY == type) return LPP_FREQUENCY_DIV;
+	if (LPP_PERCENTAGE == type) return LPP_PERCENTAGE_DIV;
+	if (LPP_ALTITUDE == type) return LPP_ALTITUDE_DIV;
+	if (LPP_POWER == type) return LPP_POWER_DIV;
+	if (LPP_DISTANCE == type) return LPP_DISTANCE_DIV;
+	if (LPP_ENERGY == type) return LPP_ENERGY_DIV;
+	if (LPP_DIRECTION == type) return LPP_DIRECTION_DIV;
+	if (LPP_UNIXTIME == type) return LPP_UNIXTIME_DIV;
+	if (LPP_GYROMETER == type) return LPP_GYROMETER_DIV;
+	if (LPP_SWITCH == type) return LPP_SWITCH_DIV;
+	if (LPP_CONCENTRATION == type) return LPP_CONCENTRATION_DIV;
+	if (LPP_COLOUR == type) return LPP_COLOUR_DIV;
+	return 0;
+}
+
 bool CayenneLPP::getTypeSigned(uint8_t type) {
 	if (LPP_ANALOG_INPUT == type) return true;
 	if (LPP_ANALOG_OUTPUT == type) return true;
