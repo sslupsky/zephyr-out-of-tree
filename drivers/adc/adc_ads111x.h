@@ -10,7 +10,11 @@
  */
 
 
+#ifndef ZEPHYR_DRIVERS_ADC_ADS111X_H_
+#define ZEPHYR_DRIVERS_ADC_ADS111X_H_
 
+/*  not specified in datasheet */
+#define ADS111X_POWER_ON_TIME_USEC	1000
 
 /*=========================================================================
     I2C ADDRESS/BITS
@@ -134,3 +138,4 @@ enum ADS111X_CONFIG_ODR_e {
 	ADS111X_CONFIG_ODR_860SPS,
 };
 
+#endif /* ZEPHYR_DRIVERS_ADC_ADS111X_H_ */
