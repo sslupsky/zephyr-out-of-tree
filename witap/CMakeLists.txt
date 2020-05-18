@@ -11,6 +11,7 @@ zephyr_library_sources(
     witap_led.c
     witap_power.cpp
     witap_log_backend.c
+    CayenneLpp.cpp
     )
 zephyr_library_link_libraries(WITAP)
 target_link_libraries(WITAP INTERFACE zephyr_interface)
