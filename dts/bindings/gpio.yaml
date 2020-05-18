@@ -1,0 +1,17 @@
+# Copyright (c) 2020, Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: GPIO parent node
+
+compatible: "gpio"
+
+child-binding:
+    description: GPIO child node
+    properties:
+       gpios:
+          type: phandle-array
+          required: true
+       label:
+          required: true
+          type: string
+          description: Human readable string describing the device (used by Zephyr for API name)
