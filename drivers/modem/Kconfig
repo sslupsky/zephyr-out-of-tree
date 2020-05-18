@@ -1,0 +1,19 @@
+# Modem configuration options
+
+# Copyright (c) 2018 Foundries.io
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig OOT_MODEM
+	bool "Modem Out-of-Tree Drivers"
+	help
+	  Enable config options for modem out-of-tree drivers.
+
+if OOT_MODEM
+
+# module = MODEM
+# module-str = modem
+# source "subsys/logging/Kconfig.template.log_config"
+
+rsource "Kconfig.murata-lora-cmwx1zzabz"
+
+endif # OOT_MODEM

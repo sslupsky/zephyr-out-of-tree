@@ -1,0 +1,11 @@
+# Sensor configuration options
+
+# Copyright (c) 2016 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+
+menu "OOT Sensor Drivers"
+
+rsource "icm20649/Kconfig"
+
+endmenu

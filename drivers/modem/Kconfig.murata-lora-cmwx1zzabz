@@ -1,0 +1,64 @@
+# murata LORA CMWX1ZZABZ driver options
+
+# Copyright (c) 2020 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config MODEM_MURATA_LORA
+	bool "Enable murata LORA modem driver"
+	select MODEM_CONTEXT
+	select MODEM_CMD_HANDLER
+	select MODEM_IFACE_UART
+	# select MODEM_SOCKET
+	imply GPIO
+	help
+	  Choose this setting to enable murata LORA modem
+	  driver.
+
+if MODEM_MURATA_LORA
+
+config MODEM_MURATA_LORA_NAME
+	string "Driver name"
+	default "MODEM_LORA"
+
+config MODEM_MURATA_LORA_RX_STACK_SIZE
+	int "Stack size for the murata LORA modem driver RX thread"
+	default 1024
+	help
+	  This stack is used by the murata LORA RX thread.
+
+config MODEM_MURATA_LORA_RX_WORKQ_STACK_SIZE
+	int "Stack size for the murata LORA modem driver work queue"
+	default 2048
+	help
+	  This stack is used by the work queue to pass off net_pkt data
+	  to the rest of the network stack, letting the rx thread continue
+	  processing data.
+
+config MODEM_MURATA_LORA_APN
+	string "APN for establishing network connection"
+	default "hologram"
+	help
+	  This setting is used in the AT+CGDCONT command to set the APN name
+	  for the network connection context.  This value is specific to
+	  the network provider and may need to be changed.
+
+config MODEM_MURATA_LORA_OTAA
+	string "establishing network connection using OTAA"
+	help
+	  This setting is used to set the join method to OTAA.
+
+config MODEM_MURATA_LORA_ABP
+	string "establishing network connection using ABP"
+	help
+	  This setting is used to set the join method to ABP.
+
+config MODEM_MURATA_LORA_INIT_PRIORITY
+	int "murata LORA driver init priority"
+	default 80
+	help
+	  murata LORA device driver initialization priority.
+	  Do not mess with it unless you know what you are doing.
+	  Note that the priority needs to be lower than the net stack
+	  so that it can start before the networking sub-system.
+
+endif # MODEM_MURATA_LORA
