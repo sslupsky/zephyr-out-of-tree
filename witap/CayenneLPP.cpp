@@ -8,12 +8,12 @@
 // ----------------------------------------------------------------------------
 
 CayenneLPP::CayenneLPP(uint8_t size) : _maxsize(size) {
-	_buffer = (uint8_t *)malloc(size);
+	// _buffer = (uint8_t *)malloc(size);
 	_cursor = 0;
 }
 
 CayenneLPP::~CayenneLPP(void) {
-	free(_buffer);
+	// free(_buffer);
 }
 
 void CayenneLPP::reset(void) {
