@@ -22,7 +22,7 @@ int icm20649_set_reg_bank(struct icm20649_data *drv_data, int bank)
 		LOG_ERR("Failed to write bank select.");
 		return -EIO;
 	}
-    return 0;
+	return 0;
 }
 
 /* see "Accelerometer Measurements" section from register map description */
@@ -123,10 +123,10 @@ static int icm20649_sample_fetch(struct device *dev, enum sensor_channel chan)
 	struct icm20649_data *drv_data = dev->driver_data;
 	s16_t buf[7];
 
-    //  Select Bank 0
-    if ( icm20649_set_reg_bank(drv_data, 0) < 0 ) {
-        return -EIO;
-    }
+	//  Select Bank 0
+	if ( icm20649_set_reg_bank(drv_data, 0) < 0 ) {
+		return -EIO;
+	}
 
 	if (i2c_burst_read(drv_data->i2c, drv_data->i2c_slave_addr,
 			   ICM20649_REG_DATA_START, (u8_t *)buf, 14) < 0) {
@@ -170,10 +170,10 @@ int icm20649_init(struct device *dev)
 	}
 	drv_data->i2c_slave_addr = DT_INST_0_INVENSENSE_ICM20649_BASE_ADDRESS;
 
-    //  Select Bank 0
-    if ( icm20649_set_reg_bank(drv_data, 0) < 0 ) {
-        return -EIO;
-    }
+	//  Select Bank 0
+	if ( icm20649_set_reg_bank(drv_data, 0) < 0 ) {
+		return -EIO;
+	}
 
 	/* check chip ID */
 	if (i2c_reg_read_byte(drv_data->i2c, drv_data->i2c_slave_addr,
@@ -187,7 +187,7 @@ int icm20649_init(struct device *dev)
 		return -EINVAL;
 	}
 
-    LOG_DBG("ICM20648 chip detected");
+	LOG_DBG("ICM20648 chip detected");
 
 	/* wake up chip */
 	if (i2c_reg_update_byte(drv_data->i2c, drv_data->i2c_slave_addr,
@@ -197,7 +197,7 @@ int icm20649_init(struct device *dev)
 		return -EIO;
 	}
 
-    // Set duty cycle mode
+	// Set duty cycle mode
 	if (i2c_reg_update_byte(drv_data->i2c, drv_data->i2c_slave_addr,
 				ICM20649_REG_LP_CONFIG, 
                 ICM20649_ACCEL_CYCLE | ICM20649_GYRO_CYCLE | ICM20649_MST_CYCLE,
@@ -218,10 +218,10 @@ int icm20649_init(struct device *dev)
 		return -EINVAL;
 	}
 
-    //  Select Bank 2
-    if ( icm20649_set_reg_bank(drv_data, 2) < 0 ) {
-        return -EIO;
-    }
+	//  Select Bank 2
+	if ( icm20649_set_reg_bank(drv_data, 2) < 0 ) {
+		return -EIO;
+	}
 
 	if (i2c_reg_write_byte(drv_data->i2c, drv_data->i2c_slave_addr,
 			       ICM20649_REG_ACCEL_CONFIG_1,
