@@ -456,7 +456,7 @@ static int spi_nand_wait_until_ready(struct device *dev, u32_t timeout)
 			break;
 		}
 		if ((k_cycle_get_32() - t) > k_us_to_cyc_ceil32(timeout)) {
-			LOG_ERR("nand timed out, %d (%d)", timeout, k_us_to_cyc_ceil32(timeout));
+			LOG_ERR("nand timed out, %dus (%d cycles)", timeout, k_us_to_cyc_ceil32(timeout));
 			ret = -ETIMEDOUT;
 			break;
 		}
@@ -547,7 +547,7 @@ static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
 	/* check ecc bits */
 	ecc = ((reg &  SPI_NAND_STATUS_ECC_BIT) >> SPI_NAND_STATUS_ECC_POS);
 	if (ecc > 1) {
-		LOG_DBG("ecc error: %d", ecc);
+		LOG_WRN("ecc error: %d", ecc);
 		ret = -EIO;
 	}
 	_chip_page = row_addr;
@@ -589,10 +589,10 @@ int spi_nand_read_parameter_page(struct device *dev)
 	LOG_INF("Signature: %s", log_strdup(params.str));
 	spi_nand_read_page_buf(dev, 32, params.str, 12);
 	params.str[12] = '\0';
-	LOG_DBG("Manufacturer: %s", log_strdup(params.str));
+	LOG_INF("Manufacturer: %s", log_strdup(params.str));
 	spi_nand_read_page_buf(dev, 44, params.str, 20);
 	params.str[20] = '\0';
-	LOG_DBG("Device model: %s", log_strdup(params.str));
+	LOG_INF("Device model: %s", log_strdup(params.str));
 	spi_nand_read_page_buf(dev, 80, &params.i32, sizeof(params.i32));
 	LOG_DBG("bytes per page: %d", params.i32);
 	spi_nand_read_page_buf(dev, 92, &params.i32, sizeof(params.i32));
@@ -787,7 +787,7 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 			}
 			/* check ERS_F */
 			if (reg & SPI_NAND_STATUS_ERASEF_BIT) {
-				LOG_ERR("block erase failed at addr: 0x%08x", addr);
+				LOG_ERR("block erase failed at addr: 0x%08lx", (long)addr);
 			}
 			addr += SPI_NAND_BLOCK_SIZE;
 			size -= SPI_NAND_BLOCK_SIZE;
@@ -917,10 +917,10 @@ static int spi_nand_configure(struct device *dev)
 	/* Might be in DPD if system restarted without power cycle. */
 	// exit_dpd(dev);
 
-	ret = spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
+	ret = spi_nand_reset(dev);
 	if (ret < 0) {
-		LOG_ERR("device timed out");
-		return -ETIMEDOUT;
+		LOG_ERR("could not reset nand");
+		return ret;
 	}
 
 	/* now the spi bus is configured, we can verify the flash id */
@@ -930,24 +930,13 @@ static int spi_nand_configure(struct device *dev)
 		return -ENODEV;
 	}
 
-	LOG_DBG("device id ok");
+	LOG_INF("device id ok");
 
 	ret = spi_nand_read_parameter_page(dev);
 	if (ret < 0) {
 		LOG_ERR("read parameter page failed");
 		return -ENODEV;
 	};
-
-	/* reset any on-going operation (erase or program) */
-	// ret = spi_nand_cmd_write(dev, SPI_NAND_CMD_RESET);
-	// if (ret != 0) {
-	// 	return -ENODEV;
-	// }
-
-	// ret = spi_nand_wait_until_ready(dev, SPI_NAND_ERASE_TIMEOUT);
-	// if (ret < 0) {
-	// 	return -ENODEV;
-	// }
 
 	/* all flash blocks are locked at power on */
 	/* so unlock them */
