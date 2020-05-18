@@ -1,8 +1,21 @@
-/*
- * Copyright (c) 2020 Intel Corporation
- *
- * SPDX-License-Identifier: Apache-2.0
+/**
+ * @file murata-lora-cmwx1zzabz.c
+ * @author Steven Slupsky (sslupsky@scanimetrics.com)
+ * @brief 
+ * @version 0.1
+ * @date 2020-05-04
+ * 
+ * @copyright Copyright (c) 2020
+ * 
+ *    _____                 _                _        _          
+ *   / ____|               (_)              | |      (_)         
+ *  | (___   ___ __ _ _ __  _ _ __ ___   ___| |_ _ __ _  ___ ___ 
+ *   \___ \ / __/ _` | '_ \| | '_ ` _ \ / _ \ __| '__| |/ __/ __|
+ *   ____) | (_| (_| | | | | | | | | | |  __/ |_| |  | | (__\__ \
+ *  |_____/ \___\__,_|_| |_|_|_| |_| |_|\___|\__|_|  |_|\___|___/
+ *                                                               
  */
+
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(modem_lora, CONFIG_MODEM_LOG_LEVEL);
@@ -23,6 +36,22 @@ LOG_MODULE_REGISTER(modem_lora, CONFIG_MODEM_LOG_LEVEL);
 #include "../../../zephyr/drivers/modem/modem_cmd_handler.h"
 #include "secret.h"
 
+#define LORA_AT_CMD(cmd_send_, match_cmd_, func_cb_, num_param_, delim_, timeout_) { \
+	.send_cmd = cmd_send_, \
+	.timeout = timeout_,   \
+	MODEM_CMD(match_cmd_, func_cb_, num_param_, delim_) \
+}
+
+#define LORA_AT_CMD_NOHANDLE(send_cmd_, timeout_) \
+		LORA_AT_CMD(send_cmd_, NULL, NULL, 0U, NULL, timeout_)
+
+/* series of modem setup commands to run */
+struct lora_at_cmd {
+	const char *send_cmd;
+	k_timeout_t timeout;
+	struct modem_cmd handle_cmd;
+};
+
 /* pin settings */
 enum mdm_control_pins {
 	MDM_RESET = 0,
@@ -40,28 +69,37 @@ enum lora_mode {
 };
 
 enum lora_band {
-    AS923 = 0,
-    AU915,
-    EU868 = 5,
-    KR920,
-    IN865,
-    US915,
-    US915_HYBRID,
+	AS923 = 0,
+	AU915,
+	EU868 = 5,
+	KR920,
+	IN865,
+	US915,
+	US915_HYBRID,
 };
 
 static struct modem_pin modem_pins[] = {
-	/* MDM_RESET */
+	/*
+	 * MDM_RESET
+	 * MKR WAN 1310 has 1M (R11) pull up
+	 */
 	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_RESET_GPIOS_CONTROLLER,
 		  DT_INST_0_MURATA_LORA_MDM_RESET_GPIOS_PIN, GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
 
 #if defined(DT_INST_0_MURATA_LORA_MDM_BOOT0_GPIOS_CONTROLLER)
-	/* MDM_BOOT0 */
+	/*
+	 * MDM_BOOT0
+	 * MKR WAN 1310 has 1M (R7) pull down
+	 */
 	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_BOOT0_GPIOS_CONTROLLER,
 		  DT_INST_0_MURATA_LORA_MDM_BOOT0_GPIOS_PIN, GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_HIGH),
 #endif
 
 #if defined(DT_INST_0_MURATA_LORA_MDM_RF_SSN_GPIOS_CONTROLLER)
-	/* MDM_RF_SSN */
+	/*
+	 * MDM_RF_SSN
+	 * MKR WAN 1310 has 1M (R12) pull up
+	 */
 	MODEM_PIN(DT_INST_0_MURATA_LORA_MDM_RF_SSN_GPIOS_CONTROLLER,
 		  DT_INST_0_MURATA_LORA_MDM_RF_SSN_GPIOS_PIN, GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
 #endif
@@ -98,15 +136,59 @@ static struct modem_pin modem_pins[] = {
 #define MDM_IRQ_NOT_ASSERTED		1
 #define MDM_IRQ_ASSERTED		0
 
-#define LORA_CMD_READ_BUF       128
-#define LORA_CMD_AT_TIMEOUT     K_SECONDS(2)
-#define LORA_CMD_SETUP_TIMEOUT  K_SECONDS(6)
-#define LORA_RX_STACK_SIZE      512
-#define LORA_MAX_DATA_LENGTH	128
-#define LORA_RECV_MAX_BUF       4
-#define LORA_RECV_BUF_SIZE      128
-#define LORA_BUF_ALLOC_TIMEOUT  K_SECONDS(1)
+#define LORA_CMD_READ_BUF		128
+#define LORA_CMD_AT_TIMEOUT		K_SECONDS(2)
+#define LORA_CMD_SETUP_TIMEOUT		K_SECONDS(6)
+#define LORA_CMD_JOIN_TIMEOUT		K_SECONDS(10)
+#define LORA_RX_STACK_SIZE		512
+#define LORA_MAX_DATA_LENGTH		128
+#define LORA_RECV_MAX_BUF		4
+#define LORA_RECV_BUF_SIZE		128
+#define LORA_BUF_ALLOC_TIMEOUT		K_SECONDS(1)
 
+#define LORA_REJOIN_PERIOD            600000
+#define LORA_JOIN_RETRIES                  6
+#define LORA_UPLINK_TIMEOUT            65000                  ///<  MAX_RX_WINDOW for US915 region is 3000ms per retry.  Max timeout = 3000 * NbTrials (=8) = 24000 ms
+#define LORA_RX_WINDOW_PERIOD           3000
+#define LORA_NBTRIALS                      8
+#define LORA_ACK_TIMEOUT                6000
+#define LORA_CONFIRMED_RETRIES             6
+#define LORA_UNCONFIRMED_RETRIES           2
+#define LORA_MAX_CONFIRMED_UPLINKS_FAILED 10
+#define LORA_MAX_LORAMAC_FAILED           10
+
+#define LORA_HEARTBEAT_TIMEOUT		3600
+#define LORA_UART_TXC_TIMEOUT		   2
+
+struct lora_status_t
+{
+	u32_t heartbeat_period;
+	u32_t join_retries;
+	u32_t join_count;
+	u32_t ack_count;
+	u32_t failed_ack_count;
+	u32_t reset_count;
+	s16_t rssi;                /*< Rssi of the received packet */
+	u8_t snr;                 /*< Snr of the received packet */
+	u8_t application_port;    /*< Application port we will receive to */
+	u8_t nbtrials;
+	bool network_joined;
+	bool req_ack;      /*< ENABLE if acknowledge is requested */
+	bool ack_failed;
+	bool uart_busy;
+};
+
+/*
+Firmware Version and Status Advertising in Frame 0
+Battery voltage and level
+Firmware revision
+Received signal levels (device Rx levels from gateway)
+Device configuration parameters or CRC/MD5 hash
+Device error conditions (e.g., sensor out of calibration)
+Temperature (if this is a secondary measurement)
+Counts of certain events such as the number of times woken by accelerometer
+Wake versus sleep time of the device
+*/
 static struct lora_modem {
 	struct modem_context context;
 
@@ -120,12 +202,15 @@ static struct lora_modem {
 	char lora_isr_buf[LORA_MAX_DATA_LENGTH];
 	char lora_rx_rb_buf[LORA_RECV_BUF_SIZE];
 
+	struct lora_status_t status;
 	bool setup_done;
-	bool network_joined;
 	u8_t *ppp_recv_buf;
 	size_t ppp_recv_buf_len;
 	uart_pipe_recv_cb ppp_recv_cb;
 	struct k_sem ppp_send_sem;
+	struct k_delayed_work heartbeat_work;
+	struct k_delayed_work req_ack_work;
+	void (*busy_cb)(bool busy_set);
 } lora;
 
 static size_t recv_buf_offset;
@@ -138,32 +223,39 @@ struct k_thread lora_rx_thread;
 
 static void lora_rx(struct lora_modem *lora)
 {
-	int bytes, r;
+	int bytes, ret;
 
 	LOG_DBG("starting");
 
 	while (true) {
 		k_sem_take(&lora->lora_data.rx_sem, K_FOREVER);
+		if (lora->busy_cb) {
+			// lora->busy_cb(true);
+		}
 
 		if (lora->setup_done == false) {
-			lora->context.cmd_handler.process(
+			ret = lora->context.cmd_handler.process(
 						&lora->context.cmd_handler,
 						&lora->context.iface);
+			if (ret && lora->busy_cb) {
+				// lora->busy_cb(false);
+			}
 			continue;
 		}
 
 		if (lora->ppp_recv_cb == NULL || lora->ppp_recv_buf == NULL ||
 		    lora->ppp_recv_buf_len == 0) {
+			LOG_ERR("rx not registered, thread terminated");
 			return;
 		}
 
-		r = lora->context.iface.read(
+		ret = lora->context.iface.read(
 					&lora->context.iface,
 					&lora->ppp_recv_buf[recv_buf_offset],
 					lora->ppp_recv_buf_len -
 					recv_buf_offset,
 					&bytes);
-		if (r < 0 || bytes == 0) {
+		if (ret < 0 || bytes == 0) {
 			continue;
 		}
 
@@ -211,6 +303,24 @@ MODEM_CMD_DEFINE(lora_cmd_error)
 	return 0;
 }
 
+MODEM_CMD_DEFINE(on_cmd_true)
+{
+	LOG_DBG("true");
+	modem_response[0] = 1;
+	modem_cmd_handler_set_error(data, 0);
+	k_sem_give(&lora.sem_response);
+	return 0;
+}
+
+MODEM_CMD_DEFINE(on_cmd_false)
+{
+	LOG_DBG("false");
+	modem_response[0] = 0;
+	modem_cmd_handler_set_error(data, 0);
+	k_sem_give(&lora.sem_response);
+	return 0;
+}
+
 /*
  * MODEM UNSOLICITED NOTIFICATION HANDLERS
  */
@@ -219,27 +329,70 @@ MODEM_CMD_DEFINE(lora_cmd_error)
 /* Handler: +EVENT=0,0 (Module reset event) */
 MODEM_CMD_DEFINE(on_cmd_reset)
 {
+	lora.status.reset_count++;
 	LOG_DBG("device reset");
 	modem_cmd_handler_set_error(data, 0);
-	k_sem_give(&lora.sem_response);
+	// k_sem_give(&lora.sem_response);
 	return 0;
 }
 
 /* Handler: +EVENT=1,1 (Network join event) */
 MODEM_CMD_DEFINE(on_cmd_join)
 {
-	lora.network_joined = true;
+	lora.status.network_joined = true;
+	lora.status.join_count++;
+	/* TODO:  send device status after join */
 	LOG_INF("network join");
 	modem_cmd_handler_set_error(data, 0);
-	k_sem_give(&lora.sem_response);
+	// k_sem_give(&lora.sem_response);
 	return 0;
 }
 
 MODEM_CMD_DEFINE(on_cmd_rx_data)
 {
-	LOG_DBG("downlink received");
+	size_t out_len;
+	// struct lora_modem *lora = CONTAINER_OF(data, struct lora_modem,
+	// 				     cmd_handler_data);
+
+	LOG_INF("downlink rx");
+	LOG_HEXDUMP_DBG(data->rx_buf, len, "+RECV");
+	if (lora.ppp_recv_cb == NULL || lora.ppp_recv_buf == NULL ||
+		lora.ppp_recv_buf_len == 0) {
+		LOG_ERR("rx not registered, downlink ignored");
+		modem_cmd_handler_set_error(data, -EPIPE);
+		return 0;
+	}
+	out_len = net_buf_linearize(&lora.ppp_recv_buf[recv_buf_offset],
+				    lora.ppp_recv_buf_len - recv_buf_offset,
+				    data->rx_buf, 1, len);
+	recv_buf_offset += out_len;
+
+	lora.ppp_recv_buf = lora.ppp_recv_cb(lora.ppp_recv_buf,
+					     &recv_buf_offset);
+
+	// modem_response[out_len] = '\0';
+	// if (out_len > 0 && modem_response[out_len-1] == '\r') {
+	// 	modem_response[out_len-1] = '\0';
+	// }
+
 	modem_cmd_handler_set_error(data, 0);
-	k_sem_give(&lora.sem_response);
+	// k_sem_give(&lora.sem_response);
+	return 0;
+}
+
+/* Handler: +ACK (ack) */
+MODEM_CMD_DEFINE(on_cmd_ack)
+{
+	LOG_INF("network ack");
+	lora.status.ack_count++;
+	modem_cmd_handler_set_error(data, 0);
+	// k_sem_give(&lora.sem_response);
+	return 0;
+}
+
+MODEM_CMD_DEFINE(on_cmd_modem_rx_err)
+{
+	LOG_WRN("modem announced rx error");
 	return 0;
 }
 
@@ -253,6 +406,13 @@ static const struct modem_cmd unsol_cmds[] = {
 	MODEM_CMD("+EVENT=0,0", on_cmd_reset, 0U, ""),
 	MODEM_CMD("+EVENT=1,1", on_cmd_join, 0U, ""),
 	MODEM_CMD("+RECV=", on_cmd_rx_data, 2U, ","),
+	MODEM_CMD("+ACK", on_cmd_ack, 0U, ""),
+	MODEM_CMD("Error when receiving", on_cmd_modem_rx_err, 0U, ""),
+};
+
+static const struct modem_cmd bool_response_cmds[] = {
+	MODEM_CMD("0", on_cmd_false, 0U, ""),
+	MODEM_CMD("1", on_cmd_true, 0U, ""),
 };
 
 #if defined(CONFIG_MODEM_SHELL)
@@ -299,7 +459,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmdinfo_manufacturer)
 				    sizeof(minfo.mdm_manufacturer) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_manufacturer[out_len] = '\0';
-	LOG_INF("Manufacturer: %s", log_strdup(minfo.mdm_manufacturer));
+	LOG_INF("Manufacturer: %s", minfo.mdm_manufacturer);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
@@ -314,7 +474,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmdinfo_model)
 				    sizeof(minfo.mdm_model) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_model[out_len] = '\0';
-	LOG_INF("Model: %s", log_strdup(minfo.mdm_model));
+	LOG_INF("Model: %s", minfo.mdm_model);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
@@ -329,7 +489,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmdinfo_revision)
 				    sizeof(minfo.mdm_revision) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_revision[out_len] = '\0';
-	LOG_INF("Revision: %s", log_strdup(minfo.mdm_revision));
+	LOG_INF("Revision: %s", minfo.mdm_revision);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
@@ -344,40 +504,13 @@ MODEM_CMD_DEFINE(on_cmd_atcmdinfo_imei)
 	out_len = net_buf_linearize(minfo.mdm_imei, sizeof(minfo.mdm_imei) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_imei[out_len] = '\0';
-	LOG_INF("IMEI: %s", log_strdup(minfo.mdm_imei));
+	LOG_INF("IMEI: %s", minfo.mdm_imei);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
 }
 #endif /* CONFIG_MODEM_SHELL */
 
-/* AT+REBOOT Handler: +OK[0]=<REBOOT>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_reboot)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("DEVEUI: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-/* AT+BAND Handler: +OK[0]=<BAND>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_band)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_band, sizeof(minfo.mdm_band) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_band[out_len] = '\0';
-// 	LOG_INF("BAND: %s", log_strdup(minfo.mdm_band));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
 
 /* AT+DEVEUI Handler: +OK[0]=<DEVEUI>[1] */
 __attribute__((unused))
@@ -388,7 +521,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_deveui)
 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_deveui[out_len] = '\0';
-	LOG_DBG("DEVEUI: %s", log_strdup(minfo.mdm_deveui));
+	LOG_DBG("DEVEUI: %s", minfo.mdm_deveui);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
@@ -403,7 +536,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_devaddr)
 	out_len = net_buf_linearize(minfo.mdm_devaddr, sizeof(minfo.mdm_devaddr) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_devaddr[out_len] = '\0';
-	LOG_DBG("DEVADDR: %s", log_strdup(minfo.mdm_devaddr));
+	LOG_DBG("DEVADDR: %s", minfo.mdm_devaddr);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
@@ -418,7 +551,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_nwkskey)
 	out_len = net_buf_linearize(minfo.mdm_nwkskey, sizeof(minfo.mdm_nwkskey) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_nwkskey[out_len] = '\0';
-	LOG_DBG("NWKSKEY: %s", log_strdup(minfo.mdm_nwkskey));
+	LOG_DBG("NWKSKEY: %s", minfo.mdm_nwkskey);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
@@ -433,7 +566,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_appskey)
 	out_len = net_buf_linearize(minfo.mdm_appskey, sizeof(minfo.mdm_appskey) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_appskey[out_len] = '\0';
-	LOG_DBG("APPSKEY: %s", log_strdup(minfo.mdm_appskey));
+	LOG_DBG("APPSKEY: %s", minfo.mdm_appskey);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
@@ -448,7 +581,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_appkey)
 	out_len = net_buf_linearize(minfo.mdm_appkey, sizeof(minfo.mdm_appkey) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_appkey[out_len] = '\0';
-	LOG_DBG("APPKEY: %s", log_strdup(minfo.mdm_appkey));
+	LOG_DBG("APPKEY: %s", minfo.mdm_appkey);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
@@ -463,395 +596,106 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_appeui)
 	out_len = net_buf_linearize(minfo.mdm_appeui, sizeof(minfo.mdm_appeui) - 1,
 				    data->rx_buf, 0, len);
 	minfo.mdm_appeui[out_len] = '\0';
-	LOG_DBG("APPEUI: %s", log_strdup(minfo.mdm_appeui));
+	LOG_DBG("APPEUI: %s", minfo.mdm_appeui);
 	k_sem_give(&lora.sem_response);
 
 	return 0;
 }
 
-// /* AT+ADR Handler: +OK[0]=<ADR>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_adr)
-// {
-// 	size_t out_len;
 
-// 	out_len = net_buf_linearize(minfo.mdm_adr, sizeof(minfo.mdm_adr) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_adr[out_len] = '\0';
-// 	LOG_INF("ADR: %s", log_strdup(minfo.mdm_adr));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+RFPOWER Handler: +OK[0]=<RFPOWER>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_rfpower)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_txpower, sizeof(minfo.mdm_txpower) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_txpower[out_len] = '\0';
-// 	LOG_INF("RFPOWER: %s", log_strdup(minfo.mdm_txpower));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+DFORMAT Handler: +OK[0]=<DFORMAT>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_dformat)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_atformat, sizeof(minfo.mdm_atformat) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_atformat[out_len] = '\0';
-// 	LOG_INF("DFORMAT: %s", log_strdup(minfo.mdm_atformat));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+DR Handler: +OK[0]=<DR>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_dr)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_dr, sizeof(minfo.mdm_dr) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_dr[out_len] = '\0';
-// 	LOG_INF("DR: %s", log_strdup(minfo.mdm_dr));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+DUTYCYCLE Handler: +OK[0]=<DUTYCYCLE>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_dutycycle)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_dutycycle, sizeof(minfo.mdm_dutycycle) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_dutycycle[out_len] = '\0';
-// 	LOG_INF("DUTYCYCLE: %s", log_strdup(minfo.mdm_dutycycle));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+NWK Handler: +OK[0]=<NWK>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_nwk)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("NWK: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+MODE Handler: +OK[0]=<MODE>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_mode)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_mode, sizeof(minfo.mdm_mode) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_mode[out_len] = '\0';
-// 	LOG_INF("MODE: %s", log_strdup(minfo.mdm_mode));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+FCU Handler: +OK[0]=<FCU>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_fcu)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_fcu, sizeof(minfo.mdm_fcu) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_fcu[out_len] = '\0';
-// 	LOG_INF("FCU: %s", log_strdup(minfo.mdm_fcu));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+FCD Handler: +OK[0]=<FCD>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_fcd)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_fcd, sizeof(minfo.mdm_fcd) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_fcd[out_len] = '\0';
-// 	LOG_INF("FCD: %s", log_strdup(minfo.mdm_fcd));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+CLASS Handler: +OK[0]=<CLASS>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_class)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_class, sizeof(minfo.mdm_class) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_class[out_len] = '\0';
-// 	LOG_INF("CLASS: %s", log_strdup(minfo.mdm_class));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+JOIN Handler: +OK[0]=<JOIN>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_join)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("JOIN: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+NJS Handler: +OK[0]=<NJS>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_njs)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_njs, sizeof(minfo.mdm_njs) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_njs[out_len] = '\0';
-// 	LOG_INF("NJS: %s", log_strdup(minfo.mdm_njs));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+UTX Handler: +OK[0]=<UTX>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_utx)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("UTX: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+CTX Handler: +OK[0]=<CTX>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_ctx)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("CTX: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+PORT Handler: +OK[0]=<PORT>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_port)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_port, sizeof(minfo.mdm_port) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_port[out_len] = '\0';
-// 	LOG_INF("PORT: %s", log_strdup(minfo.mdm_port));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+CFM Handler: +OK[0]=<CFM>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_cfm)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_cfm, sizeof(minfo.mdm_cfm) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_cfm[out_len] = '\0';
-// 	LOG_INF("CFM: %s", log_strdup(minfo.mdm_cfm));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+CFS Handler: +OK[0]=<CFS>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_cfs)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_cf, sizeof(minfo.mdm_cf) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_cf[out_len] = '\0';
-// 	LOG_INF("CFS: %s", log_strdup(minfo.mdm_cf));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+SNR Handler: +OK[0]=<SNR>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_snr)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_snr, sizeof(minfo.mdm_snr) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_snr[out_len] = '\0';
-// 	LOG_INF("SNR: %s", log_strdup(minfo.mdm_snr));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+RSSI Handler: +OK[0]=<RSSI>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_rssi)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_rssi, sizeof(minfo.mdm_rssi) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_rssi[out_len] = '\0';
-// 	LOG_INF("RSSI: %s", log_strdup(minfo.mdm_rssi));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+BAT Handler: +OK[0]=<BAT>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_bat)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_bat, sizeof(minfo.mdm_bat) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_bat[out_len] = '\0';
-// 	LOG_INF("BAT: %s", log_strdup(minfo.mdm_bat));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+UART Handler: +OK[0]=<UART>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_uart)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("UART: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+FACNEW Handler: +OK[0]=<FACNEW>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_facnew)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("FACNEW: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+SLEEP Handler: +OK[0]=<SLEEP>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_sleep)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("SLEEP: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-// /* AT+MSIZE Handler: +OK[0]=<MSIZE>[1] */
-// MODEM_CMD_DEFINE(on_cmd_atcmd_msize)
-// {
-// 	size_t out_len;
-
-// 	out_len = net_buf_linearize(minfo.mdm_deveui, sizeof(minfo.mdm_deveui) - 1,
-// 				    data->rx_buf, 0, len);
-// 	minfo.mdm_deveui[out_len] = '\0';
-// 	LOG_INF("MSIZE: %s", log_strdup(minfo.mdm_deveui));
-// 	k_sem_give(&lora.sem_response);
-
-// 	return 0;
-// }
-
-static struct setup_cmd setup_cmds[] = {
+static struct lora_at_cmd setup_cmds[] = {
 #if defined(CONFIG_MODEM_SHELL)
 	/* query modem info */
-	SETUP_CMD("AT+DEV?", "+OK=", on_cmd_atcmdinfo_model, 0U, ""),
-	SETUP_CMD("AT+VER?", "+OK=", on_cmd_atcmdinfo_revision, 0U, ""),
+	LORA_AT_CMD("AT+DEV?", "+OK=", on_cmd_atcmdinfo_model, 0U, "", LORA_CMD_AT_TIMEOUT),
+	LORA_AT_CMD("AT+VER?", "+OK=", on_cmd_atcmdinfo_revision, 0U, "", LORA_CMD_AT_TIMEOUT),
 	// SETUP_CMD_NOHANDLE("AT+DEVEUI?"),
 	// SETUP_CMD_NOHANDLE("AT+APPEUI?"),
 	// SETUP_CMD_NOHANDLE("AT+APPKEY?"),
-	SETUP_CMD_NOHANDLE("AT+BAND=9"),
-	SETUP_CMD_NOHANDLE("AT+CLASS=A"),
-	SETUP_CMD_NOHANDLE("AT+PORT=10"),
-	SETUP_CMD_NOHANDLE("AT+ADR=1"),
-	SETUP_CMD_NOHANDLE("AT+DR=3"),
-	SETUP_CMD_NOHANDLE("AT+MODE=1"),
-	// SETUP_CMD_NOHANDLE("AT+JOIN"),
 #endif
 };
+
+static struct lora_at_cmd config_otaa_cmds[] = {
+	LORA_AT_CMD_NOHANDLE("AT+BAND=9", LORA_CMD_AT_TIMEOUT),
+	LORA_AT_CMD_NOHANDLE("AT+CLASS=A", LORA_CMD_AT_TIMEOUT),
+	LORA_AT_CMD_NOHANDLE("AT+PORT=10", LORA_CMD_AT_TIMEOUT),
+	LORA_AT_CMD_NOHANDLE("AT+ADR=1", LORA_CMD_AT_TIMEOUT),
+	LORA_AT_CMD_NOHANDLE("AT+DR=3", LORA_CMD_AT_TIMEOUT),
+	LORA_AT_CMD_NOHANDLE("AT+MODE=1", LORA_CMD_AT_TIMEOUT),
+};
+
+static struct lora_at_cmd join_otaa_cmds[] = {
+	LORA_AT_CMD_NOHANDLE("AT+JOIN", LORA_CMD_JOIN_TIMEOUT),
+};
+
+static struct lora_at_cmd set_keys[] = {
+	LORA_AT_CMD("AT+APPEUI=" SECRET_APP_EUI, "+OK", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
+	LORA_AT_CMD("AT+APPKEY=" SECRET_APP_KEY, "+OK", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
+};
+
+static struct lora_at_cmd cfs[] = {
+	LORA_AT_CMD("AT+CFS?", "+OK=", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
+};
+
+void lora_register_cb(void (* cb)(bool busy_set))
+{
+	lora.busy_cb = cb;
+}
+
+/* run a set of AT commands */
+int lora_at_cmd_seq_send(struct modem_iface *iface,
+		     struct modem_cmd_handler *handler,
+		     struct lora_at_cmd *cmds, size_t cmds_len,
+		     struct k_sem *sem)
+{
+	int ret = 0, i;
+
+	for (i = 0; i < cmds_len; i++) {
+		if (i) {
+			k_sleep(K_MSEC(50));
+		}
+
+		if (cmds[i].handle_cmd.cmd && cmds[i].handle_cmd.func) {
+			ret = modem_cmd_send(iface, handler,
+					     &cmds[i].handle_cmd, 1U,
+					     cmds[i].send_cmd,
+					     sem, cmds[i].timeout);
+		} else {
+			ret = modem_cmd_send(iface, handler,
+					     NULL, 0, cmds[i].send_cmd,
+					     sem, cmds[i].timeout);
+		}
+
+		if (ret < 0) {
+			LOG_ERR("command %s ret:%d", cmds[i].send_cmd, ret);
+			break;
+		}
+	}
+
+	return ret;
+}
 
 static int lora_setup_keys(struct lora_modem *lora)
 {
 	int ret;
 
-//	if (CONFIG_MODEM_MURATA_LORA_MANUAL_MCCMNO[0]) {
-		/* use manual MCC/MNO entry */
-		ret = modem_cmd_send(&lora->context.iface,
-				     &lora->context.cmd_handler,
-				     NULL, 0,
-				     "AT+APPEUI=" 
-				     SECRET_APP_EUI,
-				     &lora->sem_response,
-				     LORA_CMD_AT_TIMEOUT);
-//	}
+	ret = modem_cmd_send(&lora->context.iface,
+				&lora->context.cmd_handler,
+				NULL, 0,
+				"AT+APPEUI=" 
+				SECRET_APP_EUI,
+				&lora->sem_response,
+				LORA_CMD_AT_TIMEOUT);
 	if (ret < 0) {
 		LOG_ERR("set keys error, %d", ret);
 	}
 
-//	if (CONFIG_MODEM_MURATA_LORA_MANUAL_MCCMNO[0]) {
-		/* register operator automatically */
-		ret = modem_cmd_send(&lora->context.iface,
-				     &lora->context.cmd_handler,
-				     NULL, 0,
-				     "AT+APPKEY="
-				     SECRET_APP_KEY,
-				     &lora->sem_response,
-				     LORA_CMD_AT_TIMEOUT);
-//	}
-
+	ret = modem_cmd_send(&lora->context.iface,
+				&lora->context.cmd_handler,
+				NULL, 0,
+				"AT+APPKEY="
+				SECRET_APP_KEY,
+				&lora->sem_response,
+				LORA_CMD_AT_TIMEOUT);
 	if (ret < 0) {
 		LOG_ERR("set keys error, %d", ret);
 	}
@@ -859,110 +703,159 @@ static int lora_setup_keys(struct lora_modem *lora)
 	return ret;
 }
 
-// set port (10)
-// set ADR (true)
-// set data rate (3)
-// OTAA join (appEUI, appKey)
+static void lora_heartbeat(struct k_work *work)
+{
+	lora.status.req_ack = true;
+	k_delayed_work_submit(&lora.heartbeat_work, K_SECONDS(LORA_HEARTBEAT_TIMEOUT));
+}
+
+static void lora_req_ack(struct k_work *work)
+{
+	int ret;
+
+	ret = modem_cmd_send(&lora.context.iface,
+				&lora.context.cmd_handler,
+				bool_response_cmds,
+				ARRAY_SIZE(bool_response_cmds),
+				"AT+CFS?",
+				&lora.sem_response,
+				LORA_CMD_AT_TIMEOUT);
+	if (ret < 0) {
+		LOG_ERR("get ack status error");
+		return;
+	}
+	if (modem_response[0]) {
+		LOG_DBG("uplink ack received");
+	} else {
+		if (lora.status.nbtrials--) {
+			LOG_DBG("uplink ack not received, retry...");
+			/* send zero length packet to trigger retransmission
+			 * of the unacknowledged packet
+			 */
+			ret = modem_cmd_send(&lora.context.iface,
+						&lora.context.cmd_handler,
+						response_cmds,
+						ARRAY_SIZE(response_cmds),
+						"AT+CTX 0",
+						&lora.sem_response,
+						LORA_CMD_AT_TIMEOUT);
+			k_delayed_work_submit(&lora.req_ack_work, K_MSEC(LORA_ACK_TIMEOUT));
+		} else {
+			/* LoRaMac will retry sending the confirmed packet up
+			 * to 8 times.  If the retries fail, then the uplink
+			 * either could not reach the server or the ACK could
+			 * not reach the mote
+			 */
+			lora.status.failed_ack_count++;
+			lora.status.ack_failed = true;
+			LOG_ERR("ACK timeout");
+		}
+	}
+}
 
 static void lora_configure(struct k_work *work)
 {
-	int r = -1;
+	int ret = -1;
 	int timeout = 0;
 	struct lora_modem *lora = CONTAINER_OF(work, struct lora_modem,
 					     lora_configure_work);
 
 	LOG_DBG("Starting modem %p configuration", lora);
 
-	while (r < 0 && timeout < 10) {
-		r = modem_cmd_send(&lora->context.iface,
+	while (ret < 0 && timeout < 10) {
+		ret = modem_cmd_send(&lora->context.iface,
 					&lora->context.cmd_handler,
 					(struct modem_cmd *)&response_cmds[0],
 					ARRAY_SIZE(response_cmds),
 					"AT", &lora->sem_response,
 					LORA_CMD_AT_TIMEOUT);
-		if (r < 0) {
-			LOG_DBG("modem not ready, rc=%d", r);
+		if (ret < 0) {
+			LOG_DBG("modem not ready, rc=%d", ret);
 			k_sleep(K_MSEC(200));
 			timeout++;
 		} else {
 			LOG_DBG("modem ready");
-			(void)lora_setup_keys(lora);
 		}
 		if (timeout == 10) {
 			LOG_ERR("modem hardware failure");
 		}
 	}
 
-	r = modem_cmd_send(&lora->context.iface,
+	lora_setup_keys(lora);
+
+	ret = modem_cmd_send(&lora->context.iface,
 				&lora->context.cmd_handler,
 				NULL, 0,
 				"AT+DEVEUI?",
 				&lora->sem_response,
 				LORA_CMD_AT_TIMEOUT);
 
-	if (r < 0) {
+	if (ret < 0) {
 		LOG_ERR("Get dev eui failed");	
 	} else {
 		LOG_INF("Dev EUI: %s", log_strdup(modem_response));
 	}
 
-	r = modem_cmd_send(&lora->context.iface,
+	ret = modem_cmd_send(&lora->context.iface,
 				&lora->context.cmd_handler,
 				NULL, 0,
 				"AT+APPEUI?",
 				&lora->sem_response,
 				LORA_CMD_AT_TIMEOUT);
 
-	if (r < 0) {
+	if (ret < 0) {
 		LOG_ERR("Get app eui failed");	
 	} else {
 		LOG_DBG("App EUI: %s", log_strdup(modem_response));
 	}
 
-	r = modem_cmd_send(&lora->context.iface,
+	ret = modem_cmd_send(&lora->context.iface,
 				&lora->context.cmd_handler,
 				NULL, 0,
 				"AT+APPKEY?",
 				&lora->sem_response,
 				LORA_CMD_AT_TIMEOUT);
 
-	if (r < 0) {
+	if (ret < 0) {
 		LOG_ERR("Get app key failed");	
 	} else {
 		LOG_DBG("App key: %s", log_strdup(modem_response));
 	}
 
-	r = -1;
-	timeout = 0;
-	while (r < 0 && timeout < 10) {
-		r = modem_cmd_handler_setup_cmds(&lora->context.iface,
-						 &lora->context.cmd_handler,
-						 setup_cmds,
-						 ARRAY_SIZE(setup_cmds),
-						 &lora->sem_response,
-						 LORA_CMD_SETUP_TIMEOUT);
-		if (r < 0) {
-			LOG_DBG("modem setup error, rc=%d", r);
-			k_sleep(K_MSEC(200));
-			timeout++;
-		} else {
-			LOG_DBG("modem setup complete");
-		}
-		if (timeout == 10) {
-			LOG_ERR("modem hardware failure");
-		}
+	ret = lora_at_cmd_seq_send(&lora->context.iface,
+				&lora->context.cmd_handler,
+				setup_cmds,
+				ARRAY_SIZE(setup_cmds),
+				&lora->sem_response);
+	if (ret < 0) {
+		LOG_ERR("modem setup error, rc=%d", ret);
+		k_sleep(K_MSEC(200));
+		timeout++;
+	} else {
+		LOG_DBG("modem setup complete");
 	}
 
-	r = modem_cmd_send(&lora->context.iface,
+	ret = lora_at_cmd_seq_send(&lora->context.iface,
+				&lora->context.cmd_handler,
+				config_otaa_cmds,
+				ARRAY_SIZE(config_otaa_cmds),
+				&lora->sem_response);
+	if (ret < 0) {
+		LOG_ERR("OTAA configuration error");
+	} else {
+		LOG_DBG("otaa config complete");
+	}
+
+	ret = modem_cmd_send(&lora->context.iface,
 				&lora->context.cmd_handler,
 				NULL, 0,
 				"AT+JOIN",
 				&lora->sem_response,
 				K_NO_WAIT);
-
-
-	if (r < 0) {
-		LOG_ERR("Join failed");	
+	if (ret < 0) {
+		LOG_ERR("join request error");	
+	} else {
+		LOG_DBG("join requested");
 	}
 
 	// lora->setup_done = true;
@@ -973,7 +866,7 @@ static int lora_init(struct device *device)
 {
 	struct lora_modem *lora = device->driver_data;
 	k_tid_t thread;
-	int r;
+	int ret;
 
 	LOG_DBG("Generic LoRa modem (%p)", lora);
 
@@ -997,11 +890,11 @@ static int lora_init(struct device *device)
 
 	k_sem_init(&lora->sem_response, 0, 1);
 
-	r = modem_cmd_handler_init(&lora->context.cmd_handler,
+	ret = modem_cmd_handler_init(&lora->context.cmd_handler,
 				   &lora->cmd_handler_data);
-	if (r < 0) {
-		LOG_DBG("cmd handler error %d", r);
-		return r;
+	if (ret < 0) {
+		LOG_DBG("cmd handler error %d", ret);
+		return ret;
 	}
 
 #if defined(CONFIG_MODEM_SHELL)
@@ -1017,17 +910,17 @@ static int lora_init(struct device *device)
 	lora->lora_data.rx_rb_buf = &lora->lora_rx_rb_buf[0];
 	lora->lora_data.rx_rb_buf_len = sizeof(lora->lora_rx_rb_buf);
 
-	r = modem_iface_uart_init(&lora->context.iface,
+	ret = modem_iface_uart_init(&lora->context.iface,
 				  &lora->lora_data, MDM_UART_DEV_NAME);
-	if (r < 0) {
-		LOG_DBG("iface uart error %d", r);
-		return r;
+	if (ret < 0) {
+		LOG_DBG("iface uart error %d", ret);
+		return ret;
 	}
 
-	r = modem_context_register(&lora->context);
-	if (r < 0) {
-		LOG_DBG("context error %d", r);
-		return r;
+	ret = modem_context_register(&lora->context);
+	if (ret < 0) {
+		LOG_DBG("context error %d", ret);
+		return ret;
 	}
 
 	LOG_DBG("clear boot0");
@@ -1043,10 +936,15 @@ static int lora_init(struct device *device)
 			(k_thread_entry_t) lora_rx,
 			lora, NULL, NULL, K_PRIO_COOP(7), 0, K_NO_WAIT);
 
-	k_thread_name_set(thread, "lora rx");
+	k_thread_name_set(thread, "lora_rx");
 	k_delayed_work_init(&lora->lora_configure_work, lora_configure);
+	k_delayed_work_init(&lora->heartbeat_work, lora_heartbeat);
+	lora->status.req_ack = false;
+	k_delayed_work_init(&lora->req_ack_work, lora_req_ack);
+	lora->busy_cb = NULL;
 
 	(void)k_delayed_work_submit(&lora->lora_configure_work, 0);
+	(void)k_delayed_work_submit(&lora->heartbeat_work, K_SECONDS(LORA_HEARTBEAT_TIMEOUT));
 
 	LOG_DBG("iface->read %p iface->write %p",
 		lora->context.iface.read, lora->context.iface.write);
@@ -1055,13 +953,41 @@ static int lora_init(struct device *device)
 
 int uart_pipe_send(const u8_t *data, int len)
 {
+	int ret;
+	u8_t buf[12];
+	s64_t tm;
+
 	k_sem_take(&lora.ppp_send_sem, K_FOREVER);
 
-	(void)lora.context.iface.write(&lora.context.iface, data, len);
+	if (lora.status.network_joined && len <= LORA_MAX_DATA_LENGTH) {
+		LOG_DBG("uplink queued");
+		if (lora.status.req_ack) {
+			/* request ack */
+			LOG_DBG("uplink ack requested");
+			snprintk(buf, sizeof(buf), "AT+CTX %d\r", len);
+			lora.status.req_ack = false;
+			lora.status.nbtrials = LORA_NBTRIALS;
+			k_delayed_work_submit(&lora.req_ack_work, K_MSEC(LORA_ACK_TIMEOUT));
+		} else {
+			snprintk(buf, sizeof(buf), "AT+UTX %d\r", len);
+		}
+		(void)lora.context.iface.write(&lora.context.iface, buf, strlen(buf));
+		(void)lora.context.iface.write(&lora.context.iface, data, len);
 
+		// k_sem_reset(&lora.sem_response);
+		ret = k_sem_take(&lora.sem_response, LORA_CMD_AT_TIMEOUT);
+		if (ret == 0) {
+			ret = lora.cmd_handler_data.last_error;
+		} else if (ret == -EAGAIN) {
+			LOG_DBG("modem response timeout");
+			ret = -ETIMEDOUT;
+		}
+	} else {
+		ret = -ENETUNREACH;
+	}
 	k_sem_give(&lora.ppp_send_sem);
 
-	return 0;
+	return ret;
 }
 
 void uart_pipe_register(u8_t *buf, size_t len, uart_pipe_recv_cb cb)
