@@ -482,8 +482,8 @@ enum pmic_sensor_chan {
 
 /* driver sensor attributes */
 enum bq24195_sensor_attributes {
-    SENSOR_ATTR_FAULT_COUNT = SENSOR_ATTR_PRIV_START,
-    SENSOR_ATTR_LATCH,
+	SENSOR_ATTR_FAULT_COUNT = SENSOR_ATTR_PRIV_START,
+	SENSOR_ATTR_LATCH,
 };
 
 #endif /* __PMIC_BQ24195_H__ */
