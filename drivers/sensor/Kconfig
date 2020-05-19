@@ -7,5 +7,6 @@
 menu "OOT Sensor Drivers"
 
 rsource "icm20649/Kconfig"
+rsource "bq24195/Kconfig"
 
 endmenu

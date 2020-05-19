@@ -1,0 +1,19 @@
+# Texas Instruments BQ24195
+
+description: |
+    This is a representation of the Texas Instruments BQ24195 PMIC.
+
+compatible: "ti,bq24195"
+
+include: i2c-device.yaml
+
+properties:
+    irq-gpios:
+        type: phandle-array
+        required: false
+        description: |
+            INT pin.
+
+            This pin signals active high when produced by the pmic.  The
+            property value should ensure the flags properly describe the
+            signal that is presented to the driver.
