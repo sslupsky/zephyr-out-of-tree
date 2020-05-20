@@ -210,7 +210,6 @@ static struct lora_modem {
 	struct k_sem ppp_send_sem;
 	struct k_delayed_work heartbeat_work;
 	struct k_delayed_work req_ack_work;
-	void (*busy_cb)(bool busy_set);
 } lora;
 
 static size_t recv_buf_offset;
@@ -229,17 +228,11 @@ static void lora_rx(struct lora_modem *lora)
 
 	while (true) {
 		k_sem_take(&lora->lora_data.rx_sem, K_FOREVER);
-		if (lora->busy_cb) {
-			// lora->busy_cb(true);
-		}
 
 		if (lora->setup_done == false) {
-			ret = lora->context.cmd_handler.process(
+			lora->context.cmd_handler.process(
 						&lora->context.cmd_handler,
 						&lora->context.iface);
-			if (ret && lora->busy_cb) {
-				// lora->busy_cb(false);
-			}
 			continue;
 		}
 
@@ -636,11 +629,6 @@ static struct lora_at_cmd cfs[] = {
 	LORA_AT_CMD("AT+CFS?", "+OK=", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
 };
 
-void lora_register_cb(void (* cb)(bool busy_set))
-{
-	lora.busy_cb = cb;
-}
-
 /* run a set of AT commands */
 int lora_at_cmd_seq_send(struct modem_iface *iface,
 		     struct modem_cmd_handler *handler,
@@ -941,7 +929,6 @@ static int lora_init(struct device *device)
 	k_delayed_work_init(&lora->heartbeat_work, lora_heartbeat);
 	lora->status.req_ack = false;
 	k_delayed_work_init(&lora->req_ack_work, lora_req_ack);
-	lora->busy_cb = NULL;
 
 	(void)k_delayed_work_submit(&lora->lora_configure_work, 0);
 	(void)k_delayed_work_submit(&lora->heartbeat_work, K_SECONDS(LORA_HEARTBEAT_TIMEOUT));
