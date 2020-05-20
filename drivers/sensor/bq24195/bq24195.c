@@ -33,6 +33,11 @@ LOG_MODULE_REGISTER(BQ24195);
 #ifdef CONFIGURE_PMIC
 #endif
 
+#define PMIC_STACK_SIZE		512
+
+K_THREAD_STACK_DEFINE(pmic_stack, PMIC_STACK_SIZE);
+
+struct k_thread pmic_thread;
 
 static int bq24195_reg_read(struct device *dev, u8_t reg, u8_t *val, int size)
 {
@@ -48,11 +53,12 @@ static int bq24195_reg_read(struct device *dev, u8_t reg, u8_t *val, int size)
 static int bq24195_reg_write(struct device *dev, u8_t reg, u8_t val)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
+	const struct bq24195_dev_config *cfg = dev->config->config_info;
 	int ret;
 
 	u8_t tx_buf[2] = { reg, val };
 	ret = i2c_write(drv_data->i2c, tx_buf, sizeof(tx_buf),
-			 DT_INST_0_TI_BQ24195_BASE_ADDRESS);
+			cfg->i2c_addr);
 	return ret;
 }
 
@@ -260,23 +266,26 @@ static bool isPowerGood(struct device *dev) {
 }
 
 
-static int bq24195_get_system_status(struct device *dev, BQ24195_SYSTEM_STATUS_t *value)
+static int bq24195_get_system_status(struct device *dev)
 {
+	struct bq24195_data *drv_data = dev->driver_data;
 	int ret;
 
-	ret = bq24195_reg_read(dev, BQ24195_REGISTER_SYSTEM_STATUS, &value->reg, sizeof(value->reg));
+	ret = bq24195_reg_read(dev, BQ24195_REGISTER_SYSTEM_STATUS, &drv_data->pmic.reg.SystemStatus.reg, sizeof(drv_data->pmic.reg.SystemStatus.reg));
 	return ret;
 }
 
-static int bq24195_get_fault(struct device *dev, BQ24195_FAULT_t *value)
+static int bq24195_get_fault(struct device *dev)
 {
+	struct bq24195_data *drv_data = dev->driver_data;
 	int ret;
 
 	/*
 	 * Note: To read the current fault status, you must read the fault register twice
 	 * See 8.3.4.2 and 8.3.6.5.2
 	 */
-	ret = bq24195_reg_read(dev, BQ24195_REGISTER_FAULT, &value->reg, sizeof(value->reg));
+	ret = bq24195_reg_read(dev, BQ24195_REGISTER_FAULT, &drv_data->pmic.reg.Fault.reg, sizeof(drv_data->pmic.reg.Fault.reg));
+	ret = bq24195_reg_read(dev, BQ24195_REGISTER_FAULT, &drv_data->pmic.CurrentFault.reg, sizeof(drv_data->pmic.CurrentFault.reg));
 	return ret;
 }
 
@@ -291,13 +300,103 @@ static int bq24195_get_registers(struct device *dev)
 		LOG_WRN("could not read registers");
 	}
 
-	/* read the current fault */
-	ret = bq24195_get_fault(dev, &drv_data->pmic.CurrentFault);
+	/* read the fault register again to obtain the current fault status */
+	ret = bq24195_get_fault(dev);
 	if (ret < 0) {
 		LOG_WRN("could not read registers");
 	}
 
 	return ret;
+}
+
+static void pmic_process(struct device *dev)
+{
+	struct bq24195_data *drv_data = dev->driver_data;
+	enum pmic_state pmic_state;
+	enum pmic_state next_state;
+	BQ24195_SYSTEM_STATUS_t status;
+	int ret;
+
+	LOG_DBG("starting");
+	pmic_state = PMIC_STATE_start;
+	next_state = pmic_state;
+
+	while (true) {
+		ret = bq24195_get_system_status(dev);
+		if (ret < 0) {
+			LOG_DBG("could not read pmic register");
+		}
+
+		switch (pmic_state) {
+		case PMIC_STATE_start:
+			if (drv_data->pmic.reg.SystemStatus.bit.PG_STAT) {
+				next_state = PMIC_STATE_connected;
+			} else {
+				next_state = PMIC_STATE_disconnected;
+			}
+			break;
+
+		case PMIC_STATE_idle:
+			bq24195_reset_watchdog(dev);
+			if (drv_data->pmic.reg.SystemStatus.bit.PG_STAT) {
+				next_state = PMIC_STATE_connected;
+			}
+			break;
+
+		case PMIC_STATE_connected:
+			LOG_INF("connect");
+			if (drv_data->pmic.reg.SystemStatus.bit.VSYS_STAT) {
+				LOG_DBG("battery not present");
+				bq24195_set_charge_mode(dev, 0);
+				next_state = PMIC_STATE_batteryNotPresent;
+			} else {
+				LOG_DBG("charging");
+				bq24195_set_charge_mode(dev, 1);
+				next_state = PMIC_STATE_charging;
+			}
+			break;
+
+		case PMIC_STATE_disconnected:
+			LOG_INF("disconnect");
+			bq24195_set_charge_mode(dev, 0);
+			next_state = PMIC_STATE_idle;
+			break;
+
+		case PMIC_STATE_charging:
+			bq24195_reset_watchdog(dev);
+			if (drv_data->pmic.reg.SystemStatus.bit.VSYS_STAT) {
+				LOG_DBG("battery not present");
+				bq24195_set_charge_mode(dev, 0);
+				next_state = PMIC_STATE_batteryNotPresent;
+			}
+			if (!drv_data->pmic.reg.SystemStatus.bit.PG_STAT) {
+				next_state = PMIC_STATE_disconnected;
+			}
+			break;
+
+		case PMIC_STATE_batteryNotPresent:
+			bq24195_reset_watchdog(dev);
+			if (!drv_data->pmic.reg.SystemStatus.bit.VSYS_STAT) {
+				LOG_DBG("charging");
+				bq24195_set_charge_mode(dev, 1);
+				next_state = PMIC_STATE_charging;
+			}
+			if (!drv_data->pmic.reg.SystemStatus.bit.PG_STAT) {
+				next_state = PMIC_STATE_disconnected;
+			}
+			break;
+
+		case PMIC_STATE_deviceNotPresent:
+		default:
+			break;
+		}
+		if (next_state != pmic_state) {
+			/* TODO: callback */
+			pmic_state = next_state;
+		} else {
+			k_sleep(K_SECONDS(30));
+		}
+	}
 }
 
 /**
@@ -310,17 +409,17 @@ static int bq24195_get_registers(struct device *dev)
  */
 static inline int bq24195_device_id_check(struct device *dev)
 {
-	u8_t value;
+	BQ24195_VENDOR_STATUS_t value;
 	int ret;
 
-	ret = bq24195_reg_read(dev, BQ24195_REGISTER_PMIC_VENDOR, &value, sizeof(value));
+	ret = bq24195_reg_read(dev, BQ24195_REGISTER_PMIC_VENDOR, &value.reg, sizeof(value.reg));
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to get Device ID register",
 			DT_INST_0_TI_BQ24195_LABEL);
 		return ret;
 	}
 
-	if (value != BQ24195_CHIPID) {
+	if (value.reg != BQ24195_CHIPID) {
 		LOG_ERR("%s: Failed to match the device IDs",
 			DT_INST_0_TI_BQ24195_LABEL);
 		return -EINVAL;
@@ -342,45 +441,16 @@ static int bq24195_sample_fetch(struct device *dev, enum sensor_channel chan)
 
 	switch ((int) chan) {
 	case SENSOR_CHAN_ALL:
-		ret = bq24195_get_system_status(dev, &status);
-		if (ret < 0) {
-			break;
-		}
-		drv_data->pmic.reg.SystemStatus = status;
-
-		ret = bq24195_get_fault(dev, &fault);
-		if (ret < 0) {
-			break;
-		}
-		drv_data->pmic.reg.Fault = fault;
-		
-		ret = bq24195_get_fault(dev, &fault);
-		if (ret < 0) {
-			break;
-		}
-		drv_data->pmic.CurrentFault = fault;
+		ret = bq24195_get_registers(dev);
+		LOG_HEXDUMP_DBG(drv_data->pmic.raw, sizeof(drv_data->pmic.raw), "pmic registers");
 		break;
 
 	case SENSOR_CHAN_PMIC_STATUS:
-		ret = bq24195_get_system_status(dev, &status);
-		if (ret < 0) {
-			break;
-		}
-		drv_data->pmic.reg.SystemStatus = status;
+		ret = bq24195_get_system_status(dev);
 		break;
 
 	case SENSOR_CHAN_PMIC_FAULT:
-		ret = bq24195_get_fault(dev, &fault);
-		if (ret < 0) {
-			break;
-		}
-		drv_data->pmic.reg.Fault = fault;
-
-		ret = bq24195_get_fault(dev, &fault);
-		if (ret < 0) {
-			break;
-		}
-		drv_data->pmic.CurrentFault = fault;
+		ret = bq24195_get_fault(dev);
 		break;
 
 	default:
@@ -399,6 +469,10 @@ static int bq24195_channel_get(struct device *dev, enum sensor_channel chan,
 	int ret = 0;
 
 	switch ((int) chan) {
+	case SENSOR_CHAN_ALL:
+		LOG_HEXDUMP_DBG(drv_data->pmic.raw, sizeof(drv_data->pmic.raw), "pmic registers");
+		break;
+
 	case SENSOR_CHAN_PMIC_STATUS:
 		val->val1 = drv_data->pmic.reg.SystemStatus.reg;
 		break;
@@ -471,9 +545,19 @@ static int bq24195_chip_init(struct device *dev)
 
 int bq24195_init(struct device *dev)
 {
+	k_tid_t thread;
 	int ret;
 
 	ret = bq24195_chip_init(dev);
+	if (ret == 0) {
+		thread = k_thread_create(&pmic_thread, pmic_stack,
+				K_THREAD_STACK_SIZEOF(pmic_stack),
+				(k_thread_entry_t) pmic_process,
+				dev, NULL, NULL, K_PRIO_COOP(7), 0, K_NO_WAIT);
+
+		k_thread_name_set(thread, "pmic");
+	}
+
 	return ret;
 }
 
