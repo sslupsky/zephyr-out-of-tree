@@ -14,37 +14,77 @@ properties:
     label:
       required: true
 
-    irq-gpios:
+    txready-gpios:
       type: phandle-array
       required: false
-      description: IRQ (TX Ready) pin
+      description: |
+          The TX_READY function is used to indicate when the receiver has data
+          to transmit on DDC interface.
+          A listener can wait on the TX_READY signal instead of polling the
+          DDC interfaces. 
+          The TX_READY function can be mapped to TXD (PIO 06).
+          The TX_READY function is disabled by default.
+          Reference doc: UBX-16018358 - R06
+          Section: 1.4.2
 
     reset-gpios:
       type: phandle-array
       required: true
-      description: RESETn pin
+      description: |
+          Driving RESET_N low activates a hardware reset of the system.
+          Use this pin only to reset the module.
+          Do not use RESET_N to turn the module on and off,
+          since the reset state increases power consumption.
+          The SAM-M8Q RESET_N pin is for input only.
+          Reference doc: UBX-16018358 - R06
+          Section: 1.5.1
+
 
     extint-gpios:
       type: phandle-array
       required: false
-      description: EXT INT pin
+      description: |
+          EXTINT is an external interrupt pin.
+          It can be used for wake-up functions in Power Save Mode
+          and for aiding.
+          Function is disabled by default.
+          If EXTINT is not used for an external interrupt function,
+          the pin can be used as a generic PIO (PIO13).
+          PIO13 can be configured to function as an output pin for
+          the TXD Ready feature to indicate that the receiver has data
+          to transmit.
+          Reference doc: UBX-16018358 - R06
+          Section: 1.5.2
 
     safeboot-gpios:
       type: phandle-array
       required: false
-      description: SAFEBOOT pin
+      description: |
+          The SAFEBOOT_N pin is for future service, updates and reconfiguration.
+          Reference doc: UBX-16018358 - R06
+          Section: 1.5.2
 
     timepulse-gpios:
       type: phandle-array
       required: false
-      description: TIMEPULSE pin
+      description: |
+          A configurable time pulse signal. By default, the time pulse
+          signal is configured to one pulse per second.
+          Reference doc: UBX-16018358 - R06
+          Section: 1.5.3
 
     txd-gpios:
       type: phandle-array
       required: false
-      description: TXD pin
+      description: |
+          UART TXD
+          Reference doc: UBX-16018358 - R06
+          Section: 1.4.1
 
     rxd-gpios:
       type: phandle-array
       required: false
-      description: RXD pin
+      description: |
+          UART RXD
+          Reference doc: UBX-16018358 - R06
+          Section: 1.4.1

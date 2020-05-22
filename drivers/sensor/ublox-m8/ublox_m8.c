@@ -24,6 +24,7 @@
 #include <sys/__assert.h>
 #include <logging/log.h>
 #include <kernel.h>
+#include <devicetree.h>
 
 #include "ublox_m8.h"
 
@@ -78,6 +79,7 @@ static int ublox_m8_message_read(struct device *dev, u8_t *val, int size)
 	u8_t rx_buf[2];
 	u16_t msg_len;
 
+	/* get the message length */
 	ret = i2c_burst_read(drv_data->i2c, cfg->i2c_addr,
 			     UBLOX_M8_REGISTER_LEN, rx_buf, 2);
 	if (ret < 0) {
@@ -85,16 +87,20 @@ static int ublox_m8_message_read(struct device *dev, u8_t *val, int size)
 		goto done;
 	}
 	msg_len = sys_get_be16(rx_buf);
-	/* read first byte */
+
+	/* read the first byte */
 	ret = i2c_read(drv_data->i2c, rx_buf, 1, cfg->i2c_addr);
 	if (ret < 0) {
 		LOG_DBG("read error");
 		goto done;
 	}
+
 	if (rx_buf[0] != 0xFF) {
-		/* first byte is valid so store it in the return buffer and read
-		* the rest of the message
-		*/
+		/*
+		 * The first byte is valid.
+		 * So store it in the return buffer and read
+		 * the rest of the message
+		 */
 		*val++ = rx_buf[0];
 		ret = i2c_read(drv_data->i2c, val, msg_len-1, cfg->i2c_addr);
 		if (ret < 0) {
@@ -243,6 +249,7 @@ static const struct gnss_driver_api ublox_m8_driver_api = {
 static int ublox_m8_chip_init(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	int ret;
 
 	while (k_uptime_ticks() < k_us_to_cyc_ceil32(UBLOX_M8_STARTUP_TIME_USEC)) {
@@ -261,9 +268,69 @@ static int ublox_m8_chip_init(struct device *dev)
 		return -EIO;
 	}
 
-	LOG_DBG("UBLOX_M8 gnss module detected");
+	LOG_DBG("module detected");
 
-	// apply_pmic_defaults(dev);
+	/* setup extint gpio */
+	drv_data->extint_gpio = device_get_binding(cfg->extint_gpio_name);
+	if (drv_data->extint_gpio == NULL) {
+		LOG_ERR("Failed to get pointer to %s device",
+			    cfg->extint_gpio_name);
+		return -EINVAL;
+	}
+
+	gpio_pin_configure(drv_data->extint_gpio, cfg->extint_gpio_pin,
+			   cfg->extint_gpio_flags |
+			   GPIO_OUTPUT);
+
+	/* setup reset gpio */
+	drv_data->reset_gpio = device_get_binding(cfg->reset_gpio_name);
+	if (drv_data->reset_gpio == NULL) {
+		LOG_ERR("Failed to get pointer to %s device",
+			    cfg->reset_gpio_name);
+		return -EINVAL;
+	}
+
+	gpio_pin_configure(drv_data->reset_gpio, cfg->reset_gpio_pin,
+			   cfg->reset_gpio_flags |
+			   GPIO_OUTPUT);
+
+	/* setup safeboot gpio */
+	drv_data->safeboot_gpio = device_get_binding(cfg->safeboot_gpio_name);
+	if (drv_data->safeboot_gpio == NULL) {
+		LOG_ERR("Failed to get pointer to %s device",
+			    cfg->safeboot_gpio_name);
+		return -EINVAL;
+	}
+
+	gpio_pin_configure(drv_data->safeboot_gpio, cfg->safeboot_gpio_pin,
+			   cfg->safeboot_gpio_flags |
+			   GPIO_OUTPUT);
+
+	/* setup rxd gpio */
+	drv_data->rxd_gpio = device_get_binding(cfg->rxd_gpio_name);
+	if (drv_data->rxd_gpio == NULL) {
+		LOG_ERR("Failed to get pointer to %s device",
+			    cfg->rxd_gpio_name);
+		return -EINVAL;
+	}
+
+	gpio_pin_configure(drv_data->rxd_gpio, cfg->rxd_gpio_pin,
+			   cfg->rxd_gpio_flags |
+			   GPIO_PULL_UP);
+
+	/* setup txd gpio */
+	// drv_data->txd_gpio = device_get_binding(cfg->txd_gpio_name);
+	// if (drv_data->txd_gpio == NULL) {
+	// 	LOG_ERR("Failed to get pointer to %s device",
+	// 		    cfg->txd_gpio_name);
+	// 	return -EINVAL;
+	// }
+
+	// gpio_pin_configure(drv_data->txd_gpio, cfg->txd_gpio_pin,
+	// 		   cfg->txd_gpio_flags |
+	// 		   GPIO_OUTPUT);
+
+	// ublox_m8_apply_defaults(dev);
 	// ublox_m8_get_registers(dev);
 
 	return 0;
@@ -289,7 +356,23 @@ int ublox_m8_init(struct device *dev)
 static struct ublox_m8_data ublox_m8_drv_data;
 
 static const struct ublox_m8_dev_config ublox_m8_config = {
+	.i2c_name = DT_INST_0_UBLOX_M8_BUS_NAME,
 	.i2c_addr = DT_INST_0_UBLOX_M8_BASE_ADDRESS,
+	.txready_gpio_name = DT_INST_0_UBLOX_M8_TXREADY_GPIOS_CONTROLLER,
+	.txready_gpio_pin = DT_INST_0_UBLOX_M8_TXREADY_GPIOS_PIN,
+	.txready_gpio_flags = DT_INST_0_UBLOX_M8_TXREADY_GPIOS_FLAGS,
+	.reset_gpio_name = DT_INST_0_UBLOX_M8_RESET_GPIOS_CONTROLLER,
+	.reset_gpio_pin = DT_INST_0_UBLOX_M8_RESET_GPIOS_PIN,
+	.reset_gpio_flags = DT_INST_0_UBLOX_M8_RESET_GPIOS_FLAGS,
+	.timepulse_gpio_name = DT_INST_0_UBLOX_M8_TIMEPULSE_GPIOS_CONTROLLER,
+	.timepulse_gpio_pin = DT_INST_0_UBLOX_M8_TIMEPULSE_GPIOS_PIN,
+	.timepulse_gpio_flags = DT_INST_0_UBLOX_M8_TIMEPULSE_GPIOS_FLAGS,
+	.safeboot_gpio_name = DT_INST_0_UBLOX_M8_SAFEBOOT_GPIOS_CONTROLLER,
+	.safeboot_gpio_pin = DT_INST_0_UBLOX_M8_SAFEBOOT_GPIOS_PIN,
+	.safeboot_gpio_flags = DT_INST_0_UBLOX_M8_SAFEBOOT_GPIOS_FLAGS,
+	.extint_gpio_name = DT_INST_0_UBLOX_M8_EXTINT_GPIOS_CONTROLLER,
+	.extint_gpio_pin = DT_INST_0_UBLOX_M8_EXTINT_GPIOS_PIN,
+	.extint_gpio_flags = DT_INST_0_UBLOX_M8_EXTINT_GPIOS_FLAGS,
 };
 
 DEVICE_AND_API_INIT(ublox_m8, DT_INST_0_UBLOX_M8_LABEL, ublox_m8_init,

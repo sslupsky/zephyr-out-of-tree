@@ -117,18 +117,29 @@ struct ublox_m8_data {
 	struct device *i2c;
 	gnss_t gnss;
 	void (*state_change_cb)(u8_t state);
+	struct device *extint_gpio;
+	struct device *reset_gpio;
+	struct device *safeboot_gpio;
+	struct device *rxd_gpio;
+	struct device *txd_gpio;
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER
-	struct device *gpio;
-	struct gpio_callback gpio_cb;
+	struct device *txready_gpio;
+	struct gpio_callback txready_gpio_cb;
 
 	struct gnss_trigger data_ready_trigger;
 	gnss_trigger_handler_t data_ready_handler;
 
+	struct device *timepulse_gpio;
+	struct gpio_callback timepulse_gpio_cb;
+
+	struct gnss_trigger timepulse_trigger;
+	gnss_trigger_handler_t timepulse_handler;
+
 #if defined(CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD)
 	K_THREAD_STACK_MEMBER(thread_stack, CONFIG_UBLOX_M8_THREAD_STACK_SIZE);
 	struct k_thread thread;
-	struct k_sem gpio_sem;
+	struct k_sem txready_gpio_sem;
 #elif defined(CONFIG_UBLOX_M8_TRIGGER_GLOBAL_THREAD)
 	struct k_work work;
 	struct device *dev;
@@ -138,7 +149,29 @@ struct ublox_m8_data {
 };
 
 struct ublox_m8_dev_config {
-	u16_t i2c_addr;
+	char *i2c_name;
+	u8_t i2c_addr;
+	char *txready_gpio_name;
+	u8_t txready_gpio_pin;
+	unsigned int txready_gpio_flags;
+	char *reset_gpio_name;
+	u8_t reset_gpio_pin;
+	unsigned int reset_gpio_flags;
+	char *timepulse_gpio_name;
+	u8_t timepulse_gpio_pin;
+	unsigned int timepulse_gpio_flags;
+	char *safeboot_gpio_name;
+	u8_t safeboot_gpio_pin;
+	unsigned int safeboot_gpio_flags;
+	char *extint_gpio_name;
+	u8_t extint_gpio_pin;
+	unsigned int extint_gpio_flags;
+	char *rxd_gpio_name;
+	u8_t rxd_gpio_pin;
+	unsigned int rxd_gpio_flags;
+	char *txd_gpio_name;
+	u8_t txd_gpio_pin;
+	unsigned int txd_gpio_flags;
 };
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER

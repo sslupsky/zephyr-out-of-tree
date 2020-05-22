@@ -22,9 +22,24 @@
 #include <kernel.h>
 #include <drivers/gnss.h>
 #include <logging/log.h>
+#include <devicetree.h>
 #include "ublox_m8.h"
 
 LOG_MODULE_DECLARE(UBLOX_M8, CONFIG_GNSS_LOG_LEVEL);
+
+static inline void ublox_m8_setup_int(struct device *dev,
+			     bool enable)
+{
+	struct ublox_m8_data *data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	unsigned int flags = enable
+		? GPIO_INT_EDGE_TO_ACTIVE
+		: GPIO_INT_DISABLE;
+
+	gpio_pin_interrupt_configure(data->txready_gpio,
+				     cfg->txready_gpio_pin,
+				     flags);
+}
 
 int ublox_m8_trigger_set(struct device *dev,
 			const struct gnss_trigger *trig,
@@ -36,7 +51,7 @@ int ublox_m8_trigger_set(struct device *dev,
 		return -ENOTSUP;
 	}
 
-	gpio_pin_interrupt_configure(drv_data->gpio, DT_INST_0_UBLOX_M8_IRQ_GPIOS_PIN, GPIO_INT_DISABLE);
+	ublox_m8_setup_int(dev, false);
 
 	drv_data->data_ready_handler = handler;
 	if (handler == NULL) {
@@ -45,23 +60,23 @@ int ublox_m8_trigger_set(struct device *dev,
 
 	drv_data->data_ready_trigger = *trig;
 
-	gpio_pin_interrupt_configure(drv_data->gpio, DT_INST_0_UBLOX_M8_IRQ_GPIOS_PIN, GPIO_INT_EDGE_TO_ACTIVE | GPIO_ACTIVE_LOW | GPIO_PULL_UP);
+	ublox_m8_setup_int(dev, true);
 
 	return 0;
 }
 
 static void ublox_m8_gpio_callback(struct device *dev,
-				  struct gpio_callback *cb, u32_t pins)
+				   struct gpio_callback *cb, u32_t pins)
 {
 	struct ublox_m8_data *drv_data =
-		CONTAINER_OF(cb, struct ublox_m8_data, gpio_cb);
+		CONTAINER_OF(cb, struct ublox_m8_data, txready_gpio_cb);
 
 	ARG_UNUSED(pins);
 
-	gpio_pin_interrupt_configure(dev, DT_INST_0_UBLOX_M8_IRQ_GPIOS_PIN, GPIO_INT_DISABLE);
+	ublox_m8_setup_int(dev, false);
 
 #if defined(CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD)
-	k_sem_give(&drv_data->gpio_sem);
+	k_sem_give(&drv_data->txready_gpio_sem);
 #elif defined(CONFIG_UBLOX_M8_TRIGGER_GLOBAL_THREAD)
 	k_work_submit(&drv_data->work);
 #endif
@@ -77,7 +92,7 @@ static void ublox_m8_thread_cb(void *arg)
 					     &drv_data->data_ready_trigger);
 	}
 
-	gpio_pin_interrupt_configure(drv_data->gpio, DT_INST_0_UBLOX_M8_IRQ_GPIOS_PIN, GPIO_INT_EDGE_TO_ACTIVE | GPIO_ACTIVE_LOW | GPIO_PULL_UP);
+	ublox_m8_setup_int(dev, true);
 }
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD
@@ -89,7 +104,7 @@ static void ublox_m8_thread(int dev_ptr, int unused)
 	ARG_UNUSED(unused);
 
 	while (1) {
-		k_sem_take(&drv_data->gpio_sem, K_FOREVER);
+		k_sem_take(&drv_data->txready_gpio_sem, K_FOREVER);
 		ublox_m8_thread_cb(dev);
 	}
 }
@@ -108,24 +123,25 @@ static void ublox_m8_work_cb(struct k_work *work)
 int ublox_m8_init_interrupt(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 
 	/* setup data ready gpio interrupt */
-	drv_data->gpio = device_get_binding(DT_INST_0_UBLOX_M8_IRQ_GPIOS_CONTROLLER);
-	if (drv_data->gpio == NULL) {
+	drv_data->txready_gpio = device_get_binding(cfg->txready_gpio_name);
+	if (drv_data->txready_gpio == NULL) {
 		LOG_ERR("Failed to get pointer to %s device",
-			    DT_INST_0_UBLOX_M8_IRQ_GPIOS_CONTROLLER);
+			    cfg->txready_gpio_name);
 		return -EINVAL;
 	}
 
-	gpio_pin_configure(drv_data->gpio, DT_INST_0_UBLOX_M8_IRQ_GPIOS_PIN,
-			   GPIO_INT_EDGE_TO_ACTIVE | GPIO_ACTIVE_LOW | 
-			   GPIO_PULL_UP | GPIO_INT_DEBOUNCE);
+	gpio_pin_configure(drv_data->txready_gpio, cfg->txready_gpio_pin,
+			   cfg->txready_gpio_flags |
+			   GPIO_INPUT | GPIO_PULL_UP);
 
-	gpio_init_callback(&drv_data->gpio_cb,
+	gpio_init_callback(&drv_data->txready_gpio_cb,
 			   ublox_m8_gpio_callback,
-			   BIT(DT_INST_0_UBLOX_M8_IRQ_GPIOS_PIN));
+			   BIT(cfg->txready_gpio_pin));
 
-	if (gpio_add_callback(drv_data->gpio, &drv_data->gpio_cb) < 0) {
+	if (gpio_add_callback(drv_data->txready_gpio, &drv_data->txready_gpio_cb) < 0) {
 		LOG_ERR("Failed to set gpio callback");
 		return -EIO;
 	}
@@ -138,7 +154,7 @@ int ublox_m8_init_interrupt(struct device *dev)
 	// }
 
 #if defined(CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD)
-	k_sem_init(&drv_data->gpio_sem, 0, UINT_MAX);
+	k_sem_init(&drv_data->txready_gpio_sem, 0, UINT_MAX);
 
 	k_thread_create(&drv_data->thread, drv_data->thread_stack,
 			CONFIG_UBLOX_M8_THREAD_STACK_SIZE,
@@ -152,7 +168,7 @@ int ublox_m8_init_interrupt(struct device *dev)
 	drv_data->dev = dev;
 #endif
 
-	gpio_pin_interrupt_configure(drv_data->gpio, DT_INST_0_UBLOX_M8_IRQ_GPIOS_PIN, GPIO_INT_EDGE_TO_ACTIVE | GPIO_ACTIVE_LOW | GPIO_PULL_UP);
+	ublox_m8_setup_int(dev, true);
 
 	LOG_DBG("Data ready interrupt initialized.");
 
