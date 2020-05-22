@@ -1,0 +1,50 @@
+# Copyright (c) 2020, Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    Ublox M8 M8 series GNSS modules
+    This binding provides a representation of the Ublox M8 series gnss module.
+    The module is interfaced using i2c bus.
+
+compatible: "ublox,m8"
+
+include: i2c-device.yaml
+
+properties:
+    label:
+      required: true
+
+    irq-gpios:
+      type: phandle-array
+      required: false
+      description: IRQ (TX Ready) pin
+
+    reset-gpios:
+      type: phandle-array
+      required: true
+      description: RESETn pin
+
+    extint-gpios:
+      type: phandle-array
+      required: false
+      description: EXT INT pin
+
+    safeboot-gpios:
+      type: phandle-array
+      required: false
+      description: SAFEBOOT pin
+
+    timepulse-gpios:
+      type: phandle-array
+      required: false
+      description: TIMEPULSE pin
+
+    txd-gpios:
+      type: phandle-array
+      required: false
+      description: TXD pin
+
+    rxd-gpios:
+      type: phandle-array
+      required: false
+      description: RXD pin

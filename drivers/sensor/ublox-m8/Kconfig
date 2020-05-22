@@ -1,0 +1,110 @@
+# UBLOX_M8 Ublox M8 series gnss modules
+
+# Copyright (c) 2020 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig UBLOX_M8
+	bool "UBLOX_M8 M8 series GNSS module"
+	depends on I2C
+	help
+	  Enable driver for ublox I2C M8 series GNSS module.
+
+if UBLOX_M8
+
+module = GNSS
+module-str = gnss
+source "subsys/logging/Kconfig.template.log_config"
+
+config UBLOX_M8_NAME
+	string "Driver name"
+	default "UBLOX_M8"
+	help
+	  Device name with which the UBLOX_M8 sensor is identified.
+
+config UBLOX_M8_I2C_ADDR
+	hex "I2C address"
+	default 0x42
+	help
+	  I2C address of the UBLOX_M8 sensor is fixed to 0x42.
+
+config UBLOX_M8_I2C_MASTER_DEV_NAME
+	string "I2C master where UBLOX_M8 is connected"
+	default "SERCOM5"
+	help
+	  Specify the device name of the I2C master device to which UBLOX_M8 is
+	  connected.
+
+config GNSS_INIT_PRIORITY
+	int "Init priority"
+	default 90
+	help
+	  GNSS device driver initialization priority.
+
+# config GNSS_SHELL
+# 	bool "Enable gnss shell"
+# 	depends on SHELL
+# 	default y
+# 	help
+# 	  This shell provides access to basic sensor data.
+
+choice
+	prompt "Trigger mode"
+	default UBLOX_M8_TRIGGER_GLOBAL_THREAD
+	help
+	  Specify the type of triggering to be used by the driver.
+
+config UBLOX_M8_TRIGGER_NONE
+	bool "No trigger"
+
+config UBLOX_M8_TRIGGER_GLOBAL_THREAD
+	bool "Use global thread"
+	depends on GPIO
+	select UBLOX_M8_TRIGGER
+
+config UBLOX_M8_TRIGGER_OWN_THREAD
+	bool "Use own thread"
+	depends on GPIO
+	select UBLOX_M8_TRIGGER
+
+endchoice
+
+config UBLOX_M8_TRIGGER
+	bool
+
+config UBLOX_M8_GPIO_DEV_NAME
+	string "GPIO device"
+	default "GPIO_0"
+	depends on UBLOX_M8_TRIGGER
+	help
+	  The device name of the GPIO device to which the UBLOX_M8 interrupt pin
+	  is connected.
+
+config UBLOX_M8_GPIO_PIN_NUM
+	int "Interrupt GPIO pin number"
+	default 0
+	depends on UBLOX_M8_TRIGGER
+	help
+	  The number of the GPIO on which the interrupt signal from the UBLOX_M8
+	  chip will be received.
+
+config UBLOX_M8_THREAD_PRIORITY
+	int "Thread priority"
+	depends on UBLOX_M8_TRIGGER_OWN_THREAD
+	default 10
+	help
+	  Priority of thread used by the driver to handle interrupts.
+
+config UBLOX_M8_THREAD_STACK_SIZE
+	int "Thread stack size"
+	depends on UBLOX_M8_TRIGGER_OWN_THREAD
+	default 1024
+	help
+	  Stack size of thread used by the driver to handle interrupts.
+
+config UBLOX_M8_THREAD_NAME
+	string "Thread name"
+	default "ublox_m8"
+	help
+	  Thread name of the ublox m8 driver.
+
+endif # UBLOX_M8
