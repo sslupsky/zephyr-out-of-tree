@@ -29,10 +29,16 @@
 #include <sys/util.h>
 #include <drivers/gnss.h>
 #include <drivers/gpio.h>
+#include <net/buf.h>
+#include <sys/ring_buffer.h>
 #include "ubx.h"
 
 
-#define UBLOX_M8_STARTUP_TIME_USEC     1000
+#define UBLOX_M8_STARTUP_TIME_USEC	1000
+#define UBLOX_M8_MESSAGE_TIMEOUT_MSEC	1000
+
+#define UBLOX_M8_RECV_BUF_SIZE		128
+#define UBLOX_MAX_DATA_LENGTH		256
 
 /*!
  *  I2C ADDRESS/BITS/SETTINGS
@@ -41,12 +47,6 @@
 #define UBLOX_M8_CHIPID		(0x23)		/**< Default chip ID. */
 #define UBLOX_M8_CHIPID_MASK	0b11111011
 
-#ifndef MAX_PAYLOAD_SIZE
-
-#define MAX_PAYLOAD_SIZE 256 //We need ~220 bytes for getProtocolVersion on most ublox modules
-//#define MAX_PAYLOAD_SIZE 768 //Worst case: UBX_CFG_VALSET packet with 64 keyIDs each with 64 bit values
-
-#endif
 
 // A default of 250ms for maxWait seems fine for I2C but is not enough for SerialUSB.
 // If you know you are only going to be using I2C / Qwiic communication, you can
@@ -64,8 +64,9 @@
 #define getHPPOSLLHmaxWait 1100 // Default maxWait for getHPPOSLLH and all functions which call it
 
 
-#define UBLOX_M8_REGISTER_LEN 0xFD
-#define UBLOX_M8_REGISTER_MSG 0xFF
+#define UBLOX_M8_REGISTER_LEN		0xFD
+#define UBLOX_M8_REGISTER_MSG		0xFF
+#define UBLOX_SAM_M8Q_TXREADY_PIO	6
 
 /**
  * Driver for the UBLOX_M8 gnss.
@@ -112,16 +113,40 @@ typedef union {
 } gnss_t;
 
 
+struct msg_handler_data {
+	struct net_buf_pool *buf_pool;
+	struct k_sem msg_sem;
+	struct k_work msg_work;
+	int last_error;
+};
+
 /* driver structs */
 struct ublox_m8_data {
 	struct device *i2c;
 	gnss_t gnss;
 	void (*state_change_cb)(u8_t state);
+	struct device *dev;
 	struct device *extint_gpio;
 	struct device *reset_gpio;
 	struct device *safeboot_gpio;
 	struct device *rxd_gpio;
 	struct device *txd_gpio;
+
+	u8_t rx_buf[UBLOX_M8_RECV_BUF_SIZE];
+	struct ring_buf rx_rb;
+	u8_t rx_rb_buf[UBX_MAX_FRAME_SIZE];
+
+	struct net_buf_pool *buf_pool;
+	struct k_sem msg_sem;
+	struct k_work msg_work;
+	int last_error;
+	u8_t msg_read_buf[UBLOX_M8_RECV_BUF_SIZE];
+	u16_t msg_read_buf_len;
+	// u8_t msg_match_buf[UBLOX_M8_RECV_BUF_SIZE];
+	// u16_t msg_match_buf_len;
+
+	struct k_sem response_sem;
+	k_timeout_t timeout;
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER
 	struct device *txready_gpio;
@@ -142,7 +167,6 @@ struct ublox_m8_data {
 	struct k_sem txready_gpio_sem;
 #elif defined(CONFIG_UBLOX_M8_TRIGGER_GLOBAL_THREAD)
 	struct k_work work;
-	struct device *dev;
 #endif
 
 #endif /* CONFIG_UBLOX_M8_TRIGGER */

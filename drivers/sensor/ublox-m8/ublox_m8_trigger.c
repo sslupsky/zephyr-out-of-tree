@@ -124,6 +124,7 @@ int ublox_m8_init_interrupt(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
 	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	int ret;
 
 	/* setup data ready gpio interrupt */
 	drv_data->txready_gpio = device_get_binding(cfg->txready_gpio_name);
@@ -137,6 +138,27 @@ int ublox_m8_init_interrupt(struct device *dev)
 			   cfg->txready_gpio_flags |
 			   GPIO_INPUT | GPIO_PULL_UP);
 
+	/* read the state of the pin */
+	ret = gpio_pin_get(drv_data->txready_gpio, cfg->txready_gpio_pin);
+	if (!ret) {
+		/*
+		 * logical 0 indicates chip is driving pin low
+		 * so chip is present.
+		 * Turn off the pull-up.
+		 */
+		gpio_pin_configure(drv_data->txready_gpio, cfg->txready_gpio_pin,
+				cfg->txready_gpio_flags |
+				GPIO_INPUT);
+	} else {
+		/*
+		 * logical 1 indicates pin is being pulled up my mcu
+		 * so the chip is not present.
+		 * Disable input.
+		 */
+		gpio_pin_configure(drv_data->txready_gpio, cfg->txready_gpio_pin,
+				GPIO_DISCONNECTED);
+	}
+
 	gpio_init_callback(&drv_data->txready_gpio_cb,
 			   ublox_m8_gpio_callback,
 			   BIT(cfg->txready_gpio_pin));
@@ -147,11 +169,11 @@ int ublox_m8_init_interrupt(struct device *dev)
 	}
 
 	/* enable data ready interrupt */
-	// if (i2c_reg_update_byte(drv_data->i2c, drv_data->i2c_slave_addr,
-	// 		       UBLOX_M8_REG_INT_ENABLE_1, UBLOX_M8_RAW_DATA_0_RDY_EN, UBLOX_M8_RAW_DATA_0_RDY_EN) < 0) {
-	// 	LOG_ERR("Failed to enable data ready interrupt.");
+	// ret = ublox_m8_set_txready(dev);
+	// if (ret < 0) {
 	// 	return -EIO;
 	// }
+
 
 #if defined(CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD)
 	k_sem_init(&drv_data->txready_gpio_sem, 0, UINT_MAX);

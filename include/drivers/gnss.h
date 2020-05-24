@@ -159,17 +159,8 @@ enum gnss_trigger_type {
 	GNSS_TRIG_TIMER,
 	/** Trigger fires whenever new data is ready. */
 	GNSS_TRIG_DATA_READY,
-	/**
-	 * Trigger fires when the selected channel varies significantly.
-	 * This includes any-motion detection when the channel is
-	 * acceleration or gyro. If detection is based on slope between
-	 * successive channel readings, the slope threshold is configured
-	 * via the @ref GNSS_ATTR_SLOPE_TH and @ref GNSS_ATTR_SLOPE_DUR
-	 * attributes.
-	 */
-	GNSS_TRIG_DELTA,
-	/** Trigger fires when a near/far event is detected. */
-	GNSS_TRIG_NEAR_FAR,
+	/** Trigger fires when a geofence event is detected. */
+	GNSS_TRIG_GEOFENCE,
 	/**
 	 * Trigger fires when channel reading transitions configured
 	 * thresholds.  The thresholds are configured via the @ref
