@@ -196,15 +196,24 @@ struct gnss_trigger {
 	enum gnss_channel chan;
 };
 
-enum gnss_state {
-	GNSS_STATE_idle,
-	GNSS_STATE_start,
-	GNSS_STATE_connected,
-	GNSS_STATE_disconnected,
-	GNSS_STATE_charging,
-	GNSS_STATE_batteryNotPresent,
-	GNSS_STATE_deviceNotPresent,
-	GNSS_STATE_disabled,
+enum gnss_device_state {
+	GNSS_DEVICE_STATE_UNINITIALIZED = 0,
+	GNSS_DEVICE_STATE_INITIALIZED,
+	GNSS_DEVICE_STATE_RESET,
+	GNSS_DEVICE_STATE_CONFIGURED,
+	GNSS_DEVICE_STATE_ACTIVE,
+	GNSS_DEVICE_STATE_INACTIVE,
+	GNSS_DEVICE_STATE_LOWPOWER,
+	GNSS_DEVICE_STATE_DISCONNECTED,
+};
+
+enum gnss_sentence_state {
+	GNSS_SENTENCE_STATE_IDLE = 0,
+	GNSS_SENTENCE_STATE_UBX,
+	GNSS_SENTENCE_STATE_NMEA,
+	GNSS_SENTENCE_STATE_RTCM,
+	GNSS_SENTENCE_STATE_RTCM3,
+	GNSS_SENTENCE_STATE_ERROR,
 };
 
 
@@ -287,10 +296,10 @@ typedef int (*gnss_channel_get_t)(struct device *dev,
 				    struct gnss_pvt *val);
 
 __subsystem struct gnss_driver_api {
-	gnss_attr_set_t attr_set;
-	gnss_trigger_set_t trigger_set;
 	gnss_sample_fetch_t sample_fetch;
 	gnss_channel_get_t channel_get;
+	gnss_attr_set_t attr_set;
+	gnss_trigger_set_t trigger_set;
 };
 
 /**

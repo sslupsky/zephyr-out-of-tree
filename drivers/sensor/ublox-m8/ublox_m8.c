@@ -30,7 +30,7 @@
 #include "ublox_m8.h"
 
 #define LOG_LEVEL CONFIG_GNSS_LOG_LEVEL
-LOG_MODULE_REGISTER(UBLOX_M8);
+LOG_MODULE_REGISTER(UBLOX_M8, CONFIG_GNSS_LOG_LEVEL);
 
 NET_BUF_POOL_DEFINE(ublox_buf_pool, 8, 32, 0, NULL);
 
@@ -46,6 +46,7 @@ const struct ubx_frame_status ubx_frame_status_request_init = {
 	.ack_received = false,
 	.ack = false,
 	.checksum_valid = false,
+	.error = false,
 };
 
 const union ubx_cfg_prt_txready ubx_txready_config = {
@@ -54,6 +55,25 @@ const union ubx_cfg_prt_txready ubx_txready_config = {
 	.bit.pin = 6,
 	.bit.thres = 1,
 };
+
+const union ubx_cfg_prt_output_protocol ubx_ddc_protocol = {
+	.bit.ubx = 1,
+};
+
+/*
+ * u-center configuration:
+ * 
+ * UART1 port: none in, none out, baud 460800, 8 N 1, 
+ * B5 62 06 00 14 00 01 00 00 00 D0 08 00 00 00 08 07 00 00 00 00 00 00 00 00 00 02 72
+ * 
+ * DDC port:  ubx in, ubx out, slave=42, txready, pio=6, thres 8
+ * B5 62 06 00 14 00 00 00 99 00 84 00 00 00 00 00 00 00 01 00 01 00 00 00 00 00 39 58
+ * 
+ * DDC port:  ubx in, ubx out, slave=42, txready, pio=6, thres 8, extended timeout
+ * B5 62 06 00 14 00 00 00 99 00 84 00 00 00 00 00 00 00 01 00 01 00 02 00 00 00 3B 60
+ */
+const u8_t ucenter_cfg_prt_uart1[20] = {0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00, 0x00, 0x08, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const u8_t ucenter_cfg_prt_ddc[20] =   {0x00, 0x00, 0x99, 0x00, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00};
 
 /*
  * UBX_CFG_CFG_REQ
@@ -153,44 +173,170 @@ static void ubx_validate_frame_checksum(struct ubx_frame *frame)
 	}
 }
 
-static int ublox_m8_parse_ubx(struct device *dev)
+static int ublox_m8_flush_msg_buffer(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
 	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
-	struct ubx_frame frame;
 	int ret;
+	u8_t rx_buf[16];
+	u16_t msg_len, read_bytes;
 
-	ret = 0;
+	/* get the message length */
+	ret = i2c_burst_read(drv_data->i2c, cfg->i2c_addr,
+			     UBLOX_M8_REGISTER_LEN, rx_buf, 2);
+	if (ret < 0) {
+		LOG_DBG("addr error");
+		return -EIO;
+	}
+
+	/* ddc port message length is received big endian */
+	msg_len = sys_get_be16(rx_buf);
+	if (msg_len == 0) {
+		LOG_DBG("msg buffer empty");
+		return 0;
+	}
+
+	while (msg_len > 0) {
+		read_bytes = MIN(msg_len, sizeof(rx_buf));
+		ret = i2c_read(drv_data->i2c, rx_buf, read_bytes,
+			       cfg->i2c_addr);
+		if (ret < 0) {
+			break;
+		}
+		LOG_HEXDUMP_DBG(rx_buf, read_bytes, "buffer flush");
+		msg_len -= read_bytes;
+	}
+
 	return ret;
 }
 
-static void ublox_m8_msg_thread_cb(void *arg)
+static int ublox_m8_flush_msg_pipe(struct device *dev)
 {
-	struct device *dev = arg;
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	int ret;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	u8_t rx_buf[128];
+	int ret = 0;
+	u16_t len;
+	size_t bytes_read;
 
-	/* process message */
-	ret = ublox_m8_parse_ubx(dev);
-	if (ret < 0) {
-		return;
+	while (1) {
+		ret = k_pipe_get(&drv_data->rx_pipe, rx_buf, sizeof(rx_buf), &bytes_read, 1, K_NO_WAIT);
+		if (bytes_read) {
+			LOG_HEXDUMP_DBG(rx_buf, bytes_read, "pipe flushed");
+		}
+		if (ret < 0 || bytes_read == 0) {
+			break;
+		}
 	}
-	/* Everything is ok */
-	drv_data->last_error = 0;
-	k_sem_give(&drv_data->response_sem);
-	return;
+	return 0;
 }
 
 static void ublox_m8_msg_thread(int dev_ptr, int unused)
 {
 	struct device *dev = INT_TO_POINTER(dev_ptr);
 	struct ublox_m8_data *drv_data = dev->driver_data;
+	int ret;
+	size_t bytes_read, len;
+	union {
+		struct ubx_frame ubx;
+		u8_t nmea[128];
+		u8_t rtcm[128];
+		u8_t raw[128];
+	} rx_buf;
+	u8_t payload[128];
 
 	ARG_UNUSED(unused);
 
+	LOG_DBG("msg thread started");
+
+	/* process message */
 	while (1) {
-		k_sem_take(&drv_data->msg_sem, K_FOREVER);
-		ublox_m8_msg_thread_cb(dev);
+		switch (drv_data->sentence_state) {
+		case GNSS_SENTENCE_STATE_IDLE:
+			len = 1;
+			ret = k_pipe_get(&drv_data->rx_pipe, &rx_buf, 1,
+					 &bytes_read, 1, K_FOREVER);
+			if (ret < 0) {
+				LOG_DBG("pipe error");
+			}
+			if (rx_buf.ubx.header.sync1 == ubx_sync_1) {
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_UBX;
+			} else if (rx_buf.nmea[0] == '$') {
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_NMEA;
+			} else if (rx_buf.rtcm[0] == 0xD3) {
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_RTCM;
+			} else {
+				LOG_WRN("sentence not recognized: %d '%c'",
+					rx_buf.raw[0], rx_buf.raw[0]);
+				ublox_m8_flush_msg_pipe(dev);
+			}
+			break;
+		case GNSS_SENTENCE_STATE_UBX:
+			/* get the rest of the header */
+			ret = k_pipe_get(&drv_data->rx_pipe, &rx_buf.ubx.header.sync2,
+				UBX_FRAME_HEADER_SIZE - len, &bytes_read,
+				UBX_FRAME_HEADER_SIZE - len, K_MSEC(100));
+			if (ret < 0 || bytes_read < UBX_FRAME_HEADER_SIZE - len ||
+			    rx_buf.ubx.header.sync2 != ubx_sync_2) {
+				LOG_DBG("ubx header error");
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+				break;
+			}
+			/* get length of payload */
+			len = sys_get_le16(rx_buf.ubx.header.len);
+			/* get payload */
+			ret = k_pipe_get(&drv_data->rx_pipe, payload, len,
+					 &bytes_read, len, K_MSEC(100));
+			if (ret < 0 || bytes_read <  len) {
+				LOG_DBG("ubx payload error");
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+				break;
+			}
+			/* get checksum */
+			ret = k_pipe_get(&drv_data->rx_pipe, &rx_buf.ubx.checksum,
+					 UBX_FRAME_CHECKSUM_SIZE, &bytes_read,
+					 UBX_FRAME_CHECKSUM_SIZE, K_MSEC(100));
+			if (ret < 0 || bytes_read < UBX_FRAME_CHECKSUM_SIZE) {
+				LOG_DBG("ubx checksum error");
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+				break;
+			}
+			/* Everything is ok */
+			drv_data->last_error = 0;
+			LOG_HEXDUMP_DBG(&rx_buf.ubx.header, UBX_FRAME_HEADER_SIZE, "ubx header");
+			LOG_HEXDUMP_DBG(payload, len, "ubx payload");
+			LOG_HEXDUMP_DBG(&rx_buf.ubx.checksum, UBX_FRAME_CHECKSUM_SIZE, "ubx checksum");
+			k_sem_give(&drv_data->response_sem);
+			drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+			break;
+		case GNSS_SENTENCE_STATE_NMEA:
+			ret = k_pipe_get(&drv_data->rx_pipe, rx_buf.nmea+len, 1,
+					 &bytes_read, 1, K_MSEC(100));
+			if (bytes_read) {
+				/* check for eol */
+				if (rx_buf.nmea[len-1] == '\r' && rx_buf.nmea[len] == '\n') {
+					rx_buf.nmea[len-1] = 0;
+					LOG_DBG("nmea: %s", log_strdup(rx_buf.nmea));
+					drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+					break;
+				}
+				len++;
+			}
+			if (ret < 0 || bytes_read == 0 || len == sizeof(rx_buf.nmea)) {
+				LOG_DBG("nmea msg error");
+				ublox_m8_flush_msg_pipe(dev);
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+				break;
+			}
+			break;
+		case GNSS_SENTENCE_STATE_RTCM:
+		case GNSS_SENTENCE_STATE_RTCM3:
+		default:
+			LOG_WRN("unsupported msg");
+			ublox_m8_flush_msg_pipe(dev);
+			drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+			break;
+		}
 	}
 }
 
@@ -199,7 +345,6 @@ static void ublox_m8_msg_work_cb(struct k_work *work)
 	struct ublox_m8_data *drv_data =
 		CONTAINER_OF(work, struct ublox_m8_data, msg_work);
 
-	ublox_m8_msg_thread_cb(drv_data->dev);
 }
 
 /**
@@ -226,85 +371,13 @@ static int ublox_m8_reg_read(struct device *dev, u8_t reg, u8_t *val, int size)
 	return ret;
 }
 
-/**
- * @brief 
- * 
- * @param dev 
- * @return int 
- */
-static int ublox_m8_message_get(struct device *dev)
+static int ublox_m8_message_send(struct device *dev, struct ubx_frame *frame, k_timeout_t timeout)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
 	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	int ret;
-	u16_t msg_len;
-	u16_t read_bytes, bytes_put;
-	u8_t *buf;
 
-	/* get the message length */
-	ret = i2c_burst_read(drv_data->i2c, cfg->i2c_addr,
-			     UBLOX_M8_REGISTER_LEN, drv_data->rx_buf, 2);
-	if (ret < 0) {
-		LOG_DBG("addr error");
-		goto done;
-	}
-	/* ddc port message length is received big endian */
-	msg_len = sys_get_be16(drv_data->rx_buf);
-	if (msg_len > UBX_MAX_FRAME_SIZE) {
-		LOG_ERR("message size great than buffer size");
-		ret = -ENOMEM;
-		goto done;
-	}
-	if (msg_len == 0) {
-		LOG_DBG("no message");
-		ret = -EAGAIN;
-		goto done;
-	}
-
-	/* read the first byte */
-	buf = drv_data->rx_buf;
-	ret = i2c_read(drv_data->i2c, buf, 1, cfg->i2c_addr);
-	if (ret < 0) {
-		LOG_DBG("read error");
-		ret = -EIO;
-		goto done;
-	}
-	if (drv_data->rx_buf[0] == 0xFF) {
-		LOG_DBG("not ready");
-		ret = -EAGAIN;
-		goto done;
-	}
-
-	ring_buf_put(&drv_data->rx_rb, buf, 1);
-	msg_len--;
-	buf++;
-	read_bytes = MIN(msg_len, sizeof(drv_data->rx_buf));
-	while (msg_len > 0) {
-		ret = i2c_read(drv_data->i2c, buf, read_bytes, cfg->i2c_addr);
-		if (ret < 0) {
-			LOG_DBG("read error");
-			goto done;
-		}
-		bytes_put = ring_buf_put(&drv_data->rx_rb, buf, read_bytes);
-		if (bytes_put < read_bytes) {
-			LOG_WRN("ring buffer full");
-			break;
-		}
-		msg_len -= read_bytes;
-		buf += read_bytes;
-		read_bytes = MIN(msg_len, sizeof(drv_data->rx_buf));
-	}
-	// k_sem_give(&drv_data->msg_sem);
-	k_work_submit(&drv_data->msg_work);
-done:
-	return ret;
-}
-
-static int ublox_m8_message_send(struct device *dev, struct ubx_frame *frame)
-{
-	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
-	int ret;
+	k_mutex_lock(&drv_data->msg_send_mtx, K_FOREVER);
 
 	/* ubx length is sent little endian */
 	sys_put_le16(frame->len, frame->header.len);
@@ -336,14 +409,33 @@ static int ublox_m8_message_send(struct device *dev, struct ubx_frame *frame)
 	}
 	frame->status.req_sent = true;
 
-	if (drv_data->timeout == K_NO_WAIT) {
+	if (timeout == K_NO_WAIT) {
 		ret = 0;
 		goto done;
 	}
 
-	/* wait for response */
 	k_sem_reset(&drv_data->response_sem);
-	ret = k_sem_take(&drv_data->response_sem, drv_data->timeout);
+
+	if (frame->status.ack_required) {
+		/* FIXME: this is temporary to test polling */
+		drv_data->poll_handler(dev, &drv_data->poll_trigger);
+
+		/* FIXME: use the ACK sem */
+		// ret = k_sem_take(&drv_data->ubx_ack_sem, timeout);
+		ret = k_sem_take(&drv_data->response_sem, timeout);
+		if (ret == 0) {
+			ret = drv_data->last_error;
+			frame->status.ack_received = true;
+		} else if (ret == -EAGAIN) {
+			ret = -ETIMEDOUT;
+		}
+	}
+
+	/* FIXME: this is temporary to test polling */
+	drv_data->poll_handler(dev, &drv_data->poll_trigger);
+
+	/* wait for response */
+	ret = k_sem_take(&drv_data->response_sem, timeout);
 	if (ret == 0) {
 		ret = drv_data->last_error;
 	} else if (ret == -EAGAIN) {
@@ -351,18 +443,8 @@ static int ublox_m8_message_send(struct device *dev, struct ubx_frame *frame)
 	}
 
 done:
+	k_mutex_unlock(&drv_data->msg_send_mtx);
 	return ret;
-}
-
-static void ublox_m8_txready_handler(struct device *dev, struct gnss_trigger *trigger)
-{
-	int ret;
-
-	ret = ublox_m8_message_get(dev);
-	if (ret < 0) {
-		LOG_DBG("");
-	}
-	return;
 }
 
 /**
@@ -387,36 +469,83 @@ static int ublox_m8_get_device_id(struct device *dev)
 	/* prepare frame request */
 	memcpy(&frame, &ubx_header_sec_uniqid, UBX_FRAME_HEADER_SIZE);
 	frame.payload = payload;
-	ret = ublox_m8_message_send(dev, &frame);
+	frame.len = 0;
+	ret = ublox_m8_message_send(dev, &frame, drv_data->timeout);
 	if (ret < 0) {
-		LOG_ERR("%s: Failed to get Device ID",
+		LOG_ERR("%s: Failed to get device id",
 			DT_INST_0_UBLOX_M8_LABEL);
 		return ret;
 	}
 
-	LOG_INF("unique id: 0x%02x0x%02x0x%02x0x%02x0x%02x", payload[4], payload[5], payload[6], payload[7], payload[8]);
+	LOG_INF("unique id: 0x%02x%02x%02x%02x%02x", payload[4], payload[5], payload[6], payload[7], payload[8]);
 	return 0;
 }
 
-static int ublox_m8_set_txready(struct device *dev)
+/**
+ * @brief 
+ * 
+ * 
+ * @param dev 
+ * @return int 
+ */
+static int ublox_m8_configure_uart_port(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
 	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	struct ubx_frame frame;
-	u8_t payload[UBX_SEC_UNIQID_PAYLOAD_SIZE] = {};
+	u8_t payload[UBX_CFG_PRT_PAYLOAD_SIZE] = {};
 	int ret;
 
 	/* initialize frame status */
 	memcpy(&frame.status, &ubx_frame_status_request_init, UBX_FRAME_STATUS_SIZE);
+
 	/* prepare frame request */
 	memcpy(&frame, &ubx_header_cfg_prt, UBX_FRAME_HEADER_SIZE);
+
+	/* prepare the payload */
+	memcpy(&payload, &ucenter_cfg_prt_uart1, UBX_CFG_PRT_PAYLOAD_SIZE);
 	frame.payload = payload;
-	payload[0] = UBLOX_SAM_M8Q_TXREADY_PIO;
-	sys_put_le16(ubx_txready_config.reg, payload+2);
-	frame.len = 4;
-	ret = ublox_m8_message_send(dev, &frame);
+	frame.len = UBX_CFG_PRT_PAYLOAD_SIZE;
+
+	ret = ublox_m8_message_send(dev, &frame, drv_data->timeout);
 	if (ret < 0) {
-		LOG_ERR("%s: Failed to get Device ID",
+		LOG_ERR("%s: Failed to configure UART port",
+			DT_INST_0_UBLOX_M8_LABEL);
+		return ret;
+	}
+
+	return 0;
+}
+
+/**
+ * @brief 
+ * 
+ * 
+ * @param dev 
+ * @return int 
+ */
+static int ublox_m8_configure_ddc_port(struct device *dev)
+{
+	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	struct ubx_frame frame;
+	u8_t payload[UBX_CFG_PRT_PAYLOAD_SIZE] = {};
+	int ret;
+
+	/* initialize frame status */
+	memcpy(&frame.status, &ubx_frame_status_request_init, UBX_FRAME_STATUS_SIZE);
+
+	/* prepare frame request */
+	memcpy(&frame, &ubx_header_cfg_prt, UBX_FRAME_HEADER_SIZE);
+
+	/* prepare the payload */
+	memcpy(&payload, &ucenter_cfg_prt_ddc, UBX_CFG_PRT_PAYLOAD_SIZE);
+	frame.payload = payload;
+	frame.len = UBX_CFG_PRT_PAYLOAD_SIZE;
+
+	ret = ublox_m8_message_send(dev, &frame, drv_data->timeout);
+	if (ret < 0) {
+		LOG_ERR("%s: Failed to configure DDC port",
 			DT_INST_0_UBLOX_M8_LABEL);
 		return ret;
 	}
@@ -505,13 +634,27 @@ static int ublox_m8_attr_set(struct device *dev, enum gnss_channel chan,
 }
 
 static const struct gnss_driver_api ublox_m8_driver_api = {
-	.attr_set = ublox_m8_attr_set,
 	.sample_fetch = ublox_m8_sample_fetch,
 	.channel_get = ublox_m8_channel_get,
+	.attr_set = ublox_m8_attr_set,
 #if CONFIG_UBLOX_M8_TRIGGER
 	.trigger_set = ublox_m8_trigger_set,
 #endif
 };
+
+static int ublox_m8_connect_status(struct device *dev)
+{
+	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	int ret;
+
+	/*
+	 * Note: if module times out it suspends the port
+	 * and the bus transaction is not acked.
+	 */
+	ret = i2c_write(drv_data->i2c, NULL, 0, cfg->i2c_addr);
+	return ret;
+}
 
 static int ublox_m8_pin_init(struct device *dev)
 {
@@ -557,7 +700,7 @@ static int ublox_m8_pin_init(struct device *dev)
 
 	gpio_pin_configure(drv_data->extint_gpio, cfg->extint_gpio_pin,
 			   cfg->extint_gpio_flags |
-			   GPIO_OUTPUT);
+			   GPIO_OUTPUT_INACTIVE);
 
 	/*
 	 * setup RESET gpio
@@ -578,7 +721,7 @@ static int ublox_m8_pin_init(struct device *dev)
 
 	gpio_pin_configure(drv_data->reset_gpio, cfg->reset_gpio_pin,
 			   cfg->reset_gpio_flags |
-			   GPIO_OUTPUT);
+			   GPIO_OUTPUT_INACTIVE);
 
 	/*
 	 * setup SAFEBOOT gpio
@@ -596,7 +739,7 @@ static int ublox_m8_pin_init(struct device *dev)
 
 	gpio_pin_configure(drv_data->safeboot_gpio, cfg->safeboot_gpio_pin,
 			   cfg->safeboot_gpio_flags |
-			   GPIO_OUTPUT);
+			   GPIO_OUTPUT_INACTIVE);
 
 	/*
 	 * setup RXD gpio
@@ -681,10 +824,60 @@ static int ublox_m8_pin_init(struct device *dev)
 	// 		   cfg->txd_gpio_flags |
 	// 		   GPIO_OUTPUT);
 
-	// ublox_m8_apply_defaults(dev);
-	// ublox_m8_get_registers(dev);
+	/* assert reset pin */
+	drv_data->device_state = GNSS_DEVICE_STATE_RESET;
+	gpio_pin_set(drv_data->reset_gpio, cfg->reset_gpio_pin, 1);
+	k_sleep(K_MSEC(1));
+	gpio_pin_set(drv_data->reset_gpio, cfg->reset_gpio_pin, 0);
 
 	return 0;
+}
+
+static void ublox_m8_config_work_handler(struct k_work *work)
+{
+	struct ublox_m8_data *drv_data =
+		CONTAINER_OF(work, struct ublox_m8_data, config_work);
+	struct device *dev = drv_data->dev;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	int ret;
+
+	if (drv_data->device_state != GNSS_DEVICE_STATE_INITIALIZED) {
+		LOG_ERR("device not initialized");
+		return;
+	}
+
+	ret = ublox_m8_connect_status(dev);
+	if (ret < 0) {
+		LOG_ERR("device did not ack i2c write");
+		drv_data->device_state = GNSS_DEVICE_STATE_DISCONNECTED;
+		return;
+	}
+
+#ifdef CONFIG_UBLOX_M8_TRIGGER
+	ret = ublox_m8_init_interrupt(dev);
+	if (ret < 0) {
+		LOG_DBG("Failed to initialize interrupts.");
+	}
+#endif
+
+	ret = ublox_m8_configure_uart_port(dev);
+	// if (ret < 0) {
+	// 	return;
+	// }
+
+	ret = ublox_m8_configure_ddc_port(dev);
+	// if (ret < 0) {
+	// 	return;
+	// }
+
+	ret = ublox_m8_get_device_id(dev);
+	// if (ret < 0) {
+	// 	return;
+	// }
+
+	drv_data->device_state = GNSS_DEVICE_STATE_CONFIGURED;
+	LOG_DBG("module detected");
+
 }
 
 int ublox_m8_init(struct device *dev)
@@ -693,6 +886,7 @@ int ublox_m8_init(struct device *dev)
 	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	int ret;
 
+	drv_data->device_state = GNSS_DEVICE_STATE_UNINITIALIZED;
 	while (k_uptime_ticks() < k_us_to_cyc_ceil32(UBLOX_M8_STARTUP_TIME_USEC)) {
 		/* wait for chip to power up */
 	}
@@ -706,41 +900,32 @@ int ublox_m8_init(struct device *dev)
 	drv_data->dev = dev;
 	drv_data->buf_pool = &ublox_buf_pool;
 	drv_data->timeout = K_MSEC(UBLOX_M8_MESSAGE_TIMEOUT_MSEC);
-	ring_buf_init(&drv_data->rx_rb, sizeof(drv_data->rx_rb_buf), drv_data->rx_rb_buf);
+	// ring_buf_init(&drv_data->rx_rb, sizeof(drv_data->rb_buf), drv_data->rb_buf);
+	k_pipe_init(&drv_data->rx_pipe, drv_data->rb_buf, sizeof(drv_data->rb_buf));
 	k_sem_init(&drv_data->msg_sem, 0, 1);
 	k_sem_init(&drv_data->response_sem, 0, 1);
+	k_sem_init(&drv_data->ubx_ack_sem, 0, 1);
 	k_work_init(&drv_data->msg_work, ublox_m8_msg_work_cb);
+	k_delayed_work_init(&drv_data->config_work, ublox_m8_config_work_handler);
+	k_mutex_init(&drv_data->msg_get_mtx);
+	k_mutex_init(&drv_data->msg_send_mtx);
+
+	drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+	k_thread_create(&drv_data->msg_thread, drv_data->msg_thread_stack,
+			CONFIG_UBLOX_M8_MSG_THREAD_STACK_SIZE,
+			(k_thread_entry_t)ublox_m8_msg_thread, dev,
+			0, NULL, K_PRIO_COOP(CONFIG_UBLOX_M8_MSG_THREAD_PRIORITY),
+			0, K_NO_WAIT);
+	k_thread_name_set(&drv_data->msg_thread, CONFIG_UBLOX_M8_MSG_THREAD_NAME);
 
 	ret = ublox_m8_pin_init(dev);
-
-	if (drv_data->i2c == NULL) {
-		LOG_ERR("Failed to get pointer to %s device",
-			DT_INST_0_UBLOX_M8_BUS_NAME);
-		return -EINVAL;
-	}
-
-#ifdef CONFIG_UBLOX_M8_TRIGGER
-	ret = ublox_m8_init_interrupt(dev);
 	if (ret < 0) {
-		LOG_DBG("Failed to initialize interrupts.");
-	} else {
-		ublox_m8_trigger_set(dev, &drv_data->data_ready_trigger, ublox_m8_txready_handler);
+		return ret;
 	}
 
-	ret = ublox_m8_set_txready(dev);
-	if (ret < 0) {
-		return -EIO;
-	}
-#endif
-
-	ret = ublox_m8_get_device_id(dev);
-	if (ret < 0) {
-		return -EIO;
-	}
-
-	LOG_DBG("module detected");
-
-	return ret;
+	drv_data->device_state = GNSS_DEVICE_STATE_INITIALIZED;
+	k_delayed_work_submit(&drv_data->config_work, K_SECONDS(2));
+	return 0;
 }
 
 static struct ublox_m8_data ublox_m8_drv_data;

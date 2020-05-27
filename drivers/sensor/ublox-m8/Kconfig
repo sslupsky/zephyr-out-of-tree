@@ -40,12 +40,30 @@ config GNSS_INIT_PRIORITY
 	help
 	  GNSS device driver initialization priority.
 
-# config GNSS_SHELL
-# 	bool "Enable gnss shell"
-# 	depends on SHELL
-# 	default y
-# 	help
-# 	  This shell provides access to basic sensor data.
+config UBLOX_M8_MSG_THREAD_NAME
+	string "Thread name"
+	default "ublox_msg"
+	help
+	  Thread name of the ublox m8 driver.
+
+config UBLOX_M8_MSG_THREAD_PRIORITY
+	int "Thread priority"
+	default 10
+	help
+	  Priority of thread used by the driver to handle interrupts.
+
+config UBLOX_M8_MSG_THREAD_STACK_SIZE
+	int "Thread stack size"
+	default 1024
+	help
+	  Stack size of thread used by the driver to handle interrupts.
+
+config GNSS_SHELL
+	bool "Enable gnss shell"
+	depends on SHELL
+	default y
+	help
+	  This shell provides access to basic sensor data.
 
 choice
 	prompt "Trigger mode"
@@ -87,23 +105,23 @@ config UBLOX_M8_GPIO_PIN_NUM
 	  The number of the GPIO on which the interrupt signal from the UBLOX_M8
 	  chip will be received.
 
-config UBLOX_M8_THREAD_PRIORITY
+config UBLOX_M8_TRIGGER_THREAD_PRIORITY
 	int "Thread priority"
 	depends on UBLOX_M8_TRIGGER_OWN_THREAD
 	default 10
 	help
 	  Priority of thread used by the driver to handle interrupts.
 
-config UBLOX_M8_THREAD_STACK_SIZE
+config UBLOX_M8_TRIGGER_THREAD_STACK_SIZE
 	int "Thread stack size"
 	depends on UBLOX_M8_TRIGGER_OWN_THREAD
 	default 1024
 	help
 	  Stack size of thread used by the driver to handle interrupts.
 
-config UBLOX_M8_THREAD_NAME
+config UBLOX_M8_TRIGGER_THREAD_NAME
 	string "Thread name"
-	default "ublox_m8"
+	default "ublox_txready"
 	help
 	  Thread name of the ublox m8 driver.
 

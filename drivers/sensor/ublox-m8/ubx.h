@@ -40,7 +40,7 @@ enum ubx_class {
 	ubx_class_sec = 0x27,	 //Security Feature Messages
 	ubx_class_hnr = 0x28,	 //(NEO-M8P ONLY!!!) High Rate Navigation Results Messages: High rate time, position speed, heading
 	ubx_class_nmea = 0xF0,	 //NMEA Strings: standard NMEA strings
-} __attribute__((packed));
+} __packed;
 
 
 //The following are used for configuration. Descriptions are from the ZED-F9P Interface Description pg 33-34 and NEO-M9N Interface Description pg 47-48
@@ -75,7 +75,7 @@ enum ubx_cfg_id {
 	ubx_cfg_id_valdel = 0x8C,	//Used for config of higher version Ublox modules (ie protocol v27 and above). Deletes values corresponding to provided keys/ provided keys with a transaction
 	ubx_cfg_id_valget = 0x8B,	//Used for config of higher version Ublox modules (ie protocol v27 and above). Configuration Items
 	ubx_cfg_id_valset = 0x8A,	//Used for config of higher version Ublox modules (ie protocol v27 and above). Sets values corresponding to provided key-value pairs/ provided key-value pairs within a transaction.
-} __attribute__((packed));
+} __packed;
 
 //The following are used to enable NMEA messages. Descriptions come from the NMEA messages overview in the ZED-F9P Interface Description
 enum nmea_message {
@@ -99,7 +99,7 @@ enum nmea_message {
 	nmea_vlw = 0x0F,	//GxVLW (dual ground/water distance)
 	nmea_vtg = 0x05,	//GxVTG (course over ground and Ground speed)
 	nmea_zda = 0x08,	//GxZDA (Time and Date)
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure the NMEA protocol main talker ID and GSV talker ID
 enum nmea_talker {
@@ -111,7 +111,7 @@ enum nmea_talker {
 	nmea_maintalkerid_gb = 0x05,			//main talker ID is BeiDou
 	nmea_gsvtalkerid_gnss = 0x00,			//GNSS specific Talker ID (as defined by NMEA)
 	nmea_gsvtalkerid_main = 0x01,			//use the main Talker ID
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure INF UBX messages (information messages).  Descriptions from UBX messages overview (ZED_F9P Interface Description Document page 34)
 enum ubx_inf_id {
@@ -121,7 +121,7 @@ enum ubx_inf_id {
 	ubx_inf_id_notice = 0x02,		//ASCII output with informational contents
 	ubx_inf_id_test = 0x03,		//ASCII output with test contents
 	ubx_inf_id_warning = 0x01,		//ASCII output with warning contents
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure LOG UBX messages (loggings messages).  Descriptions from UBX messages overview (ZED_F9P Interface Description Document page 34)
 enum ubx_log_id {
@@ -134,7 +134,7 @@ enum ubx_log_id {
 	ubx_log_id_retrievestring = 0x0D,   //Byte string log entry
 	ubx_log_id_retrieve = 0x09,		   //Request log data
 	ubx_log_id_string = 0x04,		   //Store arbitrary string on on-board flash
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure MGA UBX messages (Multiple GNSS Assistance Messages).  Descriptions from UBX messages overview (ZED_F9P Interface Description Document page 34)
 enum ubx_mga_id {
@@ -167,7 +167,7 @@ enum ubx_mga_id {
 	ubx_mga_id_qzss_eph = 0x05,		 //QZSS Ephemeris Assistance
 	ubx_mga_id_qzss_alm = 0x05,		 //QZSS Almanac Assistance
 	ubx_mga_id_qzaa_health = 0x05,	 //QZSS Health Assistance
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure the MON UBX messages (monitoring messages). Descriptions from UBX messages overview (ZED_F9P Interface Description Document page 35)
 enum ubx_mon_id {
@@ -184,7 +184,7 @@ enum ubx_mon_id {
 	ubx_mon_id_rxr = 0x21,	//Receiver Status Information
 	ubx_mon_id_txbuf = 0x08, //Transmitter Buffer Status. Used for query tx buffer size/state.
 	ubx_mon_id_ver = 0x04,	//Receiver/Software Version. Used for obtaining Protocol Version.
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure the NAV UBX messages (navigation results messages). Descriptions from UBX messages overview (ZED_F9P Interface Description Document page 35-36)
 enum ubx_nav_id {
@@ -214,7 +214,7 @@ enum ubx_nav_id {
 	ubx_nav_id_timeutc = 0x21,	//UTC Time Solution
 	ubx_nav_id_velecef = 0x11,	//Velocity Solution in ECEF
 	ubx_nav_id_velned = 0x12,	//Velocity Solution in NED
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure the RXM UBX messages (receiver manager messages). Descriptions from UBX messages overview (ZED_F9P Interface Description Document page 36)
 enum ubx_rxm_id {
@@ -224,12 +224,12 @@ enum ubx_rxm_id {
 	ubx_rxm_id_rlm = 0x59,	//Galileo SAR Short-RLM report (two different packet sizes)
 	ubx_rxm_id_rtcm = 0x32,	//RTCM input status
 	ubx_rxm_id_sfrbx = 0x13, //Boradcast Navigation Data Subframe
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure the SEC UBX messages (security feature messages). Descriptions from UBX messages overview (ZED_F9P Interface Description Document page 36)
 enum ubx_sec_id {
 	ubx_sec_id_uniqid = 0x03, //Unique chip ID
-} __attribute__((packed));
+} __packed;
 
 //The following are used to configure the TIM UBX messages (timing messages). Descriptions from UBX messages overview (ZED_F9P Interface Description Document page 36)
 enum ubx_tim_id {
@@ -241,7 +241,7 @@ enum ubx_tim_id {
 //The following are used to configure the UPD UBX messages (firmware update messages). Descriptions from UBX messages overview (ZED-F9P Interface Description Document page 36)
 enum ubx_upd_id {
 	ubx_upd_id_sos = 0x14, //Poll Backup Fil Restore Status, Create Backup File in Flash, Clear Backup File in Flash, Backup File Creation Acknowledge, System Restored from Backup
-} __attribute__((packed));
+} __packed;
 
 //The following are used to enable RTCM messages
 enum rtcm {
@@ -258,13 +258,13 @@ enum rtcm {
 	rtcm_1230 = 0xE6,	  //GLONASS code-phase biases, set to once every 10 seconds
 	rtcm_4072_0 = 0xFE, //Reference station PVT (ublox proprietary RTCM message)
 	rtcm_4072_1 = 0xFD, //Additional reference station information (ublox proprietary RTCM message)
-} __attribute__((packed));
+} __packed;
 
 enum ubx_ack_id {
 	ubx_ack_id_nak = 0x00,
 	ubx_ack_id_ack = 0x01,
 	ubx_ack_id_none = 0x02, //Not a real value
-};
+} __packed;
 
 // The following constants are used to get External Sensor Measurements and Status
 // Information.
@@ -273,7 +273,7 @@ enum ubx_esf_id {
 	ubx_esf_id_raw = 0x03,
 	ubx_esf_id_status = 0x10,
 	ubx_esf_id_ins = 0x15, //36 bytes
-};
+} __packed;
 
 // ubxPacket validity
 enum ublox_packet_validity {
@@ -281,7 +281,7 @@ enum ublox_packet_validity {
 	UBLOX_PACKET_VALIDITY_VALID,
 	UBLOX_PACKET_VALIDITY_NOT_DEFINED,
 	UBLOX_PACKET_NOTACKNOWLEDGED, // This indicates that we received a NACK
-};
+} __packed;
 
 // Identify which packet buffer is in use:
 // packetCfg (or a custom packet), packetAck or packetBuf
@@ -289,7 +289,7 @@ enum ublox_packet_buffer {
 	UBLOX_PACKET_PACKETCFG,
 	UBLOX_PACKET_PACKETACK,
 	UBLOX_PACKET_PACKETBUF,
-};
+} __packed;
 
 //Depending on the ubx binary response class, store binary responses into different places
 // enum ubx_class {
@@ -301,7 +301,22 @@ enum ublox_packet_buffer {
 enum ubx_sync_id {
 	ubx_sync_1 = 0xB5,
 	ubx_sync_2 = 0x62,
-} __attribute__((packed));
+} __packed;
+
+enum ubx_frame_state {
+	UBX_FRAME_STATE_UNINITIALIZED,
+	UBX_FRAME_STATE_INITIALIZED,
+	UBX_FRAME_STATE_SYNC,
+	UBX_FRAME_STATE_CLASS,
+	UBX_FRAME_STATE_ID,
+	UBX_FRAME_STATE_LEN,
+	UBX_FRAME_STATE_PAYLOAD,
+	UBX_FRAME_STATE_CHECKSUM,
+	UBX_FRAME_STATE_ACK,
+	UBX_FRAME_STATE_NAK,
+	UBX_FRAME_STATE_CHECKSUM_ERROR,
+	UBX_FRAME_STATE_TIMEOUT,
+} __packed;
 
 union ubx_cfg_prt_txready {
 	struct {
@@ -313,18 +328,39 @@ union ubx_cfg_prt_txready {
 	u16_t reg;
 };
 
+union ubx_cfg_prt_output_protocol {
+	struct {
+		u16_t ubx : 1;
+		u16_t nmea : 1;
+		u16_t reserved : 3;
+		u16_t rtcm3 : 1;
+	} bit;
+	u16_t reg;
+};
+
+union ubx_cfg_prt_input_protocol {
+	struct {
+		u16_t ubx : 1;
+		u16_t nmea : 1;
+		u16_t rtcm : 1;
+		u16_t reserved : 2;
+		u16_t rtcm3 : 1;
+	} bit;
+	u16_t reg;
+};
+
 struct ubx_header {
 	enum ubx_sync_id sync1;
 	enum ubx_sync_id sync2;
 	enum ubx_class class;
 	u8_t id;
 	u8_t len[2];
-} __attribute__((packed));
+} __packed;
 
 struct ubx_checksum {
 	u8_t A;
 	u8_t B;
-} __attribute__((packed));
+} __packed;
 
 // ubx frame status
 struct ubx_frame_status {
@@ -334,22 +370,10 @@ struct ubx_frame_status {
 	bool ack_received;
 	bool ack;
 	bool checksum_valid;
+	bool error;
 };
 
 //-=-=-=-=- UBX binary specific variables
-struct ubx_packet {
-	u8_t cls;
-	u8_t id;
-	u16_t len;		   //Length of the payload. Does not include cls, id, or checksum bytes
-	u16_t counter;	   //Keeps track of number of overall bytes received. Some responses are larger than 255 bytes.
-	u16_t startingSpot; //The counter value needed to go past before we begin recording into payload array
-	u8_t *payload;
-	u8_t checksumA; //Given to us from module. Checked against the rolling calculated A/B checksums.
-	u8_t checksumB;
-	enum ublox_packet_validity valid;			 //Goes from NOT_DEFINED to VALID or NOT_VALID when checksum is checked
-	enum ublox_packet_validity classAndIDmatch; // Goes from NOT_DEFINED to VALID or NOT_VALID when the Class and ID match the requestedClass and requestedID
-};
-
 struct ubx_frame_req {
 	struct ubx_header header;
 	struct ubx_checksum checksum;
@@ -361,8 +385,10 @@ struct ubx_frame {
 	u8_t *payload;
 	u16_t len;
 	struct ubx_frame_status status;
+	enum ubx_frame_state state;
 };
 
+#define UBX_FRAME_SYNC_SIZE 2
 #define UBX_FRAME_HEADER_SIZE sizeof(struct ubx_header)
 #define UBX_FRAME_CHECKSUM_SIZE sizeof(struct ubx_checksum)
 #define UBX_FRAME_REQ_SIZE sizeof(struct ubx_frame_req)
@@ -380,6 +406,7 @@ struct ubx_frame {
 
 #define UBX_NAV_PVT_PAYLOAD_SIZE	92
 #define UBX_SEC_UNIQID_PAYLOAD_SIZE	 9
+#define UBX_CFG_PRT_PAYLOAD_SIZE	20
 
 #define UBX_HEADER_DEFINE(cls,clsid)					\
 	const struct ubx_header ubx_header_##cls##_##clsid = {		\
@@ -392,6 +419,16 @@ struct ubx_frame {
 
 #define UBX_FRAME_PAYLOAD_DEFINE(cls,clsid)				\
 	const struct {							\
+	}
+
+#define UBX_FRAME_DEFINE(_name, _payload)				\
+	static struct ubx_frame ##_name = {				\
+		.header = {},						\
+		.checksum = {},						\
+		.payload = _payload,					\
+		.len = 0,						\
+		.status = {},						\
+		.state = UBX_FRAME_STATE_UNINITIALIZED,			\
 	}
 
 #define UBX_HEADER_NAV_DEFINE(n) UBX_HEADER_DEFINE(nav,n);

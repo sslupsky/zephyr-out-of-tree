@@ -31,6 +31,7 @@
 #include <drivers/gpio.h>
 #include <net/buf.h>
 #include <sys/ring_buffer.h>
+#include <kernel.h>
 #include "ubx.h"
 
 
@@ -96,6 +97,17 @@ enum ublox_status {
 	UBLOX_STATUS_DATA_OVERWRITTEN // This is an error - the data was valid but has been or _is being_ overwritten by another packet
 };
 
+enum ublox_comm_port {
+	UBLOX_COMM_PORT_DDC,
+	UBLOX_COMM_PORT_UART1,
+	UBLOX_COMM_PORT_USB,
+	UBLOX_COMM_PORT_SPI,
+};
+
+#define UBLOX_PROTO_UBX		BIT(0)
+#define UBLOX_PROTO_NMEA	BIT(1)
+#define UBLOX_PROTO_RTCM	BIT(2)
+#define UBLOX_PROTO_RTCM3	BIT(3)
 
 /*!
  *  Struct to hold registers.
@@ -123,6 +135,8 @@ struct msg_handler_data {
 /* driver structs */
 struct ublox_m8_data {
 	struct device *i2c;
+	enum gnss_device_state device_state;
+	enum gnss_sentence_state sentence_state;
 	gnss_t gnss;
 	void (*state_change_cb)(u8_t state);
 	struct device *dev;
@@ -133,8 +147,9 @@ struct ublox_m8_data {
 	struct device *txd_gpio;
 
 	u8_t rx_buf[UBLOX_M8_RECV_BUF_SIZE];
+	u8_t __aligned(4) rb_buf[UBX_MAX_FRAME_SIZE];
 	struct ring_buf rx_rb;
-	u8_t rx_rb_buf[UBX_MAX_FRAME_SIZE];
+	struct k_pipe rx_pipe;
 
 	struct net_buf_pool *buf_pool;
 	struct k_sem msg_sem;
@@ -146,7 +161,15 @@ struct ublox_m8_data {
 	// u16_t msg_match_buf_len;
 
 	struct k_sem response_sem;
+	struct k_sem ubx_ack_sem;
 	k_timeout_t timeout;
+	struct k_delayed_work config_work;
+	struct k_timer poll_timer;
+	struct k_mutex msg_get_mtx;
+	struct k_mutex msg_send_mtx;
+
+	K_THREAD_STACK_MEMBER(msg_thread_stack, CONFIG_UBLOX_M8_MSG_THREAD_STACK_SIZE);
+	struct k_thread msg_thread;
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER
 	struct device *txready_gpio;
@@ -161,12 +184,15 @@ struct ublox_m8_data {
 	struct gnss_trigger timepulse_trigger;
 	gnss_trigger_handler_t timepulse_handler;
 
+	struct gnss_trigger poll_trigger;
+	gnss_trigger_handler_t poll_handler;
+
 #if defined(CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD)
-	K_THREAD_STACK_MEMBER(thread_stack, CONFIG_UBLOX_M8_THREAD_STACK_SIZE);
-	struct k_thread thread;
-	struct k_sem txready_gpio_sem;
+	K_THREAD_STACK_MEMBER(trigger_thread_stack, CONFIG_UBLOX_M8_TRIGGER_THREAD_STACK_SIZE);
+	struct k_thread trigger_thread;
+	struct k_sem trigger_gpio_sem;
 #elif defined(CONFIG_UBLOX_M8_TRIGGER_GLOBAL_THREAD)
-	struct k_work work;
+	struct k_work trigger_work;
 #endif
 
 #endif /* CONFIG_UBLOX_M8_TRIGGER */
