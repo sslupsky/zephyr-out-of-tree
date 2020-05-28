@@ -132,6 +132,24 @@ struct msg_handler_data {
 	int last_error;
 };
 
+union ublox_device_id {
+	struct {
+		u8_t reserved[3];
+		u8_t id[5];
+	};
+	u64_t be_word;
+};
+
+union ublox_frame {
+	struct {
+		struct ubx_frame ubx;
+		u8_t payload[UBX_MAX_PAYLOAD_SIZE];
+	};
+	u8_t nmea[sizeof(struct ubx_frame) + UBX_MAX_PAYLOAD_SIZE];
+	u8_t rtcm[sizeof(struct ubx_frame) + UBX_MAX_PAYLOAD_SIZE];
+	u8_t raw[sizeof(struct ubx_frame) + UBX_MAX_PAYLOAD_SIZE];
+};
+
 /* driver structs */
 struct ublox_m8_data {
 	struct device *i2c;
@@ -148,28 +166,27 @@ struct ublox_m8_data {
 
 	u8_t rx_buf[UBLOX_M8_RECV_BUF_SIZE];
 	u8_t __aligned(4) rb_buf[UBX_MAX_FRAME_SIZE];
-	struct ring_buf rx_rb;
 	struct k_pipe rx_pipe;
 
 	struct net_buf_pool *buf_pool;
 	struct k_sem msg_sem;
 	struct k_work msg_work;
 	int last_error;
-	u8_t msg_read_buf[UBLOX_M8_RECV_BUF_SIZE];
-	u16_t msg_read_buf_len;
-	// u8_t msg_match_buf[UBLOX_M8_RECV_BUF_SIZE];
-	// u16_t msg_match_buf_len;
+	int poll_status;
 
-	struct k_sem response_sem;
+	struct k_sem ubx_get_sem;
 	struct k_sem ubx_ack_sem;
+	struct k_sem ubx_poll_sem;
 	k_timeout_t timeout;
 	struct k_delayed_work config_work;
-	struct k_timer poll_timer;
 	struct k_mutex msg_get_mtx;
 	struct k_mutex msg_send_mtx;
 
 	K_THREAD_STACK_MEMBER(msg_thread_stack, CONFIG_UBLOX_M8_MSG_THREAD_STACK_SIZE);
 	struct k_thread msg_thread;
+
+	union ublox_frame frame;
+	union ublox_device_id device_id;
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER
 	struct device *txready_gpio;

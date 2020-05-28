@@ -29,117 +29,6 @@
 
 LOG_MODULE_DECLARE(UBLOX_M8, CONFIG_GNSS_LOG_LEVEL);
 
-const struct gnss_trigger txready_trigger = {
-	.type = GNSS_TRIG_DATA_READY,
-	.chan = GNSS_CHAN_ALL,
-};
-
-const struct gnss_trigger poll_trigger = {
-	.type = GNSS_TRIG_TIMER,
-	.chan = GNSS_CHAN_ALL,
-};
-
-/**
- * @brief 
- * 
- * @param dev 
- * @return int 
- */
-static int ublox_m8_message_get(struct device *dev)
-{
-	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
-	int ret;
-	u16_t msg_len;
-	size_t bytes_read, bytes_put;
-
-	k_mutex_lock(&drv_data->msg_get_mtx, K_FOREVER);
-
-	/* get the message length */
-	ret = i2c_burst_read(drv_data->i2c, cfg->i2c_addr,
-			     UBLOX_M8_REGISTER_LEN, drv_data->rx_buf, 2);
-	if (ret < 0) {
-		LOG_DBG("addr error");
-		goto done;
-	}
-	/* ddc port message length is received big endian */
-	msg_len = sys_get_be16(drv_data->rx_buf);
-	if (msg_len == 0) {
-		ret = -EAGAIN;
-		goto done;
-	}
-
-	if (msg_len > 4095) {
-		LOG_WRN("large msg buffer");
-	}
-
-	/* read the first byte */
-	ret = i2c_read(drv_data->i2c, drv_data->rx_buf, 1, cfg->i2c_addr);
-	if (ret < 0) {
-		LOG_DBG("read error");
-		ret = -EIO;
-		goto done;
-	}
-	if (drv_data->rx_buf[0] == 0xFF) {
-		LOG_DBG("buffer not ready (0xFF)");
-		ret = -EAGAIN;
-		goto done;
-	}
-
-	ret = k_pipe_put(&drv_data->rx_pipe, drv_data->rx_buf, 1, &bytes_put, 1, drv_data->timeout);
-	if (ret < 0) {
-		if (ret == -EAGAIN) {
-			LOG_DBG("pipe timeout");
-		} else {
-			LOG_DBG("pipe error");
-		}
-		goto done;
-	}
-
-	msg_len--;
-	while (msg_len > 0) {
-		bytes_read = MIN(msg_len, sizeof(drv_data->rx_buf));
-		ret = i2c_read(drv_data->i2c, drv_data->rx_buf, bytes_read, cfg->i2c_addr);
-		if (ret < 0) {
-			LOG_DBG("read error");
-			break;
-		}
-		ret = k_pipe_put(&drv_data->rx_pipe, drv_data->rx_buf, bytes_read, &bytes_put, bytes_read, drv_data->timeout);
-		if (ret < 0) {
-			if (ret == -EAGAIN) {
-				LOG_DBG("pipe timeout");
-			} else {
-				LOG_DBG("pipe error");
-			}
-			break;;
-		}
-		msg_len -= bytes_read;
-	}
-done:
-	k_mutex_unlock(&drv_data->msg_get_mtx);
-	return ret;
-}
-
-static void ublox_m8_txready_handler(struct device *dev, struct gnss_trigger *trigger)
-{
-	int ret;
-
-	ret = ublox_m8_message_get(dev);
-	if (ret < 0) {
-	}
-	return;
-}
-
-static void ublox_m8_poll_handler(struct device *dev, struct gnss_trigger *trigger)
-{
-	int ret;
-
-	ret = ublox_m8_message_get(dev);
-	if (ret < 0) {
-	}
-	return;
-}
-
 static inline void ublox_m8_setup_int(struct device *dev,
 			     bool enable)
 {
@@ -308,7 +197,7 @@ int ublox_m8_init_interrupt(struct device *dev)
 #endif
 
 	// ublox_m8_trigger_set(dev, &txready_trigger, ublox_m8_txready_handler);
-	ublox_m8_trigger_set(dev, &poll_trigger, ublox_m8_poll_handler);
+	// ublox_m8_trigger_set(dev, &poll_trigger, ublox_m8_poll_handler);
 
 	LOG_DBG("Data ready interrupt initialized.");
 

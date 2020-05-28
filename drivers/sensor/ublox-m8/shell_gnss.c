@@ -39,6 +39,7 @@
 
 const struct shell *ctx_shell;
 
+__unused
 static void gnss_ready(int err)
 {
 	if (err) {
@@ -76,7 +77,6 @@ static int cmd_info(const struct shell *shell, size_t argc, char *argv[])
 
 static int cmd_poll(const struct shell *shell)
 {
-	int ret;
 	struct device *dev;
 	struct ublox_m8_data *drv_data;
 

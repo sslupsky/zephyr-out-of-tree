@@ -318,6 +318,26 @@ enum ubx_frame_state {
 	UBX_FRAME_STATE_TIMEOUT,
 } __packed;
 
+enum ubx_response {
+	UBX_RESPONSE_NONE,
+	UBX_RESPONSE_NAK,
+	UBX_RESPONSE_ACK,
+	UBX_RESPONSE_POLL,
+	UBX_RESPONSE_GET,
+	UBX_RESPONSE_OUTPUT,
+	UBX_RESPONSE_PERIODIC,
+} __packed;
+
+enum ubx_message {
+	UBX_MESSAGE_COMMAND,
+	UBX_MESSAGE_POLL,
+	UBX_MESSAGE_GET,
+	UBX_MESSAGE_SET,
+	UBX_MESSAGE_PERIODIC,
+	UBX_MESSAGE_INPUT,
+	UBX_MESSAGE_OUTPUT,
+} __packed;
+
 union ubx_cfg_prt_txready {
 	struct {
 		u16_t en : 1;
@@ -364,11 +384,8 @@ struct ubx_checksum {
 
 // ubx frame status
 struct ubx_frame_status {
-	bool req_sent;
-	bool resp_received;
-	bool ack_required;
-	bool ack_received;
-	bool ack;
+	enum ubx_response response_request;
+	enum ubx_response response_received;
 	bool checksum_valid;
 	bool error;
 };
@@ -386,6 +403,7 @@ struct ubx_frame {
 	u16_t len;
 	struct ubx_frame_status status;
 	enum ubx_frame_state state;
+	enum ubx_message type;
 };
 
 #define UBX_FRAME_SYNC_SIZE 2
@@ -396,17 +414,12 @@ struct ubx_frame {
 #define UBX_FRAME_SIZE(n) (UBX_FRAME_REQ_SIZE + sizeof(n))
 
 #ifndef UBX_MAX_PAYLOAD_SIZE
-#define UBX_MAX_PAYLOAD_SIZE 256 //We need ~220 bytes for getProtocolVersion on most ublox modules
-//#define MAX_PAYLOAD_SIZE 768 //Worst case: UBX_CFG_VALSET packet with 64 keyIDs each with 64 bit values
+#define UBX_MAX_PAYLOAD_SIZE 164 // Maximum payload size, see 32.15.4.2
 #endif
 
 #define UBX_MAX_FRAME_SIZE	(UBX_FRAME_REQ_SIZE + UBX_MAX_PAYLOAD_SIZE)
 
 #define UBX_SYNC {ubx_sync_1, ubx_sync_2}
-
-#define UBX_NAV_PVT_PAYLOAD_SIZE	92
-#define UBX_SEC_UNIQID_PAYLOAD_SIZE	 9
-#define UBX_CFG_PRT_PAYLOAD_SIZE	20
 
 #define UBX_HEADER_DEFINE(cls,clsid)					\
 	const struct ubx_header ubx_header_##cls##_##clsid = {		\
