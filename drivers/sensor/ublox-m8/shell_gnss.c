@@ -166,10 +166,11 @@ static int cmd_pvt(const struct shell *shell)
 
 	time.tm_year = drv_data->pvt.time.gpsYear;
 	time.tm_mon = drv_data->pvt.time.gpsMonth;
+	time.tm_mday = drv_data->pvt.time.gpsDay;
 	time.tm_hour = drv_data->pvt.time.gpsHour;
 	time.tm_min = drv_data->pvt.time.gpsMinute;
 	time.tm_sec = drv_data->pvt.time.gpsSecond;
-	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", time);
+	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &time);
 	shell_print(shell, "     Time:        %s", buf);
 
 	return ret;

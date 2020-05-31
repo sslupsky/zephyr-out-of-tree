@@ -272,35 +272,20 @@ static int ublox_m8_flush_msg_buffer(struct device *dev)
 	struct ublox_m8_data *drv_data = dev->driver_data;
 	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	int ret;
-	u8_t rx_buf[16];
+	u8_t rx_buf[64];
 	u16_t msg_len, read_bytes;
 
-	/* get the message length */
-	ret = i2c_burst_read(drv_data->i2c, cfg->i2c_addr,
-			     UBLOX_M8_REGISTER_LEN, rx_buf, 2);
-	if (ret < 0) {
-		LOG_DBG("addr error");
-		return -EIO;
-	}
-
-	/* ddc port message length is received big endian */
-	msg_len = sys_get_be16(rx_buf);
-	if (msg_len == 0) {
-		LOG_DBG("msg buffer empty");
-		return 0;
-	}
-
-	while (msg_len > 0) {
-		read_bytes = MIN(msg_len, sizeof(rx_buf));
-		ret = i2c_read(drv_data->i2c, rx_buf, read_bytes,
+	msg_len = 0;
+	do {
+		ret = i2c_read(drv_data->i2c, rx_buf + msg_len, 1,
 			       cfg->i2c_addr);
 		if (ret < 0) {
 			break;
 		}
-		LOG_HEXDUMP_DBG(rx_buf, read_bytes, "buffer flush");
-		msg_len -= read_bytes;
-	}
+		msg_len++;
+	} while (rx_buf[msg_len] != 0xFF && msg_len < sizeof(rx_buf));
 
+	LOG_HEXDUMP_DBG(rx_buf, msg_len, "buffer flushed");
 	return ret;
 }
 
@@ -447,6 +432,7 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 {
 	struct device *dev = INT_TO_POINTER(dev_ptr);
 	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	int ret;
 	size_t bytes_read, len = 0;
 	union ublox_frame *frame = &drv_data->frame;
@@ -460,11 +446,18 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 		switch (drv_data->sentence_state) {
 		case GNSS_SENTENCE_STATE_IDLE:
 			len = 1;
-			ret = k_pipe_get(&drv_data->rx_pipe, frame, 1,
-					 &bytes_read, 1, K_FOREVER);
+			/* read the first byte */
+			ret = i2c_read(drv_data->i2c, frame->raw, 1, cfg->i2c_addr);
 			if (ret < 0) {
-				LOG_DBG("pipe error");
+				LOG_DBG("read error");
+				break;
 			}
+			if (frame->raw[0] == 0xFF) {
+				LOG_DBG("buffer is idle (0xFF)");
+				k_sem_take(&drv_data->msg_sem, K_HOURS(1));
+				break;
+			}
+
 			if (frame->ubx.header.sync1 == ubx_sync_1) {
 				drv_data->sentence_state = GNSS_SENTENCE_STATE_UBX;
 			} else if (frame->nmea[0] == '$') {
@@ -479,11 +472,8 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 			break;
 		case GNSS_SENTENCE_STATE_UBX:
 			/* get the rest of the header */
-			ret = k_pipe_get(&drv_data->rx_pipe, &frame->ubx.header.sync2,
-				UBX_FRAME_HEADER_SIZE - len, &bytes_read,
-				UBX_FRAME_HEADER_SIZE - len, K_MSEC(100));
-			if (ret < 0 || bytes_read < UBX_FRAME_HEADER_SIZE - len ||
-			    frame->ubx.header.sync2 != ubx_sync_2) {
+			ret = i2c_read(drv_data->i2c, frame->ubx.header.raw_data+len, sizeof(union ubx_header)-len, cfg->i2c_addr);
+			if (ret < 0) {
 				LOG_DBG("ubx header error");
 				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
 				break;
@@ -491,18 +481,15 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 			/* get length of payload */
 			len = sys_get_le16(frame->ubx.header.len);
 			/* get payload */
-			ret = k_pipe_get(&drv_data->rx_pipe, frame->payload, len,
-					 &bytes_read, len, K_MSEC(100));
-			if (ret < 0 || bytes_read <  len) {
+			ret = i2c_read(drv_data->i2c, frame->ubx.payload, len, cfg->i2c_addr);
+			if (ret < 0) {
 				LOG_DBG("ubx payload error");
 				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
 				break;
 			}
 			/* get checksum */
-			ret = k_pipe_get(&drv_data->rx_pipe, &frame->ubx.checksum,
-					 UBX_FRAME_CHECKSUM_SIZE, &bytes_read,
-					 UBX_FRAME_CHECKSUM_SIZE, K_MSEC(100));
-			if (ret < 0 || bytes_read < UBX_FRAME_CHECKSUM_SIZE) {
+			ret = i2c_read(drv_data->i2c, &frame->ubx.checksum, sizeof(struct ubx_checksum), cfg->i2c_addr);
+			if (ret < 0) {
 				LOG_DBG("ubx checksum error");
 				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
 				break;
@@ -520,19 +507,21 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 			drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
 			break;
 		case GNSS_SENTENCE_STATE_NMEA:
-			ret = k_pipe_get(&drv_data->rx_pipe, frame->nmea+len, 1,
-					 &bytes_read, 1, K_MSEC(100));
-			if (bytes_read) {
-				/* check for eol */
-				if (frame->nmea[len-1] == '\r' && frame->nmea[len] == '\n') {
-					frame->nmea[len-1] = 0;
-					LOG_DBG("nmea: %s", log_strdup(frame->nmea));
-					drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
-					break;
-				}
-				len++;
+			ret = i2c_read(drv_data->i2c, frame->nmea+len, 1, cfg->i2c_addr);
+			if (ret < 0) {
+				LOG_DBG("read error");
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+				break;
 			}
-			if (ret < 0 || bytes_read == 0 || len == sizeof(frame->nmea)) {
+			/* check for eol */
+			if (frame->nmea[len-1] == '\r' && frame->nmea[len] == '\n') {
+				frame->nmea[len-1] = 0;
+				LOG_DBG("nmea: %s", log_strdup(frame->nmea));
+				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+				break;
+			}
+			len++;
+			if (len == sizeof(frame->nmea)) {
 				LOG_DBG("nmea msg error");
 				ublox_m8_flush_msg_pipe(dev);
 				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
@@ -674,7 +663,7 @@ done:
  * @param dev 
  * @return int 
  */
-static int ublox_m8_ubx_msg_set(struct device *dev, const struct ubx_header *header,
+static int ublox_m8_ubx_msg_set(struct device *dev, const union ubx_header *header,
 				const void *payload, size_t payload_len,
 				enum ubx_message type,
 				enum ubx_response response,
@@ -712,7 +701,7 @@ static int ublox_m8_ubx_msg_set(struct device *dev, const struct ubx_header *hea
  * @param dev 
  * @return int 
  */
-static int ublox_m8_ubx_msg_get(struct device *dev, const struct ubx_header *header,
+static int ublox_m8_ubx_msg_get(struct device *dev, const union ubx_header *header,
 				const void *payload, size_t payload_len,
 				enum ubx_message type,
 				enum ubx_response response,

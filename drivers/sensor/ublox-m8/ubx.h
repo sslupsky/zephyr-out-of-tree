@@ -346,13 +346,16 @@ union ubx_cfg_prt_input_protocol {
 	u16_t reg;
 };
 
-struct ubx_header {
-	enum ubx_sync_id sync1;
-	enum ubx_sync_id sync2;
-	enum ubx_class class;
-	u8_t id;
-	u8_t len[2];
-} __packed;
+union ubx_header {
+	struct {
+		enum ubx_sync_id sync1;
+		enum ubx_sync_id sync2;
+		enum ubx_class class;
+		u8_t id;
+		u8_t len[2];
+	} __packed;
+	u8_t raw_data[6];
+};
 
 struct ubx_checksum {
 	u8_t A;
@@ -369,12 +372,12 @@ struct ubx_frame_status {
 
 //-=-=-=-=- UBX binary specific variables
 struct ubx_frame_req {
-	struct ubx_header header;
+	union ubx_header header;
 	struct ubx_checksum checksum;
 };
 
 struct ubx_frame {
-	struct ubx_header header;
+	union ubx_header header;
 	struct ubx_checksum checksum;
 	const u8_t *payload;
 	u16_t len;
@@ -638,7 +641,7 @@ struct ubx_payload_sec_uniqid {
 } __packed;
 
 #define UBX_FRAME_SYNC_SIZE 2
-#define UBX_FRAME_HEADER_SIZE sizeof(struct ubx_header)
+#define UBX_FRAME_HEADER_SIZE sizeof(union ubx_header)
 #define UBX_FRAME_CHECKSUM_SIZE sizeof(struct ubx_checksum)
 #define UBX_FRAME_REQ_SIZE sizeof(struct ubx_frame_req)
 #define UBX_FRAME_STATUS_SIZE sizeof(struct ubx_frame_status)
@@ -653,7 +656,7 @@ struct ubx_payload_sec_uniqid {
 #define UBX_SYNC {ubx_sync_1, ubx_sync_2}
 
 #define UBX_HEADER_DEFINE(cls,clsid)					\
-	const struct ubx_header ubx_header_##cls##_##clsid = {		\
+	const union ubx_header ubx_header_##cls##_##clsid = {		\
 		.sync1 = ubx_sync_1,					\
 		.sync2 = ubx_sync_2,					\
 		.class = ubx_class_##cls,				\
