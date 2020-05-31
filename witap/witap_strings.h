@@ -36,7 +36,7 @@ char const STRING_SCAN_LOGO[]  = R"SCANLOGO(
 
 char const STRING_WITAP_LOGO[]  = R"WITAPLOGO(
  __        ___ _____  _    ____  TM
- \ \      / (_)_   _|/ \  |  _ \ 
+ \ \      / (_)_   _|/ \  |  _ \
   \ \ /\ / /| | | | / _ \ | |_) |
    \ V  V / | | | |/ ___ \|  __/ 
     \_/\_/  |_| |_/_/   \_\_|    
@@ -48,5 +48,35 @@ char const STRING_NEWLINE[] = "\n";
 char const STRING_HEADER[]  = "\n\n\n\n";
 char const STRING_FORM_FEED[] = "\n\n\n\n\n\n\n\n\n\n";
 char const STRING_SYNTAX_ERROR[]  = "Syntax error";
+
+#define RCAUSE_POR	"POR"
+#define RCAUSE_BOD12	"BOD12"
+#define RCAUSE_BOD33	"BOD33"
+#define RCAUSE_EXT	"EXT"
+#define RCAUSE_WDT	"WDT"
+#define RCAUSE_SYST	"SYST"
+
+inline void rcause_str(char *buf, u8_t rcause)
+{
+	buf[0] = 0;
+	if (rcause & PM_RCAUSE_POR) {
+		strcat(buf, "POR ");
+	}
+	if (rcause & PM_RCAUSE_BOD12) {
+		strcat(buf, "BOD12 ");
+	}
+	if (rcause & PM_RCAUSE_BOD33) {
+		strcat(buf, "BOD33 ");
+	}
+	if (rcause & PM_RCAUSE_EXT) {
+		strcat(buf, "EXT ");
+	}
+	if (rcause & PM_RCAUSE_WDT) {
+		strcat(buf, "WDT ");
+	}
+	if (rcause & PM_RCAUSE_SYST) {
+		strcat(buf, "SYST ");
+	}
+}
 
 #endif

@@ -703,7 +703,7 @@ static void lora_req_ack(struct k_work *work)
 
 	ret = modem_cmd_send(&lora.context.iface,
 				&lora.context.cmd_handler,
-				bool_response_cmds,
+				(struct modem_cmd *)bool_response_cmds,
 				ARRAY_SIZE(bool_response_cmds),
 				"AT+CFS?",
 				&lora.sem_response,
@@ -722,7 +722,7 @@ static void lora_req_ack(struct k_work *work)
 			 */
 			ret = modem_cmd_send(&lora.context.iface,
 						&lora.context.cmd_handler,
-						response_cmds,
+						(struct modem_cmd *)response_cmds,
 						ARRAY_SIZE(response_cmds),
 						"AT+CTX 0",
 						&lora.sem_response,
@@ -942,7 +942,6 @@ int uart_pipe_send(const u8_t *data, int len)
 {
 	int ret;
 	u8_t buf[12];
-	s64_t tm;
 
 	k_sem_take(&lora.ppp_send_sem, K_FOREVER);
 

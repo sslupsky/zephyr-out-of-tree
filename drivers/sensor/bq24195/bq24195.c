@@ -314,7 +314,6 @@ static void pmic_process(struct device *dev)
 	struct bq24195_data *drv_data = dev->driver_data;
 	enum pmic_state pmic_state;
 	enum pmic_state next_state;
-	BQ24195_SYSTEM_STATUS_t status;
 	int ret;
 
 	LOG_DBG("starting");
@@ -392,6 +391,9 @@ static void pmic_process(struct device *dev)
 		}
 		if (next_state != pmic_state) {
 			/* TODO: callback */
+			if (drv_data->state_change_cb) {
+				drv_data->state_change_cb((u8_t) next_state);
+			}
 			pmic_state = next_state;
 		} else {
 			k_sleep(K_SECONDS(30));
@@ -431,8 +433,6 @@ static inline int bq24195_device_id_check(struct device *dev)
 static int bq24195_sample_fetch(struct device *dev, enum sensor_channel chan)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
-	BQ24195_SYSTEM_STATUS_t status;
-	BQ24195_FAULT_t fault;
 	int ret;
 
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL ||
@@ -505,6 +505,13 @@ static int bq24195_attr_set(struct device *dev, enum sensor_channel chan,
 	}
 
 	return ret;
+}
+
+void bq24195_register_cb(struct device *dev, void (*cb)(u8_t state))
+{
+	struct bq24195_data *drv_data = dev->driver_data;
+
+	drv_data->state_change_cb = cb;
 }
 
 static const struct sensor_driver_api bq24195_driver_api = {

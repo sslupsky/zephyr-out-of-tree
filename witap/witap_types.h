@@ -13,21 +13,6 @@
 #define WITAP_TYPES_H
 
 #include <zephyr.h>
-#include <usb/usb_device.h>
-
-/* forward declaration of global scope variables */
-extern volatile enum usb_dc_status_code usbState;
-extern volatile bool application_boot;
-extern volatile bool force_sleep;
-
-enum witap_pm_devices {
-	WITAP_PM_I2C,
-	WITAP_PM_SPI,
-	WITAP_PM_LORA_UART,
-	WITAP_PM_USB,
-	WITAP_PM_BOOT,
-	WITAP_PM_FORCE_SLEEP,
-};
 
 typedef struct {
     u32_t commissionTime;
@@ -162,7 +147,10 @@ struct witap_dock1310 {
 extern "C" {
 #endif
 
-/* none */
+	int spi_nand_read_parameter_page(struct device *);
+	void spi_nand_get_registers(struct device *dev, u8_t *status, u8_t *ctrl, u8_t *lock);
+	s64_t sam0_rtc_timer_boot_time(void);
+
 
 #ifdef __cplusplus
 }

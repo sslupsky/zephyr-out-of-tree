@@ -26,6 +26,7 @@
 #define __PMIC_BQ24195_H__
 
 #include <sys/util.h>
+#include <drivers/pmic.h>
 
 
 #define BQ24195_STARTUP_TIME_USEC     1000
@@ -470,21 +471,11 @@ enum watchdog_timeout {
 	PMIC_WATCHDOG_TIMEOUT_160,
 };
 
-enum pmic_state {
-	PMIC_STATE_idle,
-	PMIC_STATE_start,
-	PMIC_STATE_connected,
-	PMIC_STATE_disconnected,
-	PMIC_STATE_charging,
-	PMIC_STATE_batteryNotPresent,
-	PMIC_STATE_deviceNotPresent,
-	PMIC_STATE_disabled,
-};
-
 /* driver structs */
 struct bq24195_data {
 	struct device *i2c;
 	pmic_t pmic;
+	void (*state_change_cb)(u8_t state);
 };
 
 struct bq24195_dev_config {

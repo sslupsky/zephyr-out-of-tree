@@ -14,8 +14,10 @@
 #include <soc.h>
 #include <power/power.h>
 #include <logging/log.h>
+#include <shell/shell.h>
 
 #include "witap_types.h"
+#include "witap_power.hpp"
 
 LOG_MODULE_DECLARE(myApp, CONFIG_MYAPP_LOG_LEVEL);
 
@@ -113,3 +115,16 @@ extern "C" enum power_states sys_pm_policy_next_state(s32_t ticks)
 	LOG_ERR("active: no policy");
 	return SYS_POWER_STATE_ACTIVE;
 }
+
+static int cmd_sleep(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_print(shell, "disconnect usb in 2 seconds ...");
+	k_delayed_work_submit(&usb_disconnect_work, K_MSEC(2000));
+
+	return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(sleep, NULL, "enable power management", cmd_sleep, 1, 0);
