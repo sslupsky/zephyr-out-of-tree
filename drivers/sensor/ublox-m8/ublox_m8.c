@@ -25,20 +25,21 @@
 #include <logging/log.h>
 #include <kernel.h>
 #include <devicetree.h>
-#include <net/buf.h>
+// #include <net/buf.h>
 
 #include "ublox_m8.h"
 
 #define LOG_LEVEL CONFIG_GNSS_LOG_LEVEL
 LOG_MODULE_REGISTER(UBLOX_M8, CONFIG_GNSS_LOG_LEVEL);
 
-NET_BUF_POOL_DEFINE(ublox_buf_pool, 8, 32, 0, NULL);
+// NET_BUF_POOL_DEFINE(ublox_buf_pool, 8, 32, 0, NULL);
 
 FOR_EACH(UBX_HEADER_CFG_DEFINE, cfg, pm2, prt, pms, pwr, rxm);
 FOR_EACH(UBX_HEADER_NAV_DEFINE, pvt, status, geofence, sat, timeutc);
 FOR_EACH(UBX_HEADER_SEC_DEFINE, uniqid);
 FOR_EACH(UBX_HEADER_ACK_DEFINE, ack, nak);
 FOR_EACH(UBX_HEADER_RXM_DEFINE, pmreq);
+FOR_EACH(UBX_HEADER_MON_DEFINE, gnss, hw2, hw, io, ver);
 
 const struct ubx_frame_status ubx_frame_status_init = {
 	.response_request = UBX_RESPONSE_NONE,
@@ -86,30 +87,112 @@ const union ubx_cfg_prt_output_protocol ubx_ddc_protocol = {
  * B5 62 02 41 10 00 00 00 00 00 10 27 00 00 02 00 00 00 20 00 00 00 AC 18
  */
 
-#define UBX_CFG_PRT_PAYLOAD_SIZE	20
-const u8_t ucenter_cfg_prt_uart1[UBX_CFG_PRT_PAYLOAD_SIZE] =	{0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00, 0x00, 0x08, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-const u8_t ucenter_cfg_prt_ddc[UBX_CFG_PRT_PAYLOAD_SIZE] =	{0x00, 0x00, 0x99, 0x00, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00};
+// const u8_t ucenter_cfg_prt_uart1[UBX_PAYLOAD_CFG_PRT_SIZE] =	{0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00, 0x00, 0x08, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+// const u8_t ucenter_cfg_prt_ddc[UBX_PAYLOAD_CFG_PRT_SIZE] =	{0x00, 0x00, 0x99, 0x00, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00};
 
-#define UBX_CFG_CFG_PAYLOAD_SIZE	13
-const u8_t ucenter_cfg_cfg_bbr[UBX_CFG_CFG_PAYLOAD_SIZE] =	{0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
-// const u8_t ucenter_cfg_cfg_bbr[UBX_CFG_CFG_PAYLOAD_SIZE] =	{0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+// const u8_t ucenter_cfg_cfg_bbr[UBX_PAYLOAD_CFG_CFG_SIZE] =	{0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+// const u8_t ucenter_cfg_cfg_bbr[UBX_PAYLOAD_CFG_CFG_SIZE] =	{0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-#define UBX_CFG_PM2_PAYLOAD_SIZE	48
-const u8_t ucenter_cfg_pm2[UBX_CFG_PM2_PAYLOAD_SIZE] = 		{0x02, 0x06, 0x00, 0x00, 0x60, 0x98, 0x40, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-								 0x02, 0x00, 0x00, 0x00, 0x2C, 0x01, 0x00, 0x00, 0x4F, 0xC1, 0x03, 0x00, 0x87, 0x02, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
-								 0x64, 0x40, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-// const u8_t ucenter_cfg_pm2[UBX_CFG_PM2_PAYLOAD_SIZE] = 		{0x02, 0x00, 0x00, 0x00, 0x60, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+// const u8_t ucenter_cfg_pm2[UBX_PAYLOAD_CFG_PM2_SIZE] = 		{0x02, 0x06, 0x00, 0x00, 0x60, 0x98, 0x40, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+// 								 0x02, 0x00, 0x00, 0x00, 0x2C, 0x01, 0x00, 0x00, 0x4F, 0xC1, 0x03, 0x00, 0x87, 0x02, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
+// 								 0x64, 0x40, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+// const u8_t ucenter_cfg_pm2[UBX_PAYLOAD_CFG_PM2_SIZE] = 		{0x02, 0x00, 0x00, 0x00, 0x60, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 // 								 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 // 								 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-#define UBX_CFG_RXM_PAYLOAD_SIZE	 2
-const u8_t ucenter_cfg_rxm[UBX_CFG_RXM_PAYLOAD_SIZE] = 		{0x08, 0x01};
 
-#define UBX_RXM_PMREQ_PAYLOAD_SIZE	16
-const u8_t ucenter_rxm_pmreq[UBX_RXM_PMREQ_PAYLOAD_SIZE] =	{0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00};
 
-#define UBX_NAV_PVT_PAYLOAD_SIZE	92
-#define UBX_SEC_UNIQID_PAYLOAD_SIZE	 9
+/*
+ * UBX_CFG_PRT
+ * ucenter configuration:
+ * portID: DDC, inProtoMask: ubx in, outProtoMask: ubx out, mode: slaveAddr=42, txReady: pio=6, thres 1 (8 bytes), flags: extendedTxTimeout
+ * B5 62 06 00 14 00 00 00 99 00 84 00 00 00 00 00 00 00 01 00 01 00 02 00 00 00 3B 60
+ */
+const union ubx_payload_cfg_prt ubx_payload_cfg_prt_ddc = {
+	.ddc.portID = 0,
+	.ddc.txReady.en = 1,
+	.ddc.txReady.pol = 0,
+	.ddc.txReady.pin = 6,
+	.ddc.txReady.thres = 1,
+	.ddc.mode.slaveAddr = 0x42,
+	.ddc.inProtoMask.inUbx = 1,
+	.ddc.outProtoMask.outUbx = 1,
+	.ddc.flags.extendedTxTimeout = 1,
+};
 
+#define UBX_PAYLOAD_CFG_PRT_DDC_POLL_SIZE 1
+const union ubx_payload_cfg_prt ubx_payload_cfg_prt_ddc_poll = {
+	.ddc.portID = 0,
+};
+
+/*
+ * UBX_CFG_PRT
+ * ucenter configuration:
+ * portID: UART1, inProtoMask: none, outProtoMask: none, baud: 460800, mode: 8 N 1 
+ * B5 62 06 00 14 00 01 00 00 00 D0 08 00 00 00 08 07 00 00 00 00 00 00 00 00 00 02 72
+ */
+const union ubx_payload_cfg_prt ubx_payload_cfg_prt_uart1 = {
+	.uart.portID = 1,
+	.uart.txReady.en = 0,
+	.uart.mode.charLen = 3,
+	.uart.mode.parity = 4,
+	.uart.mode.nStopBits = 0,
+	.uart.baudRate = 460800,
+};
+
+/*
+ * UBX_CFG_PM2
+ * ucenter configuration:
+ * extint0, extintWake, extintBackup, updateRTC, updateEPH, mode ON/OFF
+ * B5 62 06 3B 30 00 02 06 00 00 60 98 40 01 00 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 2C 01 00 00 4F
+ * C1 03 00 87 02 00 00 FF 00 00 00 64 40 01 00 00 00 00 00 21 10
+ */
+const struct ubx_payload_cfg_pm2 ubx_payload_cfg_pm2 = {
+	.version = 2,
+	.flags.extintSel = 0,
+	.flags.extintWake = 1,
+	.flags.extintBackup = 1,
+	.flags.extintInactive = 0,
+	.flags.updateRTC = 1,
+	.flags.updateEPH = 1,
+	.flags.mode = 0,
+};
+
+/*
+ * UBX_CFG_CFG
+ * ucenter configuration:
+ * clearMask: <none>, saveMask: <all>, loadMask: <none>
+ * B5 62 06 09 0D 00 00 00 00 00 FF FF 00 00 00 00 00 00 01 1B A9
+ */
+const struct ubx_payload_cfg_cfg ubx_payload_cfg_cfg_save = {
+	.saveMask.ioPort = 1,
+	.saveMask.msgConf = 1,
+	.saveMask.infMsg = 1,
+	.saveMask.navConf = 1,
+	.saveMask.rxmConf = 1,
+};
+
+/*
+ * UBX_CFG_RXM
+ * ucenter configuration:
+ * lpMode: power save mode
+ * B5 62 06 11 02 00 08 01 22 92
+ */
+const struct ubx_payload_cfg_rxm ubx_payload_cfg_rxm = {
+	.lpMode = 1,
+};
+
+/*
+ * UBX_RXM_PMREQ
+ * ucenter configuration
+ * version: 0, duration: 10000ms, flags: backup, wakeupSources: extint0
+ * B5 62 02 41 10 00 00 00 00 00 10 27 00 00 02 00 00 00 20 00 00 00 AC 18
+ */
+const struct ubx_payload_rxm_pmreq ubx_payload_rxm_pmreq = {
+	.version = 0,
+	.duration = sys_cpu_to_le32(10000),
+	.flags.backup = 1,
+	.wakeupSources.extint0 = 1,
+};
 
 //Given a message, calc and store the two byte "8-Bit Fletcher" checksum over the entirety of the message
 //This is called before we send a command message
@@ -137,8 +220,7 @@ static void ubx_frame_checksum(struct ubx_frame *frame)
 	}
 }
 
-//Given a message and a byte, add to rolling "8-Bit Fletcher" checksum
-//This is used when receiving messages from module
+__unused
 static void ubx_rolling_checksum(u8_t incoming, bool reset)
 {
 	static u8_t checksumA;
@@ -184,6 +266,7 @@ static int ubx_validate_frame_checksum(struct ubx_frame *frame)
 	return frame->status.checksum_valid;
 }
 
+__unused
 static int ublox_m8_flush_msg_buffer(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -351,6 +434,15 @@ static void set_ubx_response(struct device *dev)
 	drv_data->last_error = ret;
 }
 
+static void update_pvt(struct device *dev)
+{
+	struct ublox_m8_data *drv_data = dev->driver_data;
+
+	memcpy(&drv_data->pvt.position, drv_data->frame.ubx.payload+20, sizeof(struct gnss_position));
+	memcpy(&drv_data->pvt.velocity, drv_data->frame.ubx.payload+48, sizeof(struct gnss_velocity));
+	memcpy(&drv_data->pvt.time, drv_data->frame.ubx.payload, sizeof(struct gnss_time));
+}
+
 static void ublox_m8_msg_thread(int dev_ptr, int unused)
 {
 	struct device *dev = INT_TO_POINTER(dev_ptr);
@@ -421,6 +513,7 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 				drv_data->last_error = 0;
 				set_ubx_response(dev);
 			}
+			update_pvt(dev);
 			LOG_HEXDUMP_DBG(&frame->ubx.header, UBX_FRAME_HEADER_SIZE, "ubx header");
 			LOG_HEXDUMP_DBG(frame->payload, len, "ubx payload");
 			LOG_HEXDUMP_DBG(&frame->ubx.checksum, UBX_FRAME_CHECKSUM_SIZE, "ubx checksum");
@@ -527,40 +620,30 @@ static int ublox_m8_message_send(struct device *dev, struct ubx_frame *frame, k_
 	}
 	// frame->status.req_sent = true;
 
-	if (timeout == K_NO_WAIT) {
+	if (K_TIMEOUT_EQ(timeout,K_NO_WAIT)) {
 		ret = 0;
 		goto done;
 	}
 
-	// if (frame->status.ack_required) {
-	// 	/* FIXME: this is temporary to test polling */
-	// 	drv_data->poll_handler(dev, &drv_data->poll_trigger);
-
-	// 	/* FIXME: use the ACK sem */
-	// 	// ret = k_sem_take(&drv_data->ubx_ack_sem, timeout);
-	// 	ret = k_sem_take(&drv_data->response_sem, timeout);
-	// 	if (ret == 0) {
-	// 		ret = drv_data->last_error;
-	// 		frame->status.ack_received = true;
-	// 	} else if (ret == -EAGAIN) {
-	// 		ret = -ETIMEDOUT;
-	// 	}
-	// }
-
 	/* FIXME: this is temporary to test polling */
-	k_sleep(K_MSEC(100));
-	drv_data->poll_handler(dev, &drv_data->poll_trigger);
+	// k_sleep(K_MSEC(100));
+	// drv_data->poll_handler(dev, &drv_data->poll_trigger);
 
 	/* wait for response */
 	switch (frame->status.response_request) {
 	case UBX_RESPONSE_ACK:
 	case UBX_RESPONSE_NAK:
+		k_sem_reset(&drv_data->ubx_ack_sem);
 		ret = k_sem_take(&drv_data->ubx_ack_sem, timeout);
 		break;
-	case UBX_RESPONSE_POLL:
 	case UBX_RESPONSE_GET:
 	case UBX_RESPONSE_OUTPUT:
+		k_sem_reset(&drv_data->ubx_get_sem);
 		ret = k_sem_take(&drv_data->ubx_get_sem, timeout);
+		break;
+	case UBX_RESPONSE_POLL:
+		k_sem_reset(&drv_data->ubx_poll_sem);
+		ret = k_sem_take(&drv_data->ubx_poll_sem, timeout);
 		break;
 	case UBX_RESPONSE_NONE:
 		ret = 0;
@@ -591,13 +674,12 @@ done:
  * @param dev 
  * @return int 
  */
-static int ublox_m8_ubx_msg_set(struct device *dev, struct ubx_header *header,
-				void *payload, size_t payload_len,
+static int ublox_m8_ubx_msg_set(struct device *dev, const struct ubx_header *header,
+				const void *payload, size_t payload_len,
 				enum ubx_message type,
 				enum ubx_response response,
 				k_timeout_t timeout)
 {
-	struct ublox_m8_data *drv_data = dev->driver_data;
 	struct ubx_frame frame;
 	int ret;
 
@@ -630,13 +712,12 @@ static int ublox_m8_ubx_msg_set(struct device *dev, struct ubx_header *header,
  * @param dev 
  * @return int 
  */
-static int ublox_m8_ubx_msg_get(struct device *dev, struct ubx_header *header,
-				void *payload, size_t payload_len,
+static int ublox_m8_ubx_msg_get(struct device *dev, const struct ubx_header *header,
+				const void *payload, size_t payload_len,
 				enum ubx_message type,
 				enum ubx_response response,
 				k_timeout_t timeout)
 {
-	struct ublox_m8_data *drv_data = dev->driver_data;
 	struct ubx_frame frame;
 	int ret;
 
@@ -674,11 +755,10 @@ static int ublox_m8_ubx_msg_get(struct device *dev, struct ubx_header *header,
 static int ublox_m8_get_device_id(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	u8_t payload[UBX_SEC_UNIQID_PAYLOAD_SIZE] = {};
 	int ret = 0;
 
 	LOG_DBG("");
-	/* send empty payload  */
+	/* send empty payload to poll device id */
 	ublox_m8_ubx_msg_get(dev, &ubx_header_sec_uniqid, NULL, 0, UBX_MESSAGE_OUTPUT, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 
 	drv_data->device_id.be_word = 0;
@@ -686,6 +766,41 @@ static int ublox_m8_get_device_id(struct device *dev)
 	LOG_INF("unique id: 0x%02x%08x",
 		(u32_t) (sys_be64_to_cpu(drv_data->device_id.be_word) >> 32),
 		(u32_t) (sys_be64_to_cpu(drv_data->device_id.be_word) & (BIT64(32)-1)));
+
+	ret = drv_data->last_error;
+	if (ret < 0) {
+		LOG_ERR("%s: Failed to get unique id",
+			DT_INST_0_UBLOX_M8_LABEL);
+	}
+
+	return ret;
+}
+
+/**
+ * @brief 
+ * 
+ * 
+ * @param dev 
+ * @return int 
+ */
+static int ublox_m8_get_version(struct device *dev)
+{
+	struct ublox_m8_data *drv_data = dev->driver_data;
+	int ret;
+
+	LOG_DBG("");
+	/* send empty payload to poll version */
+	ublox_m8_ubx_msg_get(dev, &ubx_header_mon_ver, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+
+	strncpy(drv_data->sw_version, drv_data->frame.ubx.payload, 30);
+	strncpy(drv_data->hw_version, drv_data->frame.ubx.payload+30, 10);
+
+	ret = drv_data->last_error;
+	if (ret < 0) {
+		LOG_ERR("%s: Failed to get version",
+			DT_INST_0_UBLOX_M8_LABEL);
+	}
+
 	return ret;
 }
 
@@ -699,12 +814,10 @@ static int ublox_m8_get_device_id(struct device *dev)
 static int ublox_m8_configure_uart_port(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	u8_t payload[sizeof(ucenter_cfg_prt_uart1)] = {};
 	int ret;
 
 	LOG_DBG("");
-	memcpy(payload, ucenter_cfg_prt_uart1, sizeof(ucenter_cfg_prt_uart1));
-	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_prt, payload, sizeof(payload), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
+	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_prt, &ubx_payload_cfg_prt_uart1, sizeof(ubx_payload_cfg_prt_uart1), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, K_NO_WAIT);
 
 	ret = drv_data->last_error;
 	if (ret < 0) {
@@ -725,12 +838,10 @@ static int ublox_m8_configure_uart_port(struct device *dev)
 static int ublox_m8_configure_ddc_port(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	u8_t payload[sizeof(ucenter_cfg_prt_ddc)] = {};
 	int ret;
 
 	LOG_DBG("");
-	memcpy(payload, ucenter_cfg_prt_ddc, sizeof(ucenter_cfg_prt_ddc));
-	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_prt, payload, sizeof(payload), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
+	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_prt, &ubx_payload_cfg_prt_ddc, sizeof(ubx_payload_cfg_prt_ddc), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, K_NO_WAIT);
 
 	ret = drv_data->last_error;
 	if (ret < 0) {
@@ -751,12 +862,10 @@ static int ublox_m8_configure_ddc_port(struct device *dev)
 static int ublox_m8_configure_pm2(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	u8_t payload[sizeof(ucenter_cfg_pm2)] = {};
 	int ret;
 
 	LOG_DBG("");
-	memcpy(payload, ucenter_cfg_pm2, sizeof(ucenter_cfg_pm2));
-	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_pm2, payload, sizeof(payload), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
+	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_pm2, &ubx_payload_cfg_pm2, sizeof(ubx_payload_cfg_pm2), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
 
 	ret = drv_data->last_error;
 	if (ret < 0) {
@@ -777,12 +886,10 @@ static int ublox_m8_configure_pm2(struct device *dev)
 static int ublox_m8_configure_rxm(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	u8_t payload[sizeof(ucenter_cfg_rxm)] = {};
 	int ret;
 
 	LOG_DBG("");
-	memcpy(payload, ucenter_cfg_rxm, sizeof(ucenter_cfg_rxm));
-	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_rxm, payload, sizeof(payload), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
+	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_rxm, &ubx_payload_cfg_rxm, UBX_PAYLOAD_CFG_RXM_SIZE, UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
 
 	ret = drv_data->last_error;
 	if (ret < 0) {
@@ -803,12 +910,10 @@ static int ublox_m8_configure_rxm(struct device *dev)
 static int ublox_m8_configure_save_bbr(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	u8_t payload[sizeof(ucenter_cfg_cfg_bbr)] = {};
 	int ret;
 
 	LOG_DBG("");
-	memcpy(payload, ucenter_cfg_cfg_bbr, sizeof(ucenter_cfg_cfg_bbr));
-	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_cfg, payload, sizeof(payload), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, K_SECONDS(2));
+	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_cfg, &ubx_payload_cfg_cfg_save, sizeof(ubx_payload_cfg_cfg_save), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
 
 	ret = drv_data->last_error;
 	if (ret < 0) {
@@ -825,7 +930,7 @@ const struct gnss_trigger txready_trigger = {
 };
 
 const struct gnss_trigger poll_trigger = {
-	.type = GNSS_TRIG_TIMER,
+	.type = GNSS_TRIG_POLL,
 	.chan = GNSS_CHAN_ALL,
 };
 
@@ -940,13 +1045,10 @@ static int ublox_m8_sample_fetch(struct device *dev, enum gnss_channel chan)
 
 	ARG_UNUSED(drv_data);
 
-	__ASSERT_NO_MSG(chan == GNSS_CHAN_ALL ||
-			chan == GNSS_CHAN_TIME ||
-			chan == GNSS_CHAN_POSITION ||
-			chan == GNSS_CHAN_VELOCITY);
-
 	switch (chan) {
 	case GNSS_CHAN_ALL:
+		/* send header with empty payload  */
+		ublox_m8_ubx_msg_get(dev, &ubx_header_nav_pvt, NULL, 0, UBX_MESSAGE_POLL, UBX_RESPONSE_POLL, drv_data->timeout);
 		break;
 
 	case GNSS_CHAN_TIME:
@@ -956,6 +1058,22 @@ static int ublox_m8_sample_fetch(struct device *dev, enum gnss_channel chan)
 		break;
 
 	case GNSS_CHAN_VELOCITY:
+		break;
+
+	case GNSS_CHAN_ID:
+		ublox_m8_ubx_msg_get(dev, &ubx_header_sec_uniqid, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		break;
+
+	case GNSS_CHAN_VERSION:
+		ublox_m8_ubx_msg_get(dev, &ubx_header_mon_ver, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		break;
+
+	case GNSS_CHAN_SLEEP:
+		ublox_m8_ubx_msg_set(dev, &ubx_header_rxm_pmreq, &ubx_payload_rxm_pmreq, sizeof(ubx_payload_rxm_pmreq), UBX_MESSAGE_COMMAND, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		break;
+
+	case GNSS_CHAN_DDC:
+		ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_prt, &ubx_payload_cfg_prt_ddc_poll, UBX_PAYLOAD_CFG_PRT_DDC_POLL_SIZE, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 		break;
 
 	default:
@@ -968,7 +1086,7 @@ static int ublox_m8_sample_fetch(struct device *dev, enum gnss_channel chan)
 }
 
 static int ublox_m8_channel_get(struct device *dev, enum gnss_channel chan,
-			      struct gnss_pvt *val)
+				void *val)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
 	int ret = 0;
@@ -977,15 +1095,24 @@ static int ublox_m8_channel_get(struct device *dev, enum gnss_channel chan,
 
 	switch ((int) chan) {
 	case GNSS_CHAN_ALL:
+		// memcpy(val, &drv_data->pvt, sizeof(struct gnss_pvt));
+		*(struct gnss_pvt *)val = drv_data->pvt;
 		break;
 
 	case GNSS_CHAN_TIME:
+		*(struct gnss_time *)val = drv_data->pvt.time;
 		break;
 
 	case GNSS_CHAN_POSITION:
+		*(struct gnss_position *)val = drv_data->pvt.position;
 		break;
 
 	case GNSS_CHAN_VELOCITY:
+		*(struct gnss_velocity *)val = drv_data->pvt.velocity;
+		break;
+
+	case GNSS_CHAN_ID:
+		*(u64_t *)val = drv_data->device_id.be_word;
 		break;
 
 	default:
@@ -1240,38 +1367,43 @@ static void ublox_m8_config_work_handler(struct k_work *work)
 #endif
 
 	ret = ublox_m8_configure_uart_port(dev);
-	// if (ret < 0) {
-	// 	return;
-	// }
+	if (ret < 0) {
+		return;
+	}
 
 	ret = ublox_m8_configure_ddc_port(dev);
-	// if (ret < 0) {
-	// 	return;
-	// }
+	if (ret < 0) {
+		return;
+	}
 
 	ret = ublox_m8_configure_rxm(dev);
-	// if (ret < 0) {
-	// 	return;
-	// }
+	if (ret < 0) {
+		return;
+	}
 
 	ret = ublox_m8_configure_pm2(dev);
-	// if (ret < 0) {
-	// 	return;
-	// }
+	if (ret < 0) {
+		return;
+	}
 
 	ret = ublox_m8_get_device_id(dev);
-	// if (ret < 0) {
-	// 	return;
-	// }
+	if (ret < 0) {
+		return;
+	}
+
+	ret = ublox_m8_get_version(dev);
+	if (ret < 0) {
+		return;
+	}
 
 	ret = ublox_m8_configure_save_bbr(dev);
-	// if (ret < 0) {
-	// 	return;
-	// }
+	if (ret < 0) {
+		return;
+	}
 
-	// ublox_m8_trigger_set(dev, &txready_trigger, ublox_m8_txready_handler);
+	ublox_m8_trigger_set(dev, &txready_trigger, ublox_m8_txready_handler);
 	drv_data->device_state = GNSS_DEVICE_STATE_CONFIGURED;
-	LOG_DBG("module configured");
+	LOG_INF("ublox m8 configured");
 
 }
 
@@ -1293,7 +1425,7 @@ int ublox_m8_init(struct device *dev)
 		return -EINVAL;
 	}
 	drv_data->dev = dev;
-	drv_data->buf_pool = &ublox_buf_pool;
+	// drv_data->buf_pool = &ublox_buf_pool;
 	drv_data->timeout = K_MSEC(UBLOX_M8_MESSAGE_TIMEOUT_MSEC);
 	drv_data->frame.ubx.payload = drv_data->frame.payload;
 	drv_data->poll_status = 0;

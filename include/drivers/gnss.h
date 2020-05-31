@@ -42,7 +42,7 @@ struct gnss_time {
 	u8_t valid;
 	u32_t accuracy;
 	s32_t gpsNanosecond;
-};
+} __packed;
 
 struct gnss_position {
 	u8_t fixType;		 //Tells us when we have a solution aka lock
@@ -55,7 +55,7 @@ struct gnss_position {
 	s32_t altitudeMSL;	 //Number of mm above Mean Sea Level
 	u32_t horizontalAccuracy; // mm * 10^-1 (i.e. 0.1mm)
 	u32_t verticalAccuracy;	 // mm * 10^-1 (i.e. 0.1mm)
-};
+} __packed;
 
 struct gnss_velocity {
 	s32_t north;	 //mm/s
@@ -66,7 +66,12 @@ struct gnss_velocity {
 	u32_t speed_accuracy;
 	u32_t heading_accuracy;
 	u16_t pDOP;			 //Positional dilution of precision
-};
+	u8_t flags3;
+	u8_t reserved1[5];
+	s32_t headVeh;
+	s16_t magDec;
+	u16_t magAcc;
+} __packed;
 
 struct gnss_pvt {
 	//The major datums we want to globally store
@@ -103,6 +108,11 @@ enum gnss_channel {
 	GNSS_CHAN_POSITION,
 	GNSS_CHAN_VELOCITY,
 	
+	GNSS_CHAN_ID,
+	GNSS_CHAN_VERSION,
+	GNSS_CHAN_SLEEP,
+	GNSS_CHAN_DDC,
+
 	/** All channels. */
 	GNSS_CHAN_ALL,
 
@@ -129,7 +139,10 @@ enum gnss_attribute {
 	 * Sensor sampling frequency, i.e. how many times a second the
 	 * sensor takes a measurement.
 	 */
-	GNSS_ATTR_SAMPLING_FREQUENCY,
+	GNSS_ATTR_MSG_RATE,
+	GNSS_ATTR_UPDATE_PERIOD,
+	GNSS_ATTR_SEARCH_PERIOD,
+	GNSS_ATTR_SLEEP_DURATION,
 
 	/**
 	 * Number of all common sensor attributes.
@@ -168,6 +181,8 @@ enum gnss_trigger_type {
 	 * attributes.
 	 */
 	GNSS_TRIG_THRESHOLD,
+	GNSS_TRIG_SLEEP,
+	GNSS_TRIG_POLL,
 
 	/**
 	 * Number of all common sensor triggers.
@@ -293,7 +308,7 @@ typedef int (*gnss_sample_fetch_t)(struct device *dev,
  */
 typedef int (*gnss_channel_get_t)(struct device *dev,
 				    enum gnss_channel chan,
-				    struct gnss_pvt *val);
+				    void *val);
 
 __subsystem struct gnss_driver_api {
 	gnss_sample_fetch_t sample_fetch;
@@ -445,11 +460,11 @@ static inline int z_impl_gnss_sample_fetch_chan(struct device *dev,
  */
 __syscall int gnss_channel_get(struct device *dev,
 				 enum gnss_channel chan,
-				 struct gnss_pvt *val);
+				 void *val);
 
 static inline int z_impl_gnss_channel_get(struct device *dev,
 					   enum gnss_channel chan,
-					   struct gnss_pvt *val)
+					   void *val)
 {
 	const struct gnss_driver_api *api =
 		(const struct gnss_driver_api *)dev->driver_api;

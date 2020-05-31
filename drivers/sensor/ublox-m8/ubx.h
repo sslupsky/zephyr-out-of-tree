@@ -275,29 +275,6 @@ enum ubx_esf_id {
 	ubx_esf_id_ins = 0x15, //36 bytes
 } __packed;
 
-// ubxPacket validity
-enum ublox_packet_validity {
-	UBLOX_PACKET_VALIDITY_NOT_VALID,
-	UBLOX_PACKET_VALIDITY_VALID,
-	UBLOX_PACKET_VALIDITY_NOT_DEFINED,
-	UBLOX_PACKET_NOTACKNOWLEDGED, // This indicates that we received a NACK
-} __packed;
-
-// Identify which packet buffer is in use:
-// packetCfg (or a custom packet), packetAck or packetBuf
-enum ublox_packet_buffer {
-	UBLOX_PACKET_PACKETCFG,
-	UBLOX_PACKET_PACKETACK,
-	UBLOX_PACKET_PACKETBUF,
-} __packed;
-
-//Depending on the ubx binary response class, store binary responses into different places
-// enum ubx_class {
-// 	CLASS_NONE = 0,
-// 	CLASS_ACK,
-// 	CLASS_NOT_AN_ACK,
-// };
-
 enum ubx_sync_id {
 	ubx_sync_1 = 0xB5,
 	ubx_sync_2 = 0x62,
@@ -399,12 +376,266 @@ struct ubx_frame_req {
 struct ubx_frame {
 	struct ubx_header header;
 	struct ubx_checksum checksum;
-	u8_t *payload;
+	const u8_t *payload;
 	u16_t len;
 	struct ubx_frame_status status;
 	enum ubx_frame_state state;
 	enum ubx_message type;
 };
+
+struct ubx_payload_cfg_cfg {
+	struct {
+		u32_t ioPort : 1;
+		u32_t msgConf : 1;
+		u32_t infMsg : 1;
+		u32_t navConf : 1;
+		u32_t rxmConf : 1;
+		u32_t reserved : 3;
+		u32_t senConf : 1;
+		u32_t rinvConf : 1;
+		u32_t antConf : 1;
+		u32_t logConf : 1;
+		u32_t ftsConf : 1;
+	} clearMask;
+	struct {
+		u32_t ioPort : 1;
+		u32_t msgConf : 1;
+		u32_t infMsg : 1;
+		u32_t navConf : 1;
+		u32_t rxmConf : 1;
+		u32_t reserved : 3;
+		u32_t senConf : 1;
+		u32_t rinvConf : 1;
+		u32_t antConf : 1;
+		u32_t logConf : 1;
+		u32_t ftsConf : 1;
+	} saveMask;
+	struct {
+		u32_t ioPort : 1;
+		u32_t msgConf : 1;
+		u32_t infMsg : 1;
+		u32_t navConf : 1;
+		u32_t rxmConf : 1;
+		u32_t reserved : 3;
+		u32_t senConf : 1;
+		u32_t rinvConf : 1;
+		u32_t antConf : 1;
+		u32_t logConf : 1;
+		u32_t ftsConf : 1;
+	} loadMask;
+	struct {
+		u8_t devBBR : 1;
+		u8_t devFlash : 1;
+		u8_t devEEPROM : 1;
+		u8_t reserved : 1;
+		u8_t devSpiFlash : 1;
+	} deviceMask;
+} __packed;
+
+struct ubx_payload_cfg_pm2 {
+	u8_t version;
+	u8_t reserved1;
+	u8_t maxStartupStateDur;	// s, Maximum time to spend in Acquisition state
+	u8_t reserved2;
+	struct {
+		u32_t reserved1 : 1;
+		u32_t optTarget : 3;
+		u32_t extintSel : 1;
+		u32_t extintWake : 1;
+		u32_t extintBackup : 1;
+		u32_t extintInactive : 1;
+		u32_t limitPeakCurr : 2;
+		u32_t waitTimeFix : 1;
+		u32_t updateRTC : 1;
+		u32_t updateEPH : 1;
+		u32_t reserved2 : 3;
+		u32_t doNotEnterOff : 1;
+		u32_t mode : 2;
+	} flags;			// PSM configuration flags
+	u32_t updatePeriod;		// ms, position update period
+	u32_t searchPeriod;		// ms, acquisition retry period if previously UBX_FRAME_STATE_INITIALIZED
+	u32_t gridOffset;		// ms, grid offset relative to GPS start of timeOfWeek
+	u16_t onTime;			// s, Time to stay i Tracking state
+	u16_t minAcqTime;		// s, Minimal search time
+	u8_t reserved3[20];
+	u32_t extintInactivityMs;	// ms, inactivity time out on EXTINT pin if enabled
+} __packed;
+
+struct ubx_payload_cfg_pwr {
+	u8_t version;
+	u8_t reserved1[3];
+	u32_t state;
+} __packed;
+
+union ubx_payload_cfg_prt {
+	struct {
+		u8_t portID;
+		u8_t reserved1;
+		struct {
+			u16_t en : 1;
+			u16_t pol : 1;
+			u16_t pin : 5;
+			u16_t thres : 9;
+		} txReady;			// txReady pin configuration
+		struct {
+			u32_t reserved1 : 1;
+			u32_t slaveAddr : 7;
+		} mode;
+		u8_t reserved2[4];
+		struct {
+			u16_t inUbx : 1;
+			u16_t inNmea : 1;
+			u16_t inRtcm : 1;
+			u16_t reserved1 : 2;
+			u16_t inRtcm3 : 1;
+		} inProtoMask;
+		struct {
+			u16_t outUbx : 1;
+			u16_t outNmea : 1;
+			u16_t reserved1 : 3;
+			u16_t inRtcm3 : 1;
+		} outProtoMask;
+		struct {
+			u16_t reserved1 : 1;
+			u16_t extendedTxTimeout : 1;
+		} flags;
+		u8_t reserved3;
+	} ddc;
+	struct {
+		u8_t portID;
+		u8_t reserved1;
+		struct {
+			u16_t en : 1;
+			u16_t pol : 1;
+			u16_t pin : 5;
+			u16_t thres : 9;
+		} txReady;			// txReady pin configuration
+		struct {
+			u32_t reserved1 : 6;
+			u32_t charLen : 2;
+			u32_t reserved2 : 1;
+			u32_t parity : 3;
+			u32_t nStopBits : 2;
+		} mode;
+		u32_t baudRate;			// Bits/s
+		struct {
+			u16_t inUbx : 1;
+			u16_t inNmea : 1;
+			u16_t inRtcm : 1;
+			u16_t reserved1 : 2;
+			u16_t inRtcm3 : 1;
+		} inProtoMask;
+		struct {
+			u16_t outUbx : 1;
+			u16_t outNmea : 1;
+			u16_t reserved1 : 3;
+			u16_t inRtcm3 : 1;
+		} outProtoMask;
+		struct {
+			u16_t reserved1 : 1;
+			u16_t extendedTxTimeout : 1;
+		} flags;
+		u8_t reserved2[2];
+	} uart;
+} __packed;
+
+struct ubx_payload_cfg_rate {
+	u16_t measRate;			// ms, elapsed time between GNSS measurements.  Should be greater than 50ms
+	u16_t navRate;			// cycles, ratio between the number of measurements and teh number of navigation solutions
+	u16_t timeReg;			// the time system to which measurements are aligned, 0=UTC, 1=GPS, 2=GLOSNASS, 3=BeiDou, 4=Galileo
+} __packed;
+
+struct ubx_payload_cfg_rxm {
+	u8_t reserved1;
+	u8_t lpMode;			// Low power mode
+} __packed;
+
+struct ubx_payload_cfg_tp5 {
+	u8_t tpIdx;			// Time pulse selection (0 = TIMPULSE, 1 = TIMEPULSE2)
+	u8_t version;
+	u8_t reserved1[2];
+	s16_t antCableDelay;		// ns
+	s16_t rfGroupDelay;		// ns
+	u32_t freqPeriod;		// Frequency or period time, depending on 'isFreq' bit
+	u32_t freqPeriodLock;		// Frequency or period time when locked to GPS time
+	u32_t pulseLenRatio;		// Pulse length or duty cycle, depending on 'isLength'
+	u32_t pulseLenRatioLock;	// Pulse length or duty cycle when locked to GPS time
+	s32_t userConfigDelay;		// ns, User configurable time pulse delay
+	struct {
+		u32_t active : 1;
+		u32_t lockGpsFreq : 1;
+		u32_t lockedOtherSet : 1;
+		u32_t isFreq : 1;
+		u32_t isLength : 1;
+		u32_t alignToTow : 1;
+		u32_t polarity : 1;
+		u32_t gridUtcGps : 1;
+	} flags;			// Configuration flags
+} __packed;
+
+struct ubx_payload_nav_pvt {
+	/* time */
+	u32_t timeOfWeek;		// ms
+	u16_t gpsYear;
+	u8_t gpsMonth;
+	u8_t gpsDay;
+	u8_t gpsHour;
+	u8_t gpsMinute;
+	u8_t gpsSecond;
+	u8_t valid;
+	u32_t accuracy;
+	s32_t gpsNanosecond;
+	/* position */
+	u8_t fixType;			// Tells us when we have a solution aka lock
+	u8_t fixflags;
+	u8_t flags2;
+	u8_t SIV;			// Number of satellites used in position solution
+	s32_t longitude;		// Degrees * 10^-7 (more accurate than floats)
+	s32_t latitude;			// Degrees * 10^-7 (more accurate than floats)
+	s32_t altitude;			// Number of mm above ellipsoid
+	s32_t altitudeMSL;		// Number of mm above Mean Sea Level
+	u32_t horizontalAccuracy;	// mm * 10^-1 (i.e. 0.1mm)
+	u32_t verticalAccuracy;		// mm * 10^-1 (i.e. 0.1mm)
+	/* velocity */
+	s32_t north;			// mm/s
+	s32_t east;			// mm/s
+	s32_t down;			// mm/s
+	s32_t ground_speed;		// mm/s
+	s32_t heading_of_motion;	// degrees * 10^-5
+	u32_t speed_accuracy;
+	u32_t heading_accuracy;		// degrees * 10^-5
+	u16_t pDOP;			// Position dilution of precision 10^-2
+	u8_t flags3;
+	u8_t reserved1[5];
+	s32_t headVeh;			// degrees * 10^-5
+	s16_t magDec;			// degrees * 10^-2
+	u16_t magAcc;			// degrees * 10^-2
+} __packed;
+
+struct ubx_payload_rxm_pmreq {
+	u8_t version;			// message version
+	u8_t reserved1[3];
+	u32_t duration;			// duration of the requested task
+	struct {
+		u32_t reserved : 1;
+		u32_t backup : 1;
+		u32_t force : 1;
+	} flags;			// task flags
+	struct {
+		u32_t reserved1 : 3;
+		u32_t uartrx : 1;
+		u32_t reserved2 : 1;
+		u32_t extint0 : 1;
+		u32_t extint1 : 1;
+		u32_t spics : 1;
+	} wakeupSources;		// rising or falling edge wakes the receiver
+} __packed;
+
+struct ubx_payload_sec_uniqid {
+	u8_t version;			// message version
+	u8_t reserved1[3];
+	u8_t uniqueId[5];		// unique id,
+} __packed;
 
 #define UBX_FRAME_SYNC_SIZE 2
 #define UBX_FRAME_HEADER_SIZE sizeof(struct ubx_header)
@@ -458,5 +689,16 @@ struct ubx_frame {
 #define UBX_HEADER_LOG_DEFINE(n) UBX_HEADER_DEFINE(log,n);
 #define UBX_HEADER_SEC_DEFINE(n) UBX_HEADER_DEFINE(sec,n);
 #define UBX_HEADER_HNR_DEFINE(n) UBX_HEADER_DEFINE(hnr,n);
+
+/* ubx payload sizes */
+#define UBX_PAYLOAD_CFG_CFG_SIZE	sizeof(struct ubx_payload_cfg_cfg)
+#define UBX_PAYLOAD_CFG_PM2_SIZE	sizeof(struct ubx_payload_cfg_pm2)
+#define UBX_PAYLOAD_CFG_PRT_SIZE	sizeof(union ubx_payload_cfg_prt)
+#define UBX_PAYLOAD_CFG_PWR_SIZE	sizeof(struct ubx_payload_cfg_pwr)
+#define UBX_PAYLOAD_CFG_RXM_SIZE	sizeof(struct ubx_payload_cfg_rxm)
+#define UBX_PAYLOAD_CFG_TP5_SIZE	sizeof(struct ubx_payload_cfg_tp5)
+#define UBX_PAYLOAD_NAV_PVT_SIZE	sizeof(struct ubx_payload_nav_pvt)
+#define UBX_PAYLOAD_RXM_PMREQ_SIZE	sizeof(struct ubx_payload_rxm_pmreq)
+#define UBX_PAYLOAD_SEC_UNIQID_SIZE	sizeof(struct ubx_payload_sec_uniqid)
 
 #endif /* __GNSS_UBLOX_UBX_H__ */

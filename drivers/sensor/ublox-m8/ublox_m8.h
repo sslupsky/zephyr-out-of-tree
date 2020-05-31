@@ -29,7 +29,7 @@
 #include <sys/util.h>
 #include <drivers/gnss.h>
 #include <drivers/gpio.h>
-#include <net/buf.h>
+// #include <net/buf.h>
 #include <sys/ring_buffer.h>
 #include <kernel.h>
 #include "ubx.h"
@@ -39,14 +39,11 @@
 #define UBLOX_M8_MESSAGE_TIMEOUT_MSEC	1000
 
 #define UBLOX_M8_RECV_BUF_SIZE		128
-#define UBLOX_MAX_DATA_LENGTH		256
 
 /*!
  *  I2C ADDRESS/BITS/SETTINGS
  */
 #define UBLOX_M8_ADDRESS	(0x42)		/**< The default I2C address for the gnss. */
-#define UBLOX_M8_CHIPID		(0x23)		/**< Default chip ID. */
-#define UBLOX_M8_CHIPID_MASK	0b11111011
 
 
 // A default of 250ms for maxWait seems fine for I2C but is not enough for SerialUSB.
@@ -67,6 +64,8 @@
 
 #define UBLOX_M8_REGISTER_LEN		0xFD
 #define UBLOX_M8_REGISTER_MSG		0xFF
+#define UBLOX_SAM_M8Q_TXD_PIO		6
+#define UBLOX_SAM_M8Q_EXTINT_PIO	13
 #define UBLOX_SAM_M8Q_TXREADY_PIO	6
 
 /**
@@ -112,17 +111,23 @@ enum ublox_comm_port {
 /*!
  *  Struct to hold registers.
  */
-typedef struct {
-} UBLOX_M8_device_t;
+union ublox_m8_register_len {
+	u16_t len;
+};
 
-typedef union {
-	u8_t reg;
-} UBLOX_M8_register_t;
+union ublox_m8_register_msg {
+	u8_t msg;
+};
 
-typedef union {
-	UBLOX_M8_device_t reg;
-	u8_t raw[sizeof(UBLOX_M8_device_t)];
-} gnss_t;
+struct ublox_m8_device {
+	union ublox_m8_register_len len;
+	union ublox_m8_register_msg msg;
+};
+
+union ublox_m8 {
+	struct ublox_m8_device reg;
+	u8_t raw[sizeof(struct ublox_m8_device)];
+};
 
 
 struct msg_handler_data {
@@ -150,12 +155,29 @@ union ublox_frame {
 	u8_t raw[sizeof(struct ubx_frame) + UBX_MAX_PAYLOAD_SIZE];
 };
 
+/*
+ * used to evaluated size of structures and types
+ */
+// u8_t x = sizeof(struct k_thread);
+// u8_t x = sizeof(struct k_timer);
+// u8_t x = sizeof(struct k_delayed_work);
+// u8_t x = sizeof(struct k_pipe);
+// u8_t x = sizeof(struct k_sem);
+// u8_t x = sizeof(struct k_mutex);
+// u8_t x = sizeof(struct k_work);
+// u8_t x = sizeof(k_timeout_t);
+
+
+// u8_t x = sizeof(union ublox_frame);
+// u8_t x = sizeof(struct gpio_callback);
+// u8_t x = sizeof(struct gnss_trigger);
+// u8_t x = sizeof(gnss_trigger_handler_t);
+
 /* driver structs */
 struct ublox_m8_data {
 	struct device *i2c;
 	enum gnss_device_state device_state;
 	enum gnss_sentence_state sentence_state;
-	gnss_t gnss;
 	void (*state_change_cb)(u8_t state);
 	struct device *dev;
 	struct device *extint_gpio;
@@ -168,7 +190,7 @@ struct ublox_m8_data {
 	u8_t __aligned(4) rb_buf[UBX_MAX_FRAME_SIZE];
 	struct k_pipe rx_pipe;
 
-	struct net_buf_pool *buf_pool;
+	// struct net_buf_pool *buf_pool;
 	struct k_sem msg_sem;
 	struct k_work msg_work;
 	int last_error;
@@ -187,6 +209,10 @@ struct ublox_m8_data {
 
 	union ublox_frame frame;
 	union ublox_device_id device_id;
+
+	struct gnss_pvt pvt;
+	char sw_version[30];
+	char hw_version[10];
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER
 	struct device *txready_gpio;

@@ -29,7 +29,7 @@
 
 LOG_MODULE_DECLARE(UBLOX_M8, CONFIG_GNSS_LOG_LEVEL);
 
-static inline void ublox_m8_setup_int(struct device *dev,
+static inline void ublox_m8_setup_txready_int(struct device *dev,
 			     bool enable)
 {
 	struct ublox_m8_data *data = dev->driver_data;
@@ -51,16 +51,16 @@ int ublox_m8_trigger_set(struct device *dev,
 
 	switch (trig->type) {
 	case GNSS_TRIG_DATA_READY:
-		ublox_m8_setup_int(dev, false);
+		ublox_m8_setup_txready_int(dev, false);
 		drv_data->data_ready_handler = handler;
 		if (handler == NULL) {
 			return 0;
 		}
 		drv_data->data_ready_trigger = *trig;
-		ublox_m8_setup_int(dev, true);
+		ublox_m8_setup_txready_int(dev, true);
 		break;
 	
-	case GNSS_TRIG_TIMER:
+	case GNSS_TRIG_POLL:
 		drv_data->poll_handler = handler;
 		if (handler == NULL) {
 			return 0;
@@ -83,7 +83,7 @@ static void ublox_m8_gpio_callback(struct device *dev,
 
 	ARG_UNUSED(pins);
 
-	ublox_m8_setup_int(drv_data->dev, false);
+	// ublox_m8_setup_txready_int(drv_data->dev, false);
 
 #if defined(CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD)
 	k_sem_give(&drv_data->trigger_gpio_sem);
@@ -102,7 +102,7 @@ static void ublox_m8_trigger_thread_cb(void *arg)
 					     &drv_data->data_ready_trigger);
 	}
 
-	ublox_m8_setup_int(dev, true);
+	// ublox_m8_setup_txready_int(dev, true);
 }
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD
@@ -148,7 +148,7 @@ int ublox_m8_init_interrupt(struct device *dev)
 
 	gpio_pin_configure(drv_data->txready_gpio, cfg->txready_gpio_pin,
 			   cfg->txready_gpio_flags |
-			   GPIO_INPUT | GPIO_PULL_UP);
+			   GPIO_INPUT);
 
 	/* read the state of the pin */
 	ret = gpio_pin_get(drv_data->txready_gpio, cfg->txready_gpio_pin);
