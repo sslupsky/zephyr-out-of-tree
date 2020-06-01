@@ -146,13 +146,10 @@ union ublox_device_id {
 };
 
 union ublox_frame {
-	struct {
-		struct ubx_frame ubx;
-		u8_t payload[UBX_MAX_PAYLOAD_SIZE];
-	};
-	u8_t nmea[sizeof(struct ubx_frame) + UBX_MAX_PAYLOAD_SIZE];
-	u8_t rtcm[sizeof(struct ubx_frame) + UBX_MAX_PAYLOAD_SIZE];
-	u8_t raw[sizeof(struct ubx_frame) + UBX_MAX_PAYLOAD_SIZE];
+	struct ubx_frame ubx;
+	u8_t nmea[sizeof(struct ubx_frame)];
+	u8_t rtcm[sizeof(struct ubx_frame)];
+	u8_t raw[sizeof(struct ubx_frame)];
 };
 
 /*
@@ -196,6 +193,7 @@ struct ublox_m8_data {
 	int last_error;
 	int poll_status;
 
+	struct k_sem ubx_frame_sem;
 	struct k_sem ubx_get_sem;
 	struct k_sem ubx_ack_sem;
 	struct k_sem ubx_poll_sem;

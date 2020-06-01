@@ -22,6 +22,10 @@
 #include <zephyr/types.h>
 #include <sys/util.h>
 
+#ifndef UBX_MAX_PAYLOAD_SIZE
+#define UBX_MAX_PAYLOAD_SIZE 164 // Maximum payload size, see 32.15.4.2
+#endif
+
 //Registers
 //The following are UBX Class IDs. Descriptions taken from ZED-F9P Interface Description Document page 32, NEO-M8P Interface Description page 145
 enum ubx_class {
@@ -46,10 +50,10 @@ enum ubx_class {
 //The following are used for configuration. Descriptions are from the ZED-F9P Interface Description pg 33-34 and NEO-M9N Interface Description pg 47-48
 enum ubx_cfg_id {
 	ubx_cfg_id_ant = 0x13,		//Antenna Control Settings. Used to configure the antenna control settings
-	ubx_cfg_id_batch = 0x93,		//Get/set data batching configuration.
+	ubx_cfg_id_batch = 0x93,	//Get/set data batching configuration.
 	ubx_cfg_id_cfg = 0x09,		//Clear, Save, and Load Configurations. Used to save current configuration
 	ubx_cfg_id_dat = 0x06,		//Set User-defined Datum or The currently defined Datum
-	ubx_cfg_id_dgnss = 0x70,		//DGNSS configuration
+	ubx_cfg_id_dgnss = 0x70,	//DGNSS configuration
 	ubx_cfg_id_geofence = 0x69,	//Geofencing configuration. Used to configure a geofence
 	ubx_cfg_id_gnss = 0x3E,		//GNSS system configuration
 	ubx_cfg_id_inf = 0x02,		//Depending on packet length, either: poll configuration for one protocol, or information message configuration
@@ -57,7 +61,7 @@ enum ubx_cfg_id {
 	ubx_cfg_id_logfilter = 0x47, //Data Logger Configuration
 	ubx_cfg_id_msg = 0x01,		//Poll a message configuration, or Set Message Rate(s), or Set Message Rate
 	ubx_cfg_id_nav5 = 0x24,		//Navigation Engine Settings. Used to configure the navigation engine including the dynamic model.
-	ubx_cfg_id_navx5 = 0x23,		//Navigation Engine Expert Settings
+	ubx_cfg_id_navx5 = 0x23,	//Navigation Engine Expert Settings
 	ubx_cfg_id_nmea = 0x17,		//Extended NMEA protocol configuration V1
 	ubx_cfg_id_odo = 0x1E,		//Odometer, Low-speed COG Engine Settings
 	ubx_cfg_id_pm2 = 0x3B,		//Extended power management configuration
@@ -204,8 +208,10 @@ enum ubx_nav_id {
 	ubx_nav_id_resetodo = 0x10,	//Reset odometer
 	ubx_nav_id_sat = 0x35,		//Satellite Information
 	ubx_nav_id_sig = 0x43,		//Signal Information
+	ubx_nav_id_sol = 0x06,		// Solution information
 	ubx_nav_id_status = 0x03,	//Receiver Navigation Status
 	ubx_nav_id_svin = 0x3B,		//Survey-in data. Used for checking Survey In status
+	ubx_nav_id_svinfo = 0x30,	//Space vehicle information
 	ubx_nav_id_timebds = 0x24,	//BDS Time Solution
 	ubx_nav_id_timegal = 0x25,	//Galileo Time Solution
 	ubx_nav_id_timeglo = 0x23,	//GLO Time Solution
@@ -278,6 +284,13 @@ enum ubx_esf_id {
 enum ubx_sync_id {
 	ubx_sync_1 = 0xB5,
 	ubx_sync_2 = 0x62,
+} __packed;
+
+enum ubx_port_id {
+	ubx_port_ddc = 0,
+	ubx_port_uart1 = 1,
+	ubx_port_usb = 3,
+	ubx_port_spi = 4,
 } __packed;
 
 enum ubx_frame_state {
@@ -378,13 +391,14 @@ struct ubx_frame_req {
 
 struct ubx_frame {
 	union ubx_header header;
+	u8_t payload[UBX_MAX_PAYLOAD_SIZE];
 	struct ubx_checksum checksum;
-	const u8_t *payload;
+	// const u8_t *payload;
 	u16_t len;
 	struct ubx_frame_status status;
 	enum ubx_frame_state state;
 	enum ubx_message type;
-};
+} __packed;
 
 struct ubx_payload_cfg_cfg {
 	struct {
@@ -435,6 +449,12 @@ struct ubx_payload_cfg_cfg {
 	} deviceMask;
 } __packed;
 
+struct ubx_payload_cfg_msg {
+	u8_t msgClass;
+	u8_t msgID;
+	u8_t rate;
+} __packed;
+
 struct ubx_payload_cfg_pm2 {
 	u8_t version;
 	u8_t reserved1;
@@ -470,76 +490,80 @@ struct ubx_payload_cfg_pwr {
 	u32_t state;
 } __packed;
 
+struct ubx_payload_cfg_prt_ddc {
+	u8_t portID;
+	u8_t reserved1;
+	struct {
+		u16_t en : 1;
+		u16_t pol : 1;
+		u16_t pin : 5;
+		u16_t thres : 9;
+	} txReady;			// txReady pin configuration
+	struct {
+		u32_t reserved1 : 1;
+		u32_t slaveAddr : 7;
+	} mode;
+	u8_t reserved2[4];
+	struct {
+		u16_t inUbx : 1;
+		u16_t inNmea : 1;
+		u16_t inRtcm : 1;
+		u16_t reserved1 : 2;
+		u16_t inRtcm3 : 1;
+	} inProtoMask;
+	struct {
+		u16_t outUbx : 1;
+		u16_t outNmea : 1;
+		u16_t reserved1 : 3;
+		u16_t inRtcm3 : 1;
+	} outProtoMask;
+	struct {
+		u16_t reserved1 : 1;
+		u16_t extendedTxTimeout : 1;
+	} flags;
+	u8_t reserved3;
+} __packed;
+
+struct ubx_payload_cfg_prt_uart {
+	u8_t portID;
+	u8_t reserved1;
+	struct {
+		u16_t en : 1;
+		u16_t pol : 1;
+		u16_t pin : 5;
+		u16_t thres : 9;
+	} txReady;			// txReady pin configuration
+	struct {
+		u32_t reserved1 : 6;
+		u32_t charLen : 2;
+		u32_t reserved2 : 1;
+		u32_t parity : 3;
+		u32_t nStopBits : 2;
+	} mode;
+	u32_t baudRate;			// Bits/s
+	struct {
+		u16_t inUbx : 1;
+		u16_t inNmea : 1;
+		u16_t inRtcm : 1;
+		u16_t reserved1 : 2;
+		u16_t inRtcm3 : 1;
+	} inProtoMask;
+	struct {
+		u16_t outUbx : 1;
+		u16_t outNmea : 1;
+		u16_t reserved1 : 3;
+		u16_t inRtcm3 : 1;
+	} outProtoMask;
+	struct {
+		u16_t reserved1 : 1;
+		u16_t extendedTxTimeout : 1;
+	} flags;
+	u8_t reserved2[2];
+} __packed;
+
 union ubx_payload_cfg_prt {
-	struct {
-		u8_t portID;
-		u8_t reserved1;
-		struct {
-			u16_t en : 1;
-			u16_t pol : 1;
-			u16_t pin : 5;
-			u16_t thres : 9;
-		} txReady;			// txReady pin configuration
-		struct {
-			u32_t reserved1 : 1;
-			u32_t slaveAddr : 7;
-		} mode;
-		u8_t reserved2[4];
-		struct {
-			u16_t inUbx : 1;
-			u16_t inNmea : 1;
-			u16_t inRtcm : 1;
-			u16_t reserved1 : 2;
-			u16_t inRtcm3 : 1;
-		} inProtoMask;
-		struct {
-			u16_t outUbx : 1;
-			u16_t outNmea : 1;
-			u16_t reserved1 : 3;
-			u16_t inRtcm3 : 1;
-		} outProtoMask;
-		struct {
-			u16_t reserved1 : 1;
-			u16_t extendedTxTimeout : 1;
-		} flags;
-		u8_t reserved3;
-	} ddc;
-	struct {
-		u8_t portID;
-		u8_t reserved1;
-		struct {
-			u16_t en : 1;
-			u16_t pol : 1;
-			u16_t pin : 5;
-			u16_t thres : 9;
-		} txReady;			// txReady pin configuration
-		struct {
-			u32_t reserved1 : 6;
-			u32_t charLen : 2;
-			u32_t reserved2 : 1;
-			u32_t parity : 3;
-			u32_t nStopBits : 2;
-		} mode;
-		u32_t baudRate;			// Bits/s
-		struct {
-			u16_t inUbx : 1;
-			u16_t inNmea : 1;
-			u16_t inRtcm : 1;
-			u16_t reserved1 : 2;
-			u16_t inRtcm3 : 1;
-		} inProtoMask;
-		struct {
-			u16_t outUbx : 1;
-			u16_t outNmea : 1;
-			u16_t reserved1 : 3;
-			u16_t inRtcm3 : 1;
-		} outProtoMask;
-		struct {
-			u16_t reserved1 : 1;
-			u16_t extendedTxTimeout : 1;
-		} flags;
-		u8_t reserved2[2];
-	} uart;
+	struct ubx_payload_cfg_prt_ddc ddc;
+	struct ubx_payload_cfg_prt_uart uart;
 } __packed;
 
 struct ubx_payload_cfg_rate {
@@ -647,10 +671,6 @@ struct ubx_payload_sec_uniqid {
 #define UBX_FRAME_STATUS_SIZE sizeof(struct ubx_frame_status)
 #define UBX_FRAME_SIZE(n) (UBX_FRAME_REQ_SIZE + sizeof(n))
 
-#ifndef UBX_MAX_PAYLOAD_SIZE
-#define UBX_MAX_PAYLOAD_SIZE 164 // Maximum payload size, see 32.15.4.2
-#endif
-
 #define UBX_MAX_FRAME_SIZE	(UBX_FRAME_REQ_SIZE + UBX_MAX_PAYLOAD_SIZE)
 
 #define UBX_SYNC {ubx_sync_1, ubx_sync_2}
@@ -703,5 +723,10 @@ struct ubx_payload_sec_uniqid {
 #define UBX_PAYLOAD_NAV_PVT_SIZE	sizeof(struct ubx_payload_nav_pvt)
 #define UBX_PAYLOAD_RXM_PMREQ_SIZE	sizeof(struct ubx_payload_rxm_pmreq)
 #define UBX_PAYLOAD_SEC_UNIQID_SIZE	sizeof(struct ubx_payload_sec_uniqid)
+
+static inline u64_t sys_get_be40(const u8_t src[5])
+{
+	return ((u64_t)src[0] << 32) | sys_get_be32(&src[1]);
+}
 
 #endif /* __GNSS_UBLOX_UBX_H__ */

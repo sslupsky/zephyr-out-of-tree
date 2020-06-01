@@ -117,8 +117,8 @@ static void ublox_m8_trigger_thread(int dev_ptr, int unused)
 
 	while (1) {
 		k_sem_take(&drv_data->trigger_gpio_sem, K_FOREVER);
-		// ublox_m8_trigger_thread_cb(dev);
-		k_sem_give(&drv_data->msg_sem);
+		ublox_m8_trigger_thread_cb(dev);
+		// k_sem_give(&drv_data->msg_sem);
 	}
 }
 #endif

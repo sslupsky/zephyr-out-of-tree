@@ -104,6 +104,7 @@ struct geo_fence_params {
 
 /* driver sensor channels */
 enum gnss_channel {
+	GNSS_CHAN_NONE,
 	GNSS_CHAN_TIME,
 	GNSS_CHAN_POSITION,
 	GNSS_CHAN_VELOCITY,
@@ -112,6 +113,8 @@ enum gnss_channel {
 	GNSS_CHAN_VERSION,
 	GNSS_CHAN_SLEEP,
 	GNSS_CHAN_DDC,
+	GNSS_CHAN_UART,
+	GNSS_CHAN_STATUS,
 
 	/** All channels. */
 	GNSS_CHAN_ALL,
@@ -135,14 +138,30 @@ enum gnss_channel {
 
 /* driver sensor attributes */
 enum gnss_attribute {
-	/**
-	 * Sensor sampling frequency, i.e. how many times a second the
-	 * sensor takes a measurement.
-	 */
-	GNSS_ATTR_MSG_RATE,
 	GNSS_ATTR_UPDATE_PERIOD,
 	GNSS_ATTR_SEARCH_PERIOD,
 	GNSS_ATTR_SLEEP_DURATION,
+
+	GNSS_ATTR_MEASUREMENT_RATE,
+	GNSS_ATTR_NAV_RATE,
+	GNSS_ATTR_NAV_TIMEREF,
+
+	GNSS_ATTR_MSG_RATE_NAV_PVT,
+	GNSS_ATTR_MSG_RATE_NAV_SOL,
+
+	GNSS_ATTR_ID,
+
+	GNSS_ATTR_VERSION_HW,
+	GNSS_ATTR_VERSION_SW,
+	GNSS_ATTR_VERSION_PROTO,
+
+	GNSS_ATTR_PORT_UART,
+	GNSS_ATTR_PORT_I2C,
+	GNSS_ATTR_PORT_USB,
+
+	GNSS_ATTR_NAV_STATUS,
+
+	GNSS_ATTR_SLEEP,
 
 	/**
 	 * Number of all common sensor attributes.
@@ -283,6 +302,17 @@ typedef int (*gnss_trigger_set_t)(struct device *dev,
 				    gnss_trigger_handler_t handler);
 
 /**
+ * @typedef gnss_attr_get_t
+ * @brief Callback API upon getting a sensor's attributes
+ *
+ * See gnss_attr_get() for argument description
+ */
+typedef int (*gnss_attr_get_t)(struct device *dev,
+				 enum gnss_channel chan,
+				 enum gnss_attribute attr,
+				 void *val);
+
+/**
  * @typedef gnss_attr_set_t
  * @brief Callback API upon setting a sensor's attributes
  *
@@ -291,7 +321,7 @@ typedef int (*gnss_trigger_set_t)(struct device *dev,
 typedef int (*gnss_attr_set_t)(struct device *dev,
 				 enum gnss_channel chan,
 				 enum gnss_attribute attr,
-				 const struct gnss_pvt *val);
+				 void *val);
 /**
  * @typedef gnss_sample_fetch_t
  * @brief Callback API for fetching data from a sensor
@@ -313,9 +343,42 @@ typedef int (*gnss_channel_get_t)(struct device *dev,
 __subsystem struct gnss_driver_api {
 	gnss_sample_fetch_t sample_fetch;
 	gnss_channel_get_t channel_get;
+	gnss_attr_get_t attr_get;
 	gnss_attr_set_t attr_set;
 	gnss_trigger_set_t trigger_set;
 };
+
+/**
+ * @brief Get an attribute for a sensor
+ *
+ * @param dev Pointer to the sensor device
+ * @param chan The channel the attribute belongs to, if any.  Some
+ * attributes may only be set for all channels of a device, depending on
+ * device capabilities.
+ * @param attr The attribute to set
+ * @param val The value to set the attribute to
+ *
+ * @return 0 if successful, negative errno code if failure.
+ */
+__syscall int gnss_attr_get(struct device *dev,
+			      enum gnss_channel chan,
+			      enum gnss_attribute attr,
+			      void *val);
+
+static inline int z_impl_gnss_attr_get(struct device *dev,
+					enum gnss_channel chan,
+					enum gnss_attribute attr,
+					void *val)
+{
+	const struct gnss_driver_api *api =
+		(const struct gnss_driver_api *)dev->driver_api;
+
+	if (api->attr_get == NULL) {
+		return -ENOTSUP;
+	}
+
+	return api->attr_get(dev, chan, attr, val);
+}
 
 /**
  * @brief Set an attribute for a sensor
@@ -332,12 +395,12 @@ __subsystem struct gnss_driver_api {
 __syscall int gnss_attr_set(struct device *dev,
 			      enum gnss_channel chan,
 			      enum gnss_attribute attr,
-			      const struct gnss_pvt *val);
+			      void *val);
 
 static inline int z_impl_gnss_attr_set(struct device *dev,
 					enum gnss_channel chan,
 					enum gnss_attribute attr,
-					const struct gnss_pvt *val)
+					void *val)
 {
 	const struct gnss_driver_api *api =
 		(const struct gnss_driver_api *)dev->driver_api;
