@@ -146,8 +146,8 @@ enum gnss_attribute {
 	GNSS_ATTR_NAV_RATE,
 	GNSS_ATTR_NAV_TIMEREF,
 
-	GNSS_ATTR_MSG_RATE_NAV_PVT,
-	GNSS_ATTR_MSG_RATE_NAV_SOL,
+	GNSS_ATTR_NAV_MSG_RATE_PVT,
+	GNSS_ATTR_NAV_MSG_RATE_SOL,
 
 	GNSS_ATTR_ID,
 
@@ -340,12 +340,30 @@ typedef int (*gnss_channel_get_t)(struct device *dev,
 				    enum gnss_channel chan,
 				    void *val);
 
+/**
+ * @typedef gnss_status_callback_t
+ * @brief Callback API upon enabling the gnss module
+ *
+ * @param "struct device *dev" Pointer to the sensor device
+ */
+typedef void (*gnss_status_callback_t)(struct device *dev);
+
+/**
+ * @typedef gnss_enable_t
+ * @brief Callback API upon enabling the gps module
+ *
+ * See gnss_attr_get() for argument description
+ */
+typedef int (*gnss_enable_t)(struct device *dev,
+			     gnss_status_callback_t handler);
+
 __subsystem struct gnss_driver_api {
 	gnss_sample_fetch_t sample_fetch;
 	gnss_channel_get_t channel_get;
 	gnss_attr_get_t attr_get;
 	gnss_attr_set_t attr_set;
 	gnss_trigger_set_t trigger_set;
+	gnss_enable_t enable;
 };
 
 /**
@@ -533,6 +551,32 @@ static inline int z_impl_gnss_channel_get(struct device *dev,
 		(const struct gnss_driver_api *)dev->driver_api;
 
 	return api->channel_get(dev, chan, val);
+}
+
+/**
+ * @brief Enable the gnss module and set the enable handler
+ *
+ * This function initializes the GNSS core subsystem and enables the
+ * corresponding hardware so that it can begin receiving
+ * as well as generating interrupts.
+ *
+ * @param dev Pointer to the sensor device
+ * @param status_cb Callback registered by user to notify
+ *                      about USB device controller state.
+ *
+ * @return 0 if successful, negative errno code if failure.
+ */
+static inline int gnss_enable(struct device *dev,
+			      gnss_status_callback_t status_cb)
+{
+	const struct gnss_driver_api *api =
+		(const struct gnss_driver_api *)dev->driver_api;
+
+	if (api->trigger_set == NULL) {
+		return -ENOTSUP;
+	}
+
+	return api->enable(dev, status_cb);
 }
 
 

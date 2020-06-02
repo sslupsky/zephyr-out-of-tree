@@ -169,6 +169,32 @@ static int cmd_nav_status(const struct shell *shell)
 	return ret;
 }
 
+static int cmd_nav_pvt_rate(const struct shell *shell, size_t argc, char **argv)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	u8_t rate;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+	if (argc == 2) {
+		rate = MIN(MAX(strtol(argv[1], NULL, 0), 1), 3600);
+		gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_RATE_PVT, &rate);
+	} else {
+		gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_RATE_PVT, &rate);
+	}
+
+	shell_print(shell, "nav pvt rate: %d", rate);
+
+	return ret;
+}
+
 /***********************/
 
 static int cmd_info_version(const struct shell *shell)
@@ -189,11 +215,10 @@ static int cmd_info_version(const struct shell *shell)
 	drv_data = dev->driver_data;
 
 	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_VERSION_HW, hw_ver);
-	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_VERSION_SW, sw_ver);
-	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_VERSION_PROTO, proto_ver);
-
-	shell_print(shell, "software version: %s", sw_ver);
 	shell_print(shell, "hardware version: %s", hw_ver);
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_VERSION_SW, sw_ver);
+	shell_print(shell, "software version: %s", sw_ver);
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_VERSION_PROTO, proto_ver);
 	shell_print(shell, "protocol version: %s", proto_ver);
 
 	return ret;
@@ -490,6 +515,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(gnss_port_cmds,
 SHELL_STATIC_SUBCMD_SET_CREATE(gnss_nav_cmds,
 	SHELL_CMD(status, NULL, HELP_NONE, cmd_nav_status),
 	SHELL_CMD(pvt, NULL, HELP_NONE, cmd_nav_pvt),
+	SHELL_CMD_ARG(pvtrate, NULL, HELP_NONE, cmd_nav_pvt_rate, 0, 1),
 	SHELL_SUBCMD_SET_END
 );
 
