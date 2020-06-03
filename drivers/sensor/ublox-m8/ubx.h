@@ -26,6 +26,8 @@
 #define UBX_MAX_PAYLOAD_SIZE 164 // Maximum payload size, see 32.15.4.2
 #endif
 
+#define UBX_ACK_PAYLOAD_SIZE 2
+
 //Registers
 //The following are UBX Class IDs. Descriptions taken from ZED-F9P Interface Description Document page 32, NEO-M8P Interface Description page 145
 enum ubx_class {
@@ -380,6 +382,7 @@ struct ubx_frame_status {
 	enum ubx_response response_request;
 	enum ubx_response response_received;
 	bool checksum_valid;
+	bool ack_checksum_valid;
 	bool error;
 };
 
@@ -393,7 +396,10 @@ struct ubx_frame {
 	union ubx_header header;
 	u8_t payload[UBX_MAX_PAYLOAD_SIZE];
 	struct ubx_checksum checksum;
-	// const u8_t *payload;
+	union ubx_header ack_header;
+	u8_t ack_payload[UBX_ACK_PAYLOAD_SIZE];
+	struct ubx_checksum ack_checksum;
+	union ubx_header rx_header;
 	u16_t len;
 	struct ubx_frame_status status;
 	enum ubx_frame_state state;

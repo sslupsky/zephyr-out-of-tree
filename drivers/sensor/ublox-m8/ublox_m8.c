@@ -34,7 +34,7 @@ LOG_MODULE_REGISTER(UBLOX_M8, CONFIG_GNSS_LOG_LEVEL);
 
 // NET_BUF_POOL_DEFINE(ublox_buf_pool, 8, 32, 0, NULL);
 
-FOR_EACH(UBX_HEADER_CFG_DEFINE, cfg, msg, pm2, prt, pms, pwr, rate, rxm);
+FOR_EACH(UBX_HEADER_CFG_DEFINE, cfg, msg, pm2, prt, pms, pwr, rate, rxm, tp5);
 FOR_EACH(UBX_HEADER_NAV_DEFINE, pvt, status, geofence, sat, timeutc);
 FOR_EACH(UBX_HEADER_SEC_DEFINE, uniqid);
 FOR_EACH(UBX_HEADER_ACK_DEFINE, ack, nak);
@@ -65,26 +65,44 @@ const union ubx_cfg_prt_output_protocol ubx_ddc_protocol = {
  * u-center application.
  * 
  * UART1 port: none in, none out, baud 460800, 8 N 1, 
- * B5 62 06 00 14 00 01 00 00 00 D0 08 00 00 00 08 07 00 00 00 00 00 00 00 00 00 02 72
+ * B5 62 06 00 14 00
+ * 01 00 00 00 D0 08 00 00   00 08 07 00 00 00 00 00
+ * 00 00 00 00
+ * 02 72
  * 
  * DDC port:  ubx in, ubx out, slave=42, txready, pio=6, thres 8
- * B5 62 06 00 14 00 00 00 99 00 84 00 00 00 00 00 00 00 01 00 01 00 00 00 00 00 39 58
+ * B5 62 06 00 14 00
+ * 00 00 99 00 84 00 00 00   00 00 00 00 01 00 01 00
+ * 00 00 00 00
+ * 39 58
  * 
  * DDC port:  ubx in, ubx out, slave=42, txready, pio=6, thres 8, extended timeout
- * B5 62 06 00 14 00 00 00 99 00 84 00 00 00 00 00 00 00 01 00 01 00 02 00 00 00 3B 60
+ * B5 62 06 00 14 00
+ * 00 00 99 00 84 00 00 00   00 00 00 00 01 00 01 00
+ * 02 00 00 00
+ * 3B 60
  * 
  * Save configuration:  All settings saved to BBR
- * B5 62 06 09 0D 00 00 00 00 00 FF FF 00 00 00 00 00 00 01 1B A9
+ * B5 62 06 09 0D 00
+ * 00 00 00 00 FF FF 00 00   00 00 00 00 01
+ * 1B A9
  * 
  * PM2 configuration:  extint0, extintWake, extintBackup, updateRTC, updateEPH, mode ON/OFF
- * B5 62 06 3B 30 00 02 06 00 00 60 98 40 01 00 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 2C 01 00 00 4F
- * C1 03 00 87 02 00 00 FF 00 00 00 64 40 01 00 00 00 00 00 21 10
+ * B5 62 06 3B 30 00
+ * 02 06 00 00 60 98 40 01   00 00 00 00 00 00 00 00
+ * 00 00 00 00 02 00 00 00   2C 01 00 00 4F C1 03 00
+ * 87 02 00 00 FF 00 00 00   64 40 01 00 00 00 00 00
+ * 21 10
  * 
  * RXM configuration:  power save mode
- * B5 62 06 11 02 00 08 01 22 92
+ * B5 62 06 11 02 00
+ * 08 01
+ * 22 92
  * 
  * RXM pmreq:  v2, duration 10000ms, backup, wake extint0
- * B5 62 02 41 10 00 00 00 00 00 10 27 00 00 02 00 00 00 20 00 00 00 AC 18
+ * B5 62 02 41 10 00
+ * 00 00 00 00 10 27 00 00   02 00 00 00 20 00 00 00
+ * AC 18
  */
 
 // const u8_t ucenter_cfg_prt_uart1[UBX_PAYLOAD_CFG_PRT_SIZE] =	{0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00, 0x00, 0x08, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -105,7 +123,10 @@ const union ubx_cfg_prt_output_protocol ubx_ddc_protocol = {
  * UBX_CFG_PRT
  * ucenter configuration:
  * portID: DDC, inProtoMask: ubx in, outProtoMask: ubx out, mode: slaveAddr=42, txReady: pio=6, thres 1 (8 bytes), flags: extendedTxTimeout
- * B5 62 06 00 14 00 00 00 99 00 84 00 00 00 00 00 00 00 01 00 01 00 02 00 00 00 3B 60
+ * B5 62 06 00 14 00
+ * 00 00 99 00 84 00 00 00   00 00 00 00 01 00 01 00
+ * 02 00 00 00
+ * 3B 60
  */
 const union ubx_payload_cfg_prt ubx_payload_cfg_prt_ddc = {
 	.ddc.portID = 0,
@@ -128,7 +149,10 @@ const union ubx_payload_cfg_prt ubx_payload_cfg_prt_poll_ddc = {
  * UBX_CFG_PRT
  * ucenter configuration:
  * portID: UART1, inProtoMask: none, outProtoMask: none, baud: 460800, mode: 8 N 1 
- * B5 62 06 00 14 00 01 00 00 00 D0 08 00 00 00 08 07 00 00 00 00 00 00 00 00 00 02 72
+ * B5 62 06 00 14 00
+ * 01 00 00 00 D0 08 00 00   00 08 07 00 00 00 00 00
+ * 00 00 00 00
+ * 02 72
  */
 const union ubx_payload_cfg_prt ubx_payload_cfg_prt_uart1 = {
 	.uart.portID = 1,
@@ -148,8 +172,11 @@ const union ubx_payload_cfg_prt ubx_payload_cfg_prt_poll_uart1 = {
  * UBX_CFG_PM2
  * ucenter configuration:
  * extint0, extintWake, extintBackup, updateRTC, updateEPH, mode ON/OFF
- * B5 62 06 3B 30 00 02 06 00 00 60 98 40 01 00 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 2C 01 00 00 4F
- * C1 03 00 87 02 00 00 FF 00 00 00 64 40 01 00 00 00 00 00 21 10
+ * B5 62 06 3B 30 00
+ * 02 06 00 00 60 98 40 01   00 00 00 00 00 00 00 00
+ * 00 00 00 00 02 00 00 00   2C 01 00 00 4F C1 03 00
+ * 87 02 00 00 FF 00 00 00   64 40 01 00 00 00 00 00
+ * 21 10
  */
 const struct ubx_payload_cfg_pm2 ubx_payload_cfg_pm2 = {
 	.version = 2,
@@ -166,7 +193,9 @@ const struct ubx_payload_cfg_pm2 ubx_payload_cfg_pm2 = {
  * UBX_CFG_CFG
  * ucenter configuration:
  * clearMask: <none>, saveMask: <all>, loadMask: <none>
- * B5 62 06 09 0D 00 00 00 00 00 FF FF 00 00 00 00 00 00 01 1B A9
+ * B5 62 06 09 0D 00
+ * 00 00 00 00 FF FF 00 00   00 00 00 00 01
+ * 1B A9
  */
 const struct ubx_payload_cfg_cfg ubx_payload_cfg_cfg_save = {
 	.saveMask.ioPort = 1,
@@ -180,7 +209,9 @@ const struct ubx_payload_cfg_cfg ubx_payload_cfg_cfg_save = {
  * UBX_CFG_RXM
  * ucenter configuration:
  * lpMode: power save mode
- * B5 62 06 11 02 00 08 01 22 92
+ * B5 62 06 11 02 00
+ * 08 01
+ * 22 92
  */
 const struct ubx_payload_cfg_rxm ubx_payload_cfg_rxm = {
 	.lpMode = 1,
@@ -190,13 +221,19 @@ const struct ubx_payload_cfg_rxm ubx_payload_cfg_rxm = {
  * UBX_RXM_PMREQ
  * ucenter configuration
  * version: 0, duration: 10000ms, flags: backup, wakeupSources: extint0
- * B5 62 02 41 10 00 00 00 00 00 10 27 00 00 02 00 00 00 20 00 00 00 AC 18
+ * B5 62 02 41 10 00
+ * 00 00 00 00 10 27 00 00   02 00 00 00 20 00 00 00
+ * AC 18
  */
 const struct ubx_payload_rxm_pmreq ubx_payload_rxm_pmreq = {
 	.version = 0,
 	.duration = sys_cpu_to_le32(10000),
 	.flags.backup = 1,
 	.wakeupSources.extint0 = 1,
+};
+
+const struct ubx_payload_cfg_tp5 ubx_payload_cfg_tp5 = {
+	.tpIdx = 0,
 };
 
 int debug_idle_rate = 60;
@@ -245,6 +282,7 @@ static int ubx_validate_frame_checksum(struct ubx_frame *frame)
 {
 	u8_t checksumA = 0;
 	u8_t checksumB = 0;
+	u8_t len = sys_get_le16(frame->header.len);
 
 	checksumA += frame->header.class;
 	checksumB += checksumA;
@@ -258,7 +296,7 @@ static int ubx_validate_frame_checksum(struct ubx_frame *frame)
 	checksumA += (frame->header.len[1]);
 	checksumB += checksumA;
 
-	for (uint16_t i = 0; i < frame->len; i++)
+	for (uint16_t i = 0; i < len; i++)
 	{
 		checksumA += frame->payload[i];
 		checksumB += checksumA;
@@ -271,6 +309,39 @@ static int ubx_validate_frame_checksum(struct ubx_frame *frame)
 			checksumB, frame->checksum.B);
 	}
 	return frame->status.checksum_valid;
+}
+
+static int ubx_validate_ack_frame_checksum(struct ubx_frame *frame)
+{
+	u8_t checksumA = 0;
+	u8_t checksumB = 0;
+	u8_t len = sys_get_le16(frame->ack_header.len);
+
+	checksumA += frame->ack_header.class;
+	checksumB += checksumA;
+
+	checksumA += frame->ack_header.id;
+	checksumB += checksumA;
+
+	checksumA += (frame->ack_header.len[0]);
+	checksumB += checksumA;
+
+	checksumA += (frame->ack_header.len[1]);
+	checksumB += checksumA;
+
+	for (uint16_t i = 0; i < len; i++)
+	{
+		checksumA += frame->ack_payload[i];
+		checksumB += checksumA;
+	}
+	if (checksumA == frame->ack_checksum.A && checksumB == frame->ack_checksum.B) {
+		frame->status.ack_checksum_valid = true;
+	} else {
+		LOG_DBG("checksum failed: A:(%02x,%02x), B:(%02x,%02x)",
+			checksumA, frame->ack_checksum.A,
+			checksumB, frame->ack_checksum.B);
+	}
+	return frame->status.ack_checksum_valid;
 }
 
 __unused
@@ -321,15 +392,24 @@ static int ublox_m8_flush_msg_pipe(struct device *dev)
 	return 0;
 }
 
+static void update_pvt(struct device *dev)
+{
+	struct ublox_m8_data *drv_data = dev->driver_data;
+
+	memcpy(&drv_data->pvt.position, drv_data->frame.ubx.payload+20, sizeof(struct gnss_position));
+	memcpy(&drv_data->pvt.velocity, drv_data->frame.ubx.payload+48, sizeof(struct gnss_velocity));
+	memcpy(&drv_data->pvt.time, drv_data->frame.ubx.payload, sizeof(struct gnss_time));
+}
+
 static void set_ubx_response(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	union ublox_frame *frame = &drv_data->frame;
+	struct ublox_frame *frame = &drv_data->frame;
 	int ret = 0;
 
-	switch (frame->ubx.header.class) {
+	switch (frame->ubx.rx_header.class) {
 	case ubx_class_ack:
-		switch (frame->ubx.header.id) {
+		switch (frame->ubx.rx_header.id) {
 		case ubx_ack_id_ack:
 			frame->ubx.status.response_received = UBX_RESPONSE_ACK;
 			k_sem_give(&drv_data->ubx_ack_sem);
@@ -348,7 +428,7 @@ static void set_ubx_response(struct device *dev)
 		}
 		break;
 	case ubx_class_cfg:
-		switch (frame->ubx.header.id) {
+		switch (frame->ubx.rx_header.id) {
 		case ubx_cfg_id_cfg:
 			frame->ubx.status.response_received = UBX_RESPONSE_GET;
 			k_sem_give(&drv_data->ubx_get_sem);
@@ -371,8 +451,24 @@ static void set_ubx_response(struct device *dev)
 		}
 		break;
 	case ubx_class_mon:
-		switch (frame->ubx.header.id) {
+		switch (frame->ubx.rx_header.id) {
 		case ubx_mon_id_ver:
+			frame->ubx.status.response_received = UBX_RESPONSE_GET;
+			k_sem_give(&drv_data->ubx_get_sem);
+			break;
+		case ubx_mon_id_hw:
+			frame->ubx.status.response_received = UBX_RESPONSE_GET;
+			k_sem_give(&drv_data->ubx_get_sem);
+			break;
+		case ubx_mon_id_hw2:
+			frame->ubx.status.response_received = UBX_RESPONSE_GET;
+			k_sem_give(&drv_data->ubx_get_sem);
+			break;
+		case ubx_mon_id_io:
+			frame->ubx.status.response_received = UBX_RESPONSE_GET;
+			k_sem_give(&drv_data->ubx_get_sem);
+			break;
+		case ubx_mon_id_gnss:
 			frame->ubx.status.response_received = UBX_RESPONSE_GET;
 			k_sem_give(&drv_data->ubx_get_sem);
 			break;
@@ -385,9 +481,10 @@ static void set_ubx_response(struct device *dev)
 		}
 		break;
 	case ubx_class_nav:
-		switch (frame->ubx.header.id) {
+		switch (frame->ubx.rx_header.id) {
 		case ubx_nav_id_pvt:
 			frame->ubx.status.response_received = UBX_RESPONSE_POLL;
+			update_pvt(dev);
 			k_sem_give(&drv_data->ubx_poll_sem);
 			break;
 		case ubx_nav_id_status:
@@ -403,7 +500,7 @@ static void set_ubx_response(struct device *dev)
 		}
 		break;
 	case ubx_class_rxm:
-		switch (frame->ubx.header.id) {
+		switch (frame->ubx.rx_header.id) {
 		case ubx_rxm_id_pmreq:
 			frame->ubx.status.response_received = UBX_RESPONSE_OUTPUT;
 			k_sem_give(&drv_data->ubx_get_sem);
@@ -417,7 +514,7 @@ static void set_ubx_response(struct device *dev)
 		}
 		break;
 	case ubx_class_sec:
-		switch (frame->ubx.header.id) {
+		switch (frame->ubx.rx_header.id) {
 		case ubx_sec_id_uniqid:
 			frame->ubx.status.response_received = UBX_RESPONSE_OUTPUT;
 			k_sem_give(&drv_data->ubx_get_sem);
@@ -437,15 +534,6 @@ static void set_ubx_response(struct device *dev)
 		break;
 	}
 	drv_data->last_error = ret;
-}
-
-static void update_pvt(struct device *dev)
-{
-	struct ublox_m8_data *drv_data = dev->driver_data;
-
-	memcpy(&drv_data->pvt.position, drv_data->frame.ubx.payload+20, sizeof(struct gnss_position));
-	memcpy(&drv_data->pvt.velocity, drv_data->frame.ubx.payload+48, sizeof(struct gnss_velocity));
-	memcpy(&drv_data->pvt.time, drv_data->frame.ubx.payload, sizeof(struct gnss_time));
 }
 
 static void ublox_m8_msg_thread(int dev_ptr, int unused)
@@ -470,11 +558,11 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 			len = 1;
 			/* read the first byte */
 			ret = i2c_read(drv_data->i2c, &rx_buf, 1, cfg->i2c_addr);
-			if (ret < 0) {
-				LOG_DBG("read error");
-				break;
-			}
-			if (rx_buf == 0xFF) {
+			// if (ret < 0) {
+			// 	LOG_DBG("read error");
+			// 	break;
+			// }
+			if (ret < 0 || rx_buf == 0xFF) {
 				if (idle_count % debug_idle_rate == 0) {
 					LOG_DBG("idle (%d)", idle_count);
 				}
@@ -534,43 +622,79 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 			break;
 		case GNSS_SENTENCE_STATE_UBX:
 			k_sem_take(&drv_data->ubx_frame_sem, K_FOREVER);
-			drv_data->frame.ubx.header.sync1 = rx_buf;
+			drv_data->frame.ubx.rx_header.sync1 = rx_buf;
 			/* get the rest of the header */
-			ret = i2c_read(drv_data->i2c, &drv_data->frame.ubx.header.raw_data[1], sizeof(union ubx_header)-1, cfg->i2c_addr);
+			ret = i2c_read(drv_data->i2c, &drv_data->frame.ubx.rx_header.raw_data[1], sizeof(union ubx_header)-1, cfg->i2c_addr);
 			if (ret < 0) {
-				LOG_DBG("ubx header error");
+				LOG_DBG("read ubx header error");
 				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
 				k_sem_give(&drv_data->ubx_frame_sem);
 				break;
 			}
 			/* get length of payload */
-			len = sys_get_le16(drv_data->frame.ubx.header.len);
-			/* get payload */
-			ret = i2c_read(drv_data->i2c, (u8_t *)drv_data->frame.ubx.payload, len, cfg->i2c_addr);
-			if (ret < 0) {
-				LOG_DBG("ubx payload error");
-				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
-				k_sem_give(&drv_data->ubx_frame_sem);
-				break;
+			len = sys_get_le16(drv_data->frame.ubx.rx_header.len);
+			if (drv_data->frame.ubx.rx_header.class == ubx_class_ack) {
+				/* copy header to ack frame */
+				drv_data->frame.ubx.ack_header = drv_data->frame.ubx.rx_header;
+				/* get payload */
+				ret = i2c_read(drv_data->i2c, (u8_t *)drv_data->frame.ubx.ack_payload, len, cfg->i2c_addr);
+				if (ret < 0) {
+					LOG_DBG("read ubx payload error");
+					drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+					k_sem_give(&drv_data->ubx_frame_sem);
+					break;
+				}
+				/* get checksum */
+				ret = i2c_read(drv_data->i2c, (u8_t *)&drv_data->frame.ubx.ack_checksum, sizeof(struct ubx_checksum), cfg->i2c_addr);
+				if (ret < 0) {
+					LOG_DBG("read ubx checksum error");
+					drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+					k_sem_give(&drv_data->ubx_frame_sem);
+					break;
+				}
+				if (ubx_validate_ack_frame_checksum(&drv_data->frame.ubx)) {
+					/* Everything is ok */
+					drv_data->last_error = 0;
+					set_ubx_response(dev);
+					LOG_INF("ubx %s, class: %d, id: %d", drv_data->frame.ubx.ack_header.id ? "ack" : "nak",
+						drv_data->frame.ubx.ack_payload[0], drv_data->frame.ubx.ack_payload[1]);
+				} else {
+					LOG_WRN("ubx ack checksum failed");
+				}
+				LOG_HEXDUMP_DBG(&drv_data->frame.ubx.ack_header, UBX_FRAME_HEADER_SIZE, "ubx header");
+				LOG_HEXDUMP_DBG(drv_data->frame.ubx.ack_payload, len, "ubx payload");
+				LOG_HEXDUMP_DBG(&drv_data->frame.ubx.ack_checksum, UBX_FRAME_CHECKSUM_SIZE, "ubx checksum");
+			} else {
+				/* copy header to incoming frame */
+				drv_data->frame.ubx.header = drv_data->frame.ubx.rx_header;
+				/* get payload */
+				ret = i2c_read(drv_data->i2c, (u8_t *)drv_data->frame.ubx.payload, len, cfg->i2c_addr);
+				if (ret < 0) {
+					LOG_DBG("read ubx payload error");
+					drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+					k_sem_give(&drv_data->ubx_frame_sem);
+					break;
+				}
+				/* get checksum */
+				ret = i2c_read(drv_data->i2c, (u8_t *)&drv_data->frame.ubx.checksum, sizeof(struct ubx_checksum), cfg->i2c_addr);
+				if (ret < 0) {
+					LOG_DBG("read ubx checksum error");
+					drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
+					k_sem_give(&drv_data->ubx_frame_sem);
+					break;
+				}
+				drv_data->frame.ubx.len = sys_get_le16(drv_data->frame.ubx.header.len);
+				if (ubx_validate_frame_checksum(&drv_data->frame.ubx)) {
+					/* Everything is ok */
+					drv_data->last_error = 0;
+					set_ubx_response(dev);
+				} else {
+					LOG_WRN("ubx checksum failed");
+				}
+				LOG_HEXDUMP_DBG(&drv_data->frame.ubx.header, UBX_FRAME_HEADER_SIZE, "ubx header");
+				LOG_HEXDUMP_DBG(drv_data->frame.ubx.payload, len, "ubx payload");
+				LOG_HEXDUMP_DBG(&drv_data->frame.ubx.checksum, UBX_FRAME_CHECKSUM_SIZE, "ubx checksum");
 			}
-			/* get checksum */
-			ret = i2c_read(drv_data->i2c, (u8_t *)&drv_data->frame.ubx.checksum, sizeof(struct ubx_checksum), cfg->i2c_addr);
-			if (ret < 0) {
-				LOG_DBG("ubx checksum error");
-				drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
-				k_sem_give(&drv_data->ubx_frame_sem);
-				break;
-			}
-			drv_data->frame.ubx.len = sys_get_le16(drv_data->frame.ubx.header.len);
-			if (ubx_validate_frame_checksum(&drv_data->frame.ubx)) {
-				/* Everything is ok */
-				drv_data->last_error = 0;
-				set_ubx_response(dev);
-			}
-			update_pvt(dev);
-			LOG_HEXDUMP_DBG(&drv_data->frame.ubx.header, UBX_FRAME_HEADER_SIZE, "ubx header");
-			LOG_HEXDUMP_DBG(drv_data->frame.ubx.payload, len, "ubx payload");
-			LOG_HEXDUMP_DBG(&drv_data->frame.ubx.checksum, UBX_FRAME_CHECKSUM_SIZE, "ubx checksum");
 			drv_data->sentence_state = GNSS_SENTENCE_STATE_IDLE;
 			k_sem_give(&drv_data->ubx_frame_sem);
 			break;
@@ -593,6 +717,11 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 					ublox_m8_flush_msg_buffer(dev);
 					break;
 				}
+				/* FIXME:  what do we do if no data?  ie: char is 0xFF? */
+				if (drv_data->frame.nmea[len-1] == 0xFF) {
+					break;
+				}
+				/* check for eol */
 				if (drv_data->frame.nmea[len-2] == '\r' && drv_data->frame.nmea[len-1] == '\n') {
 					eol = true;
 				}
@@ -686,6 +815,7 @@ static int ublox_m8_message_send(struct device *dev, struct ubx_frame *frame, k_
 	k_sem_give(&drv_data->ubx_frame_sem);
 
 	if (K_TIMEOUT_EQ(timeout,K_NO_WAIT)) {
+		k_sem_give(&drv_data->msg_sem);
 		ret = 0;
 		return ret;
 	}
@@ -1180,46 +1310,28 @@ static int ublox_m8_attr_get(struct device *dev, enum gnss_channel chan,
 	u8_t payload[3];
 
 	switch ((int) attr) {
-	case GNSS_ATTR_NAV_MSG_RATE_PVT:
-		payload[0] = ubx_class_nav;
-		payload[1] = ubx_nav_id_pvt;
-		ublox_m8_ubx_msg_get(dev, &ubx_header_cfg_msg, payload, 2, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
-		if (val) {
-			*(u8_t *)val = drv_data->frame.ubx.payload[2]; 
-		}
-		break;
-
-	case GNSS_ATTR_NAV_MSG_RATE_SOL:
-		payload[0] = ubx_class_nav;
-		payload[1] = ubx_nav_id_sol;
-		ublox_m8_ubx_msg_get(dev, &ubx_header_cfg_msg, payload, 2, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
-		if (val) {
-			*(u8_t *)val = drv_data->frame.ubx.payload[2]; 
-		}
-		break;
-
-	case GNSS_ATTR_ID:
+	case GNSS_ATTR_INFO_ID:
 		ublox_m8_ubx_msg_get(dev, &ubx_header_sec_uniqid, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 		if (val) {
 			*(u64_t *)val = sys_get_be40(&drv_data->frame.ubx.payload[4]);
 		}
 		break;
 
-	case GNSS_ATTR_VERSION_HW:
+	case GNSS_ATTR_INFO_VERSION_HW:
 		ublox_m8_ubx_msg_get(dev, &ubx_header_mon_ver, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 		if (val) {
 			strncpy((u8_t *)val, drv_data->frame.ubx.payload+30, 10);
 		}
 		break;
 
-	case GNSS_ATTR_VERSION_SW:
+	case GNSS_ATTR_INFO_VERSION_SW:
 		ublox_m8_ubx_msg_get(dev, &ubx_header_mon_ver, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 		if (val) {
 			strncpy((u8_t *)val, drv_data->frame.ubx.payload, 30);
 		}
 		break;
 
-	case GNSS_ATTR_VERSION_PROTO:
+	case GNSS_ATTR_INFO_VERSION_PROTO:
 		ublox_m8_ubx_msg_get(dev, &ubx_header_mon_ver, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 		if (val) {
 			for (u8_t i=0; i<4; i++) {
@@ -1229,6 +1341,34 @@ static int ublox_m8_attr_get(struct device *dev, enum gnss_channel chan,
 					break;
 				}
 			}
+		}
+		break;
+
+	case GNSS_ATTR_INFO_HW_STATUS:
+		ublox_m8_ubx_msg_get(dev, &ubx_header_mon_hw, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		if (val) {
+			/*  FIXME:  need to define gnss status */
+		}
+		break;
+
+	case GNSS_ATTR_INFO_HW2_STATUS:
+		ublox_m8_ubx_msg_get(dev, &ubx_header_mon_hw2, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		if (val) {
+			/*  FIXME:  need to define gnss status */
+		}
+		break;
+
+	case GNSS_ATTR_INFO_IO_STATUS:
+		ublox_m8_ubx_msg_get(dev, &ubx_header_mon_io, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		if (val) {
+			/*  FIXME:  need to define gnss status */
+		}
+		break;
+
+	case GNSS_ATTR_INFO_GNSS_STATUS:
+		ublox_m8_ubx_msg_get(dev, &ubx_header_mon_gnss, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		if (val) {
+			/*  FIXME:  need to define gnss status */
 		}
 		break;
 
@@ -1250,14 +1390,14 @@ static int ublox_m8_attr_get(struct device *dev, enum gnss_channel chan,
 		}
 		break;
 
-	case GNSS_ATTR_MEASUREMENT_RATE:
+	case GNSS_ATTR_NAV_MEASUREMENT_RATE:
 		ublox_m8_ubx_msg_get(dev, &ubx_header_cfg_rate, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 		if (val) {
 			*(u16_t *)val = sys_get_le16(&drv_data->frame.ubx.payload[0]);
 		}
 		break;
 
-	case GNSS_ATTR_NAV_RATE:
+	case GNSS_ATTR_NAV_SOLUTION_RATE:
 		ublox_m8_ubx_msg_get(dev, &ubx_header_cfg_rate, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 		if (val) {
 			*(u16_t *)val = sys_get_le16(&drv_data->frame.ubx.payload[2]);
@@ -1273,6 +1413,38 @@ static int ublox_m8_attr_get(struct device *dev, enum gnss_channel chan,
 
 	case GNSS_ATTR_NAV_STATUS:
 		ublox_m8_ubx_msg_get(dev, &ubx_header_nav_status, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		if (val) {
+			/*  FIXME:  need to define gnss status */
+		}
+		break;
+
+	case GNSS_ATTR_NAV_MSG_PVT_RATE:
+		payload[0] = ubx_class_nav;
+		payload[1] = ubx_nav_id_pvt;
+		ublox_m8_ubx_msg_get(dev, &ubx_header_cfg_msg, payload, 2, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		if (val) {
+			*(u8_t *)val = drv_data->frame.ubx.payload[2]; 
+		}
+		break;
+
+	case GNSS_ATTR_NAV_MSG_SOL_RATE:
+		payload[0] = ubx_class_nav;
+		payload[1] = ubx_nav_id_sol;
+		ublox_m8_ubx_msg_get(dev, &ubx_header_cfg_msg, payload, 2, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		if (val) {
+			*(u8_t *)val = drv_data->frame.ubx.payload[2]; 
+		}
+		break;
+
+	case GNSS_ATTR_PM_STATUS:
+		ublox_m8_ubx_msg_get(dev, &ubx_header_cfg_pm2, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+		if (val) {
+			/*  FIXME:  need to define gnss status */
+		}
+		break;
+
+	case GNSS_ATTR_TIMEPULSE_STATUS:
+		ublox_m8_ubx_msg_get(dev, &ubx_header_cfg_tp5, NULL, 0, UBX_MESSAGE_GET, UBX_RESPONSE_OUTPUT, drv_data->timeout);
 		if (val) {
 			/*  FIXME:  need to define gnss status */
 		}
@@ -1295,7 +1467,7 @@ static int ublox_m8_attr_set(struct device *dev, enum gnss_channel chan,
 	u8_t payload[3];
 
 	switch ((int) attr) {
-	case GNSS_ATTR_NAV_MSG_RATE_PVT:
+	case GNSS_ATTR_NAV_MSG_PVT_RATE:
 		payload[0] = ubx_class_nav;
 		payload[1] = ubx_nav_id_pvt;
 		if (!val) {
@@ -1310,7 +1482,7 @@ static int ublox_m8_attr_set(struct device *dev, enum gnss_channel chan,
 		}
 		break;
 
-	case GNSS_ATTR_NAV_MSG_RATE_SOL:
+	case GNSS_ATTR_NAV_MSG_SOL_RATE:
 		payload[0] = ubx_class_nav;
 		payload[1] = ubx_nav_id_sol;
 		if (!val) {
@@ -1325,8 +1497,8 @@ static int ublox_m8_attr_set(struct device *dev, enum gnss_channel chan,
 		}
 		break;
 
-	case GNSS_ATTR_SLEEP:
-		ublox_m8_ubx_msg_set(dev, &ubx_header_rxm_pmreq, &ubx_payload_rxm_pmreq, sizeof(ubx_payload_rxm_pmreq), UBX_MESSAGE_COMMAND, UBX_RESPONSE_OUTPUT, drv_data->timeout);
+	case GNSS_ATTR_PM_SLEEP:
+		ublox_m8_ubx_msg_set(dev, &ubx_header_rxm_pmreq, &ubx_payload_rxm_pmreq, sizeof(ubx_payload_rxm_pmreq), UBX_MESSAGE_COMMAND, UBX_RESPONSE_OUTPUT, K_NO_WAIT);
 		break;
 
 	default:
@@ -1565,10 +1737,10 @@ static void ublox_m8_config_work_handler(struct k_work *work)
 	 * nmea messages being processed when the ddc port configuration
 	 * is sent
 	 */
-	// ret = ublox_m8_configure_uart_port(dev);
-	// if (ret < 0) {
-	// 	return;
-	// }
+	ret = ublox_m8_configure_uart_port(dev);
+	if (ret < 0) {
+		return;
+	}
 
 	ret = ublox_m8_configure_ddc_port(dev);
 	if (ret < 0) {
@@ -1627,7 +1799,7 @@ int ublox_m8_init(struct device *dev)
 	if (ret < 0) {
 		LOG_ERR("device did not ack i2c write");
 		drv_data->device_state = GNSS_DEVICE_STATE_DISCONNECTED;
-		return;
+		return -ENODEV;
 	}
 
 	ret = ublox_m8_pin_init(dev);
@@ -1658,13 +1830,15 @@ int ublox_m8_init(struct device *dev)
 			0, K_NO_WAIT);
 	k_thread_name_set(&drv_data->msg_thread, CONFIG_UBLOX_M8_MSG_THREAD_NAME);
 
-	ret = ublox_m8_configure_uart_port(dev);
-	if (ret < 0) {
-		LOG_ERR("could not configure uart port");
-		drv_data->device_state = GNSS_DEVICE_STATE_DISCONNECTED;
-		return;
-	}
+	// ret = ublox_m8_configure_uart_port(dev);
+	// if (ret < 0) {
+	// 	LOG_ERR("could not configure uart port");
+	// 	drv_data->device_state = GNSS_DEVICE_STATE_DISCONNECTED;
+	// 	return;
+	// }
 
+	/* poll ddc interface and flush pending messages */
+	k_sem_give(&drv_data->msg_sem);
 	drv_data->device_state = GNSS_DEVICE_STATE_INITIALIZED;
 	k_delayed_work_submit(&drv_data->config_work, K_SECONDS(2));
 	return 0;

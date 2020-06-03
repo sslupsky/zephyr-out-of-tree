@@ -145,11 +145,10 @@ union ublox_device_id {
 	u64_t be_word;
 };
 
-union ublox_frame {
+struct ublox_frame {
 	struct ubx_frame ubx;
-	u8_t nmea[sizeof(struct ubx_frame)];
-	u8_t rtcm[sizeof(struct ubx_frame)];
-	u8_t raw[sizeof(struct ubx_frame)];
+	u8_t nmea[128];
+	u8_t rtcm[128];
 };
 
 /*
@@ -165,7 +164,7 @@ union ublox_frame {
 // u8_t x = sizeof(k_timeout_t);
 
 
-// u8_t x = sizeof(union ublox_frame);
+// u8_t x = sizeof(struct ublox_frame);
 // u8_t x = sizeof(struct gpio_callback);
 // u8_t x = sizeof(struct gnss_trigger);
 // u8_t x = sizeof(gnss_trigger_handler_t);
@@ -205,7 +204,7 @@ struct ublox_m8_data {
 	K_THREAD_STACK_MEMBER(msg_thread_stack, CONFIG_UBLOX_M8_MSG_THREAD_STACK_SIZE);
 	struct k_thread msg_thread;
 
-	union ublox_frame frame;
+	struct ublox_frame frame;
 	union ublox_device_id device_id;
 
 	struct gnss_pvt pvt;

@@ -169,7 +169,49 @@ static int cmd_nav_status(const struct shell *shell)
 	return ret;
 }
 
-static int cmd_nav_pvt_rate(const struct shell *shell, size_t argc, char **argv)
+static int cmd_nav_meas_rate(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	u16_t val;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MEASUREMENT_RATE, &val);
+
+	shell_print(shell, "Measurement rate: %d", val);
+	return ret;
+}
+
+static int cmd_nav_sol_rate(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	u16_t val;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_SOLUTION_RATE, &val);
+
+	shell_print(shell, "Measurement rate: %d", val);
+	return ret;
+}
+
+static int cmd_nav_pvt_msg_rate(const struct shell *shell, size_t argc, char **argv)
 {
 	struct device *dev;
 	struct ublox_m8_data *drv_data;
@@ -185,13 +227,38 @@ static int cmd_nav_pvt_rate(const struct shell *shell, size_t argc, char **argv)
 	drv_data = dev->driver_data;
 	if (argc == 2) {
 		rate = MIN(MAX(strtol(argv[1], NULL, 0), 1), 3600);
-		gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_RATE_PVT, &rate);
+		gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_PVT_RATE, &rate);
 	} else {
-		gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_RATE_PVT, &rate);
+		gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_PVT_RATE, &rate);
 	}
 
-	shell_print(shell, "nav pvt rate: %d", rate);
+	shell_print(shell, "nav pvt message rate: %d", rate);
 
+	return ret;
+}
+
+static int cmd_nav_sol_msg_rate(const struct shell *shell, size_t argc, char **argv)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	u8_t rate;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+	if (argc == 2) {
+		rate = MIN(MAX(strtol(argv[1], NULL, 0), 1), 3600);
+		gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_SOL_RATE, &rate);
+	} else {
+		gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_SOL_RATE, &rate);
+	}
+
+	shell_print(shell, "nav solution message rate: %d", rate);
 	return ret;
 }
 
@@ -214,11 +281,11 @@ static int cmd_info_version(const struct shell *shell)
 
 	drv_data = dev->driver_data;
 
-	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_VERSION_HW, hw_ver);
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_VERSION_HW, hw_ver);
 	shell_print(shell, "hardware version: %s", hw_ver);
-	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_VERSION_SW, sw_ver);
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_VERSION_SW, sw_ver);
 	shell_print(shell, "software version: %s", sw_ver);
-	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_VERSION_PROTO, proto_ver);
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_VERSION_PROTO, proto_ver);
 	shell_print(shell, "protocol version: %s", proto_ver);
 
 	return ret;
@@ -239,15 +306,13 @@ static int cmd_info_id(const struct shell *shell)
 
 	drv_data = dev->driver_data;
 
-	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_ID, &id);
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_ID, &id);
 
 	shell_print(shell, "unique id: %llx", id);
 	return ret;
 }
 
-/***********************/
-
-static int cmd_sleep(const struct shell *shell)
+static int cmd_info_hw(const struct shell *shell)
 {
 	struct device *dev;
 	struct ublox_m8_data *drv_data;
@@ -261,7 +326,104 @@ static int cmd_sleep(const struct shell *shell)
 
 	drv_data = dev->driver_data;
 
-	gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_SLEEP, NULL);
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_HW_STATUS, NULL);
+
+	return ret;
+}
+
+static int cmd_info_hw2(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_HW2_STATUS, NULL);
+
+	return ret;
+}
+
+static int cmd_info_io(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_IO_STATUS, NULL);
+
+	return ret;
+}
+
+static int cmd_info_gnss(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_GNSS_STATUS, NULL);
+
+	return ret;
+}
+
+/***********************/
+
+static int cmd_pm_sleep(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+
+	gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_PM_SLEEP, NULL);
+
+	return ret;
+}
+
+static int cmd_pm_status(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+
+	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_PM_STATUS, NULL);
 
 	return ret;
 }
@@ -323,27 +485,6 @@ static int cmd_port_uart(const struct shell *shell)
 
 /***********************/
 
-static int cmd_rate(const struct shell *shell)
-{
-	struct device *dev;
-	struct ublox_m8_data *drv_data;
-	u16_t val;
-	int ret = 0;
-
-	dev = device_get_binding(GPS_DEVICE_NAME);
-	if (!dev) {
-		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
-		return -EIO;
-	}
-
-	drv_data = dev->driver_data;
-
-	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_MEASUREMENT_RATE, &val);
-
-	shell_print(shell, "Measurement rate: %d", val);
-	return ret;
-}
-
 /***********************/
 
 static int cmd_debug_idle_rate(const struct shell *shell, size_t argc, char **argv)
@@ -369,7 +510,30 @@ static int cmd_debug_idle_rate(const struct shell *shell, size_t argc, char **ar
 
 static int cmd_gnss_info(const struct shell *shell, size_t argc, char *argv[])
 {
-	return 0;
+	ARG_UNUSED(argv);
+
+	if (argc == 1) {
+		shell_help(shell);
+		return SHELL_CMD_HELP_PRINTED;
+	}
+
+	shell_error(shell, "%s unknown parameter: %s", argv[0], argv[1]);
+
+	return -EINVAL;
+}
+
+static int cmd_gnss_pm(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argv);
+
+	if (argc == 1) {
+		shell_help(shell);
+		return SHELL_CMD_HELP_PRINTED;
+	}
+
+	shell_error(shell, "%s unknown parameter: %s", argv[0], argv[1]);
+
+	return -EINVAL;
 }
 
 static int cmd_gnss_port(const struct shell *shell, size_t argc, char **argv)
@@ -503,6 +667,10 @@ static int cmd_getopt_skeleton(const struct shell *shell, size_t argc, char **ar
 SHELL_STATIC_SUBCMD_SET_CREATE(gnss_info_cmds,
 	SHELL_CMD(id, NULL, HELP_NONE, cmd_info_id),
 	SHELL_CMD(version, NULL, HELP_NONE, cmd_info_version),
+	SHELL_CMD(hw, NULL, HELP_NONE, cmd_info_hw),
+	SHELL_CMD(hw2, NULL, HELP_NONE, cmd_info_hw2),
+	SHELL_CMD(io, NULL, HELP_NONE, cmd_info_io),
+	SHELL_CMD(gnss, NULL, HELP_NONE, cmd_info_gnss),
 	SHELL_SUBCMD_SET_END
 );
 
@@ -512,10 +680,19 @@ SHELL_STATIC_SUBCMD_SET_CREATE(gnss_port_cmds,
 	SHELL_SUBCMD_SET_END
 );
 
+SHELL_STATIC_SUBCMD_SET_CREATE(gnss_pm_cmds,
+	SHELL_CMD(sleep, NULL, HELP_NONE, cmd_pm_sleep),
+	SHELL_CMD(status, NULL, HELP_NONE, cmd_pm_status),
+	SHELL_SUBCMD_SET_END
+);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(gnss_nav_cmds,
 	SHELL_CMD(status, NULL, HELP_NONE, cmd_nav_status),
 	SHELL_CMD(pvt, NULL, HELP_NONE, cmd_nav_pvt),
-	SHELL_CMD_ARG(pvtrate, NULL, HELP_NONE, cmd_nav_pvt_rate, 0, 1),
+	SHELL_CMD(measrate, NULL, HELP_NONE, cmd_nav_meas_rate),
+	SHELL_CMD(solrate, NULL, HELP_NONE, cmd_nav_sol_rate),
+	SHELL_CMD_ARG(pvtmsgrate, NULL, HELP_NONE, cmd_nav_pvt_msg_rate, 0, 1),
+	SHELL_CMD(solmsgrate, NULL, HELP_NONE, cmd_nav_sol_msg_rate),
 	SHELL_SUBCMD_SET_END
 );
 
@@ -527,8 +704,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(gnss_debug_cmds,
 SHELL_STATIC_SUBCMD_SET_CREATE(gnss_cmds,
 	SHELL_CMD_ARG(init, NULL, HELP_NONE, cmd_init, 1, 0),
 	SHELL_CMD(poll, NULL, HELP_NONE, cmd_poll),
-	SHELL_CMD(sleep, NULL, HELP_NONE, cmd_sleep),
-	SHELL_CMD(rate, NULL, HELP_NONE, cmd_rate),
+	SHELL_CMD(pm, &gnss_pm_cmds, HELP_NONE, cmd_gnss_pm),
 	SHELL_CMD(info, &gnss_info_cmds, HELP_NONE, cmd_gnss_info),
 	SHELL_CMD(port, &gnss_port_cmds, HELP_NONE, cmd_gnss_port),
 	SHELL_CMD(nav, &gnss_nav_cmds, HELP_NONE, cmd_gnss_nav),
