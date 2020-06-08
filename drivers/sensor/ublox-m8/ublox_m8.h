@@ -210,6 +210,8 @@ struct ublox_m8_data {
 	struct gnss_pvt pvt;
 	char sw_version[30];
 	char hw_version[10];
+	u8_t ubx_get_buf[UBX_MAX_PAYLOAD_SIZE];
+	struct ubx_payload_ack ubx_ack_buf;
 
 #ifdef CONFIG_UBLOX_M8_TRIGGER
 	struct device *txready_gpio;

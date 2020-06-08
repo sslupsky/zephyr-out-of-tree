@@ -406,6 +406,11 @@ struct ubx_frame {
 	enum ubx_message type;
 } __packed;
 
+struct ubx_payload_ack {
+	u8_t class;
+	u8_t id;
+} __packed;
+
 struct ubx_payload_cfg_cfg {
 	struct {
 		u32_t ioPort : 1;
@@ -484,10 +489,18 @@ struct ubx_payload_cfg_pm2 {
 	u32_t updatePeriod;		// ms, position update period
 	u32_t searchPeriod;		// ms, acquisition retry period if previously UBX_FRAME_STATE_INITIALIZED
 	u32_t gridOffset;		// ms, grid offset relative to GPS start of timeOfWeek
-	u16_t onTime;			// s, Time to stay i Tracking state
+	u16_t onTime;			// s, Time to stay in Tracking state
 	u16_t minAcqTime;		// s, Minimal search time
 	u8_t reserved3[20];
 	u32_t extintInactivityMs;	// ms, inactivity time out on EXTINT pin if enabled
+} __packed;
+
+struct ubx_payload_cfg_pms {
+	u8_t version;
+	u8_t powerSetupValue;
+	u16_t period;
+	u16_t onTime;
+	u8_t reserved1[2];
 } __packed;
 
 struct ubx_payload_cfg_pwr {
@@ -604,6 +617,134 @@ struct ubx_payload_cfg_tp5 {
 		u32_t polarity : 1;
 		u32_t gridUtcGps : 1;
 	} flags;			// Configuration flags
+} __packed;
+
+struct ubx_payload_mon_gnss {
+	u8_t version;
+	struct {
+		u8_t GPSSup : 1;
+		u8_t GlonassSup : 1;
+		u8_t BeidouSup : 1;
+		u8_t GalileoSup : 1;
+	} supported;
+	struct{
+		u8_t GPSDef : 1;
+		u8_t GlonassDef : 1;
+		u8_t BeidouDef : 1;
+		u8_t GalileoDef : 1;
+	} defaultGnss;
+	struct{
+		u8_t GPSEna : 1;
+		u8_t GlonassEna : 1;
+		u8_t BeidouEna : 1;
+		u8_t GalileoEna : 1;
+	} enabled;
+	u8_t simultaneous;
+	u8_t reserved1[3];
+} __packed;
+
+struct ubx_payload_mon_hw2 {
+	s8_t ofsI;
+	u8_t magI;
+	s8_t ofsQ;
+	u8_t magQ;
+	u8_t cfgSource;
+	u8_t reserved1[3];
+	u32_t lowLevCfg;
+	u8_t reserved2[8];
+	u32_t postStatus;
+	u8_t reserved3[4];
+} __packed;
+
+struct ubx_payload_mon_hw {
+	u32_t pinSel;
+	u32_t pinBank;
+	u32_t pinDir;
+	u32_t pinVal;
+	u16_t noisePerMS;
+	u16_t agcCnt;
+	u8_t aStatus;
+	u8_t aPower;
+	struct {
+		u8_t rtcCalib : 1;
+		u8_t safeBoot : 1;
+		u8_t jammingState : 2;
+		u8_t xtalAbsent : 1;
+	} flags;
+	u8_t reserved1;
+	u32_t usedMask;
+	u8_t VP[17];
+	u8_t jamInd;
+	u8_t reserved2[2];
+	u32_t pinIrq;
+	u32_t pullH;
+	u32_t pullL;
+} __packed;
+
+struct ubx_payload_mon_io {
+	struct {
+		u32_t rxBytes;
+		u32_t txBytes;
+		u16_t parityErrs;
+		u16_t framingErrs;
+		u16_t overrunErrs;
+		u16_t breakCond;
+		u8_t reserved1[4];
+	} port0;
+	struct {
+		u32_t rxBytes;
+		u32_t txBytes;
+		u16_t parityErrs;
+		u16_t framingErrs;
+		u16_t overrunErrs;
+		u16_t breakCond;
+		u8_t reserved1[4];
+	} port1;
+	struct {
+		u32_t rxBytes;
+		u32_t txBytes;
+		u16_t parityErrs;
+		u16_t framingErrs;
+		u16_t overrunErrs;
+		u16_t breakCond;
+		u8_t reserved1[4];
+	} port2;
+	struct {
+		u32_t rxBytes;
+		u32_t txBytes;
+		u16_t parityErrs;
+		u16_t framingErrs;
+		u16_t overrunErrs;
+		u16_t breakCond;
+		u8_t reserved1[4];
+	} port3;
+	struct {
+		u32_t rxBytes;
+		u32_t txBytes;
+		u16_t parityErrs;
+		u16_t framingErrs;
+		u16_t overrunErrs;
+		u16_t breakCond;
+		u8_t reserved1[4];
+	} port4;
+	struct {
+		u32_t rxBytes;
+		u32_t txBytes;
+		u16_t parityErrs;
+		u16_t framingErrs;
+		u16_t overrunErrs;
+		u16_t breakCond;
+		u8_t reserved1[4];
+	} port5;
+} __packed;
+
+struct ubx_payload_mon_ver {
+	u8_t swVersin[30];
+	u8_t hwVersion[10];
+	u8_t extension0[30];
+	u8_t extension1[30];
+	u8_t extension2[30];
+	u8_t extension3[30];
 } __packed;
 
 struct ubx_payload_nav_pvt {

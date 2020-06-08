@@ -214,7 +214,7 @@
 		compatible = "ublox,m8";
 		label = "SAM-M8Q";
 		reg = <0x42>;
-		extint-gpios = <&portb 9 GPIO_ACTIVE_LOW>;
+		extint-gpios = <&portb 9 GPIO_ACTIVE_HIGH>;
 		reset-gpios = <&portb 8 GPIO_ACTIVE_LOW>;
 		safeboot-gpios = <&porta 28 GPIO_ACTIVE_LOW>;
 		timepulse-gpios = <&porta 27 GPIO_ACTIVE_HIGH>;

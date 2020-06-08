@@ -190,7 +190,7 @@ static int cmd_nav_meas_rate(const struct shell *shell)
 	return ret;
 }
 
-static int cmd_nav_sol_rate(const struct shell *shell)
+static int cmd_nav_nav_rate(const struct shell *shell)
 {
 	struct device *dev;
 	struct ublox_m8_data *drv_data;
@@ -425,6 +425,35 @@ static int cmd_pm_status(const struct shell *shell)
 
 	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_PM_STATUS, NULL);
 
+	return ret;
+}
+
+static int cmd_pm_mode(const struct shell *shell, size_t argc, char **argv)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	struct ubx_payload_cfg_pms mode = {
+		.version = 0,
+		.powerSetupValue = 2,
+	};
+	int ret = 0;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+
+	drv_data = dev->driver_data;
+
+	if (argc == 3) {
+		mode.period = MIN(MAX(strtol(argv[1], NULL, 0), 1), 3600);
+		mode.onTime = MIN(MAX(strtol(argv[2], NULL, 0), 1), 3600);
+		shell_print(shell, "period %d, onTime %d", mode.period, mode.onTime);
+		gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_PM_MODE, &mode);
+	} else {
+		gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_PM_MODE, NULL);
+	}
 	return ret;
 }
 
@@ -683,14 +712,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(gnss_port_cmds,
 SHELL_STATIC_SUBCMD_SET_CREATE(gnss_pm_cmds,
 	SHELL_CMD(sleep, NULL, HELP_NONE, cmd_pm_sleep),
 	SHELL_CMD(status, NULL, HELP_NONE, cmd_pm_status),
+	SHELL_CMD(mode, NULL, HELP_NONE, cmd_pm_mode),
 	SHELL_SUBCMD_SET_END
 );
 
 SHELL_STATIC_SUBCMD_SET_CREATE(gnss_nav_cmds,
 	SHELL_CMD(status, NULL, HELP_NONE, cmd_nav_status),
 	SHELL_CMD(pvt, NULL, HELP_NONE, cmd_nav_pvt),
-	SHELL_CMD(measrate, NULL, HELP_NONE, cmd_nav_meas_rate),
-	SHELL_CMD(solrate, NULL, HELP_NONE, cmd_nav_sol_rate),
+	SHELL_CMD(measRate, NULL, HELP_NONE, cmd_nav_meas_rate),
+	SHELL_CMD(navRate, NULL, HELP_NONE, cmd_nav_nav_rate),
 	SHELL_CMD_ARG(pvtmsgrate, NULL, HELP_NONE, cmd_nav_pvt_msg_rate, 0, 1),
 	SHELL_CMD(solmsgrate, NULL, HELP_NONE, cmd_nav_sol_msg_rate),
 	SHELL_SUBCMD_SET_END
