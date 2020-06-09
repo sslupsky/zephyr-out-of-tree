@@ -410,6 +410,20 @@ static void update_pvt(struct device *dev)
 	memcpy(&drv_data->pvt.time, drv_data->frame.ubx.payload, sizeof(struct gnss_time));
 }
 
+static void update_status(struct device *dev)
+{
+	struct ublox_m8_data *drv_data = dev->driver_data;
+
+	drv_data->nav_status.tow = sys_get_le32(&((struct ubx_payload_nav_status *)drv_data->frame.ubx.payload)->iTOW);
+	drv_data->nav_status.ttff = sys_get_le32(&((struct ubx_payload_nav_status *)drv_data->frame.ubx.payload)->ttff);
+	drv_data->nav_status.uptime = sys_get_le32(&((struct ubx_payload_nav_status *)drv_data->frame.ubx.payload)->msss);
+	drv_data->nav_status.fix = ((struct ubx_payload_nav_status *)drv_data->frame.ubx.payload)->gpsFix;
+	drv_data->nav_status.fix_status.gpsFixOk = ((struct ubx_payload_nav_status *)drv_data->frame.ubx.payload)->flags.gpsFixOk;
+	drv_data->nav_status.fix_status.towSet = ((struct ubx_payload_nav_status *)drv_data->frame.ubx.payload)->flags.towSet;
+	drv_data->nav_status.fix_status.wknSet = ((struct ubx_payload_nav_status *)drv_data->frame.ubx.payload)->flags.wknSet;
+	drv_data->nav_status.fix_status.diffSoln = ((struct ubx_payload_nav_status *)drv_data->frame.ubx.payload)->flags.diffSoln;
+}
+
 static void update_response_buffer(struct device *dev, void *buf, size_t len)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -540,6 +554,7 @@ static void set_ubx_response(struct device *dev)
 			break;
 		case ubx_nav_id_status:
 			frame->ubx.status.response_received = UBX_RESPONSE_GET;
+			update_status(dev);
 			k_sem_give(&drv_data->ubx_get_sem);
 			break;
 		default:
@@ -869,7 +884,9 @@ static int ublox_m8_message_send(struct device *dev, struct ubx_frame *frame, k_
 
 	if (ret == 0) {
 		/* FIXME:  what about nmea and rtcm? */
-		LOG_DBG("response: %d", drv_data->frame.ubx.status.response_received);
+		LOG_DBG("response: %d, error: %d",
+			drv_data->frame.ubx.status.response_received,
+			drv_data->last_error);
 		ret = drv_data->last_error;
 	} else if (ret == -EAGAIN) {
 		LOG_DBG("response time out");
@@ -1714,7 +1731,7 @@ static int ublox_m8_pin_init(struct device *dev)
 	 * The TX_READY function can be mapped to TXD (PIO 06).
 	 * The TX_READY function is disabled by default.
 	 * 
-	 * The UART is not used to TXD is not initialized.
+	 * The UART is not used so TXD is not initialized.
 	 * TX_READY is initialized in ublox_m8_trigger.c
 	 * See Hardware Integration Manual 1.4.2
 	 */

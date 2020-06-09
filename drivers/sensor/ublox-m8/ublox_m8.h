@@ -208,6 +208,7 @@ struct ublox_m8_data {
 	union ublox_device_id device_id;
 
 	struct gnss_pvt pvt;
+	struct gnss_status nav_status;
 	char sw_version[30];
 	char hw_version[10];
 	u8_t ubx_get_buf[UBX_MAX_PAYLOAD_SIZE];

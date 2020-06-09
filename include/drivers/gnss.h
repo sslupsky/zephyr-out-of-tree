@@ -80,6 +80,21 @@ struct gnss_pvt {
 	struct gnss_velocity velocity;
 };
 
+struct gnss_fix_status {
+	u8_t gpsFixOk : 1;
+	u8_t diffSoln : 1;
+	u8_t wknSet : 1;
+	u8_t towSet : 1;
+};
+
+struct gnss_status {
+	u32_t tow;			// GPS time of week of the navigation epoch
+	u32_t ttff;			// (ms) time to first fix
+	u32_t uptime;			// (ms) device uptime
+	u8_t fix;			// fix type
+	struct gnss_fix_status fix_status;	// fix status
+};
+
 struct gnss_firmware_version {
 	u8_t versionLow;		 //Loaded from getProtocolVersion().
 	u8_t versionHigh;
@@ -109,13 +124,6 @@ enum gnss_channel {
 	GNSS_CHAN_POSITION,
 	GNSS_CHAN_VELOCITY,
 	
-	GNSS_CHAN_ID,
-	GNSS_CHAN_VERSION,
-	GNSS_CHAN_SLEEP,
-	GNSS_CHAN_DDC,
-	GNSS_CHAN_UART,
-	GNSS_CHAN_STATUS,
-
 	/** All channels. */
 	GNSS_CHAN_ALL,
 

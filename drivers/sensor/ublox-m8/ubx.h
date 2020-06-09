@@ -786,6 +786,32 @@ struct ubx_payload_nav_pvt {
 	u16_t magAcc;			// degrees * 10^-2
 } __packed;
 
+struct ubx_payload_nav_status {
+	u32_t iTOW;			// GPS time of week of the navigation epoch
+	u8_t gpsFix;
+	struct {
+		u8_t gpsFixOk : 1;
+		u8_t diffSoln : 1;
+		u8_t wknSet : 1;
+		u8_t towSet : 1;
+	} flags;
+	struct {
+		u8_t diffCorr : 1;
+		u8_t carSolnValid : 1;
+		u8_t reserved1 : 4;
+		u8_t mapMatching : 2;
+	} fixStat;
+	struct {
+		u8_t psmState : 2;
+		u8_t reserved1 : 1;
+		u8_t spoofDetState : 2;
+		u8_t reserved2 : 1;
+		u8_t carrSoln : 2;
+	} flags2;
+	u32_t ttff;			// (ms) time to first fix
+	u32_t msss;			// (ms) time since startup / reset
+} __packed;
+
 struct ubx_payload_rxm_pmreq {
 	u8_t version;			// message version
 	u8_t reserved1[3];

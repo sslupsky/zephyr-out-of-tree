@@ -139,7 +139,7 @@ int ublox_m8_init_interrupt(struct device *dev)
 	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	int ret;
 
-	/* setup data ready gpio interrupt */
+	/* setup data txReady gpio interrupt */
 	drv_data->txready_gpio = device_get_binding(cfg->txready_gpio_name);
 	if (drv_data->txready_gpio == NULL) {
 		LOG_ERR("Failed to get pointer to %s device",

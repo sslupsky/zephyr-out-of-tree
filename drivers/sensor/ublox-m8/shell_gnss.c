@@ -165,7 +165,13 @@ static int cmd_nav_status(const struct shell *shell)
 	drv_data = dev->driver_data;
 
 	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_STATUS, NULL);
-
+	shell_print(shell, "Fix: %svalid, TOW: %svalid, Week Number: %svalid",
+		    drv_data->nav_status.fix_status.gpsFixOk ? "" : "not ",
+		    drv_data->nav_status.fix_status.towSet ? "" : "not ",
+		    drv_data->nav_status.fix_status.wknSet ? "" : "not ");
+	shell_print(shell, "Fix: %d", drv_data->nav_status.fix);
+	shell_print(shell, "Time of week: %d", drv_data->nav_status.tow);
+	shell_print(shell, "Time to first fix: %d", drv_data->nav_status.ttff);
 	return ret;
 }
 
@@ -328,6 +334,17 @@ static int cmd_info_hw(const struct shell *shell)
 
 	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_HW_STATUS, NULL);
 
+	shell_print(shell, "Hardware status:");
+	shell_print(shell, "        noise:    %d", sys_get_le16(&drv_data->ubx_get_buf[16]));
+	shell_print(shell, "        pin sel:  %08x", sys_get_le32(&drv_data->ubx_get_buf[0]));
+	shell_print(shell, "        pin bank: %08x", sys_get_le32(&drv_data->ubx_get_buf[4]));
+	shell_print(shell, "        pin dir:  %08x", sys_get_le32(&drv_data->ubx_get_buf[8]));
+	shell_print(shell, "        pin val:  %08x", sys_get_le32(&drv_data->ubx_get_buf[12]));
+	shell_print(shell, "        pullH:    %08x", sys_get_le32(&drv_data->ubx_get_buf[52]));
+	shell_print(shell, "        pullL:    %08x", sys_get_le32(&drv_data->ubx_get_buf[56]));
+	shell_print(shell, "        vp mask:  %08x", sys_get_le32(&drv_data->ubx_get_buf[24]));
+	shell_hexdump(shell, &drv_data->ubx_get_buf[28], 17);
+
 	return ret;
 }
 
@@ -366,6 +383,18 @@ static int cmd_info_io(const struct shell *shell)
 
 	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_IO_STATUS, NULL);
 
+	shell_print(shell, "I/O system status:");
+	for (u8_t i=0; i<6; i++) {
+		shell_print(shell, "    Port %d", i);
+		shell_print(shell, "        rx bytes:          %d", sys_get_le32(&drv_data->ubx_get_buf[0+i*20]));
+		shell_print(shell, "        tx bytes:          %d", sys_get_le32(&drv_data->ubx_get_buf[4+i*20]));
+		shell_print(shell, "        parity errors:     %d", sys_get_le16(&drv_data->ubx_get_buf[8+i*20]));
+		shell_print(shell, "        framing errors:    %d", sys_get_le16(&drv_data->ubx_get_buf[10+i*20]));
+		shell_print(shell, "        overrun errors:    %d", sys_get_le16(&drv_data->ubx_get_buf[12+i*20]));
+		shell_print(shell, "        break conditions:  %d", sys_get_le16(&drv_data->ubx_get_buf[14+i*20]));
+		shell_print(shell, "");
+	}
+
 	return ret;
 }
 
@@ -385,6 +414,23 @@ static int cmd_info_gnss(const struct shell *shell)
 
 	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_INFO_GNSS_STATUS, NULL);
 
+	shell_print(shell, "GNSS selection");
+	shell_print(shell, "  Supported");
+	shell_print(shell, "        GPS %ssupported", drv_data->ubx_get_buf[1] & BIT(0) ? "" : "not ");
+	shell_print(shell, "        Glonass %ssupported", drv_data->ubx_get_buf[1] & BIT(1) ? "" : "not ");
+	shell_print(shell, "        Beidou %ssupported", drv_data->ubx_get_buf[1] & BIT(2) ? "" : "not ");
+	shell_print(shell, "        Galileo %ssupported", drv_data->ubx_get_buf[1] & BIT(3) ? "" : "not ");
+	shell_print(shell, "  Default");
+	shell_print(shell, "        GPS %senabled", drv_data->ubx_get_buf[2] & BIT(0) ? "" : "not ");
+	shell_print(shell, "        Glonass %senabled", drv_data->ubx_get_buf[2] & BIT(1) ? "" : "not ");
+	shell_print(shell, "        Beidou %senabled", drv_data->ubx_get_buf[2] & BIT(2) ? "" : "not ");
+	shell_print(shell, "        Galileo %senabled", drv_data->ubx_get_buf[2] & BIT(3) ? "" : "not ");
+	shell_print(shell, "  Enabled");
+	shell_print(shell, "        GPS %senabled", drv_data->ubx_get_buf[3] & BIT(0) ? "" : "not ");
+	shell_print(shell, "        Glonass %senabled", drv_data->ubx_get_buf[3] & BIT(1) ? "" : "not ");
+	shell_print(shell, "        Beidou %senabled", drv_data->ubx_get_buf[3] & BIT(2) ? "" : "not ");
+	shell_print(shell, "        Galileo %senabled", drv_data->ubx_get_buf[3] & BIT(3) ? "" : "not ");
+	shell_print(shell, "  Maximum concurrent gnss: %d", drv_data->ubx_get_buf[4]);
 	return ret;
 }
 
