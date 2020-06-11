@@ -71,6 +71,29 @@ struct isb_status_flags {
 	u32_t enabled : 1;
 };
 
+struct isb_sensor_ready_flags {
+	u32_t ths_temperature : 1;
+	u32_t ths_humidity : 1;
+	u32_t bps_temperature : 1;
+	u32_t bps_pressure : 1;
+	u32_t ambient_light : 1;
+	u32_t accelX : 1;
+	u32_t accelY : 1;
+	u32_t accelZ : 1;
+	u32_t gyroX : 1;
+	u32_t gyroY : 1;
+	u32_t gyroZ : 1;
+	u32_t sensor1 : 1;
+	u32_t sensor2 : 1;
+	u32_t altitude : 1;
+	u32_t latitude : 1;
+	u32_t longitude : 1;
+	u32_t satelites : 1;
+	u32_t dop : 1;
+	u32_t gnss_time : 1;
+	u32_t gnss_fixOK : 1;
+} __packed;
+
 struct isb_config_data {
 	char name[16];
 	u16_t version;
@@ -104,6 +127,7 @@ struct isb_sensor_data {
 	u8_t satelites;
 	u8_t dop;
 	u32_t gnss_time;
+	struct isb_sensor_ready_flags ready;
 } __attribute__((packed));
 
 struct witap_isb {

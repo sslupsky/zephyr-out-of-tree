@@ -747,6 +747,16 @@ struct ubx_payload_mon_ver {
 	u8_t extension3[30];
 } __packed;
 
+struct ubx_payload_nav_posllh {
+	u32_t iTOW;
+	s32_t longitude;		// Degrees * 10^-7 (more accurate than floats)
+	s32_t latitude;			// Degrees * 10^-7 (more accurate than floats)
+	s32_t altitude;			// Number of mm above ellipsoid
+	s32_t altitudeMSL;		// Number of mm above Mean Sea Level
+	u32_t horizontalAccuracy;	// mm * 10^-1 (i.e. 0.1mm)
+	u32_t verticalAccuracy;		// mm * 10^-1 (i.e. 0.1mm)
+} __packed;
+
 struct ubx_payload_nav_pvt {
 	/* time */
 	u32_t timeOfWeek;		// ms
@@ -810,6 +820,25 @@ struct ubx_payload_nav_status {
 	} flags2;
 	u32_t ttff;			// (ms) time to first fix
 	u32_t msss;			// (ms) time since startup / reset
+} __packed;
+
+struct ubx_payload_nav_timeutc {
+	u32_t iTOW;			// (ms) GPS time of week of the navigation epoch
+	u32_t tAcc;			// (ns) time accuracy estimate
+	s32_t nano;			// (ns) Fraction of second
+	u16_t year;
+	u8_t  month;
+	u8_t  day;
+	u8_t  hour;
+	u8_t  min;
+	u8_t  sec;
+	struct {
+		u8_t validTOW : 1;
+		u8_t validWKN : 1;
+		u8_t validUTC : 1;
+		u8_t reserved1 : 1;
+		u8_t utcStandard : 4;
+	} valid;
 } __packed;
 
 struct ubx_payload_rxm_pmreq {

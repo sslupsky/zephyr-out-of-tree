@@ -179,6 +179,8 @@ enum gnss_attribute {
 
 	GNSS_ATTR_TIMEPULSE_STATUS,
 
+	GNSS_ATTR_SAVE,
+
 	/**
 	 * Number of all common sensor attributes.
 	 */
@@ -207,6 +209,9 @@ enum gnss_trigger_type {
 	GNSS_TRIG_TIMER,
 	/** Trigger fires whenever new data is ready. */
 	GNSS_TRIG_DATA_READY,
+	GNSS_TRIG_PVT,
+	GNSS_TRIG_TIMEPULSE,
+	GNSS_TRIG_POLL,
 	/** Trigger fires when a geofence event is detected. */
 	GNSS_TRIG_GEOFENCE,
 	/**
@@ -216,8 +221,6 @@ enum gnss_trigger_type {
 	 * attributes.
 	 */
 	GNSS_TRIG_THRESHOLD,
-	GNSS_TRIG_SLEEP,
-	GNSS_TRIG_POLL,
 
 	/**
 	 * Number of all common sensor triggers.

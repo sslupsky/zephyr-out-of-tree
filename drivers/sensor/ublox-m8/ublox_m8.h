@@ -37,6 +37,7 @@
 
 #define UBLOX_M8_STARTUP_TIME_USEC	1000
 #define UBLOX_M8_MESSAGE_TIMEOUT_MSEC	1100
+#define UBLOX_M8_PVT_TIMEOUT_MSEC	10000
 
 #define UBLOX_M8_RECV_BUF_SIZE		128
 
@@ -184,7 +185,6 @@ struct ublox_m8_data {
 
 	u8_t rx_buf[UBLOX_M8_RECV_BUF_SIZE];
 	u8_t __aligned(4) rb_buf[UBX_MAX_FRAME_SIZE];
-	struct k_pipe rx_pipe;
 
 	// struct net_buf_pool *buf_pool;
 	struct k_sem msg_sem;
@@ -208,6 +208,7 @@ struct ublox_m8_data {
 	union ublox_device_id device_id;
 
 	struct gnss_pvt pvt;
+	bool pvt_ready;
 	struct gnss_status nav_status;
 	char sw_version[30];
 	char hw_version[10];
@@ -218,8 +219,8 @@ struct ublox_m8_data {
 	struct device *txready_gpio;
 	struct gpio_callback txready_gpio_cb;
 
-	struct gnss_trigger data_ready_trigger;
-	gnss_trigger_handler_t data_ready_handler;
+	struct gnss_trigger txready_trigger;
+	gnss_trigger_handler_t txready_handler;
 
 	struct device *timepulse_gpio;
 	struct gpio_callback timepulse_gpio_cb;
@@ -227,15 +228,23 @@ struct ublox_m8_data {
 	struct gnss_trigger timepulse_trigger;
 	gnss_trigger_handler_t timepulse_handler;
 
+	struct gnss_trigger pvt_trigger;
+	gnss_trigger_handler_t pvt_handler;
+
 	struct gnss_trigger poll_trigger;
 	gnss_trigger_handler_t poll_handler;
 
 #if defined(CONFIG_UBLOX_M8_TRIGGER_OWN_THREAD)
 	K_THREAD_STACK_MEMBER(trigger_thread_stack, CONFIG_UBLOX_M8_TRIGGER_THREAD_STACK_SIZE);
 	struct k_thread trigger_thread;
-	struct k_sem trigger_gpio_sem;
+	struct k_sem txready_gpio_sem;
+	struct k_poll_event events[3];
+	struct k_poll_signal txready_signal;
+	struct k_poll_signal timepulse_signal;
+	struct k_poll_signal pvt_signal;
 #elif defined(CONFIG_UBLOX_M8_TRIGGER_GLOBAL_THREAD)
-	struct k_work trigger_work;
+	struct k_work trigger_txready_work;
+	struct k_work trigger_timepulse_work;
 #endif
 
 #endif /* CONFIG_UBLOX_M8_TRIGGER */

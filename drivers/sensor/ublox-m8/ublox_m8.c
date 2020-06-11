@@ -32,8 +32,6 @@
 #define LOG_LEVEL CONFIG_GNSS_LOG_LEVEL
 LOG_MODULE_REGISTER(UBLOX_M8, CONFIG_GNSS_LOG_LEVEL);
 
-// NET_BUF_POOL_DEFINE(ublox_buf_pool, 8, 32, 0, NULL);
-
 FOR_EACH(UBX_HEADER_CFG_DEFINE, cfg, msg, pm2, prt, pms, pwr, rate, rxm, tp5);
 FOR_EACH(UBX_HEADER_NAV_DEFINE, pvt, status, geofence, sat, timeutc);
 FOR_EACH(UBX_HEADER_SEC_DEFINE, uniqid);
@@ -181,12 +179,18 @@ const union ubx_payload_cfg_prt ubx_payload_cfg_prt_poll_uart1 = {
 const struct ubx_payload_cfg_pm2 ubx_payload_cfg_pm2 = {
 	.version = 2,
 	.flags.extintSel = 0,
-	.flags.extintWake = 1,
-	.flags.extintBackup = 1,
+	.flags.extintWake = 1,			// extint wakes the receiver (so we can read the registers)
+	.flags.extintBackup = 0,		// extint puts receiver to sleep/backup
 	.flags.extintInactive = 0,
-	.flags.updateRTC = 1,
-	.flags.updateEPH = 1,
-	.flags.mode = 0,
+	.flags.updateRTC = 1,			// wakes every 5 minutes to update the rtc
+	.flags.updateEPH = 1,			// wakes every 30 minutes to update the ephemerides
+	.flags.mode = 0,			// PSMOO mode
+	.maxStartupStateDur = 120,		// 120 second max startup state duration
+	.updatePeriod =  60000,		// 3 hour update period
+	.searchPeriod =  120000,		// 1 hour search period
+	.gridOffset = 0,			// 
+	.onTime = 2,
+	.minAcqTime = 0,			// receiver determines the acquisition time
 };
 
 const struct ubx_payload_cfg_pms ubx_payload_cfg_pms = {
@@ -381,25 +385,6 @@ static int ublox_m8_flush_msg_buffer(struct device *dev)
 	return ret;
 }
 
-static int ublox_m8_flush_msg_pipe(struct device *dev)
-{
-	struct ublox_m8_data *drv_data = dev->driver_data;
-	u8_t rx_buf[128];
-	int ret = 0;
-	size_t bytes_read;
-
-	while (1) {
-		ret = k_pipe_get(&drv_data->rx_pipe, rx_buf, sizeof(rx_buf), &bytes_read, 1, K_NO_WAIT);
-		if (bytes_read) {
-			LOG_HEXDUMP_DBG(rx_buf, bytes_read, "pipe flushed");
-		}
-		if (ret < 0 || bytes_read == 0) {
-			break;
-		}
-	}
-	return 0;
-}
-
 static void update_pvt(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -408,6 +393,8 @@ static void update_pvt(struct device *dev)
 	memcpy(&drv_data->pvt.position, drv_data->frame.ubx.payload+20, sizeof(struct gnss_position));
 	memcpy(&drv_data->pvt.velocity, drv_data->frame.ubx.payload+48, sizeof(struct gnss_velocity));
 	memcpy(&drv_data->pvt.time, drv_data->frame.ubx.payload, sizeof(struct gnss_time));
+	drv_data->pvt_ready = drv_data->pvt.position.fixflags & 0x01 ? true : false;
+	// k_poll_signal_raise(&drv_data->pvt_signal, 0);
 }
 
 static void update_status(struct device *dev)
@@ -620,6 +607,8 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 		switch (drv_data->sentence_state) {
 		case GNSS_SENTENCE_STATE_IDLE:
 			len = 1;
+			// gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 1);
+			// k_sleep(K_MSEC(100));
 			/* read the first byte */
 			ret = i2c_read(drv_data->i2c, &rx_buf, 1, cfg->i2c_addr);
 			// if (ret < 0) {
@@ -630,6 +619,7 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 				if (idle_count % debug_idle_rate == 0) {
 					LOG_DBG("idle (%d)", idle_count);
 				}
+				// gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 0);
 				k_sem_take(&drv_data->msg_sem, K_HOURS(1));
 				/* 
 				 * Note:  When txReady fires, the duration does not appear to be
@@ -911,10 +901,13 @@ static int ublox_m8_ubx_msg_set(struct device *dev, const union ubx_header *head
 				k_timeout_t timeout)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	struct ubx_frame frame;
 	int ret;
 
 	k_sem_take(&drv_data->ubx_frame_sem, K_FOREVER);
+	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 1);
+	k_sleep(K_MSEC(100));
 
 	/* initialize frame status */
 	memcpy(&frame.status, &ubx_frame_status_init, UBX_FRAME_STATUS_SIZE);
@@ -934,6 +927,7 @@ static int ublox_m8_ubx_msg_set(struct device *dev, const union ubx_header *head
 		LOG_ERR("msg set failed");
 	}
 
+	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 0);
 	return ret;
 }
 
@@ -951,10 +945,13 @@ static int ublox_m8_ubx_msg_get(struct device *dev, const union ubx_header *head
 				k_timeout_t timeout)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
 	struct ubx_frame frame;
 	int ret;
 
 	k_sem_take(&drv_data->ubx_frame_sem, K_FOREVER);
+	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 1);
+	k_sleep(K_MSEC(100));
 
 	/* initialize frame status */
 	memcpy(&frame.status, &ubx_frame_status_init, UBX_FRAME_STATUS_SIZE);
@@ -974,6 +971,7 @@ static int ublox_m8_ubx_msg_get(struct device *dev, const union ubx_header *head
 		LOG_ERR("msg get failed");
 	}
 
+	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 0);
 	return ret;
 }
 
@@ -1141,6 +1139,34 @@ static int ublox_m8_configure_rxm(struct device *dev)
  * @param dev 
  * @return int 
  */
+static int ublox_m8_configure_nav_msg_rate(struct device *dev)
+{
+	struct ublox_m8_data *drv_data = dev->driver_data;
+	u8_t payload[3];
+	int ret;
+
+	LOG_DBG("");
+	payload[0] = ubx_class_nav;
+	payload[1] = ubx_nav_id_pvt;
+	payload[2] = 1;
+	ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_msg, payload, 3, UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
+
+	ret = drv_data->last_error;
+	if (ret < 0) {
+		LOG_ERR("%s: Failed to configure nav msg rate",
+			DT_INST_0_UBLOX_M8_LABEL);
+	}
+
+	return ret;
+}
+
+/**
+ * @brief 
+ * 
+ * 
+ * @param dev 
+ * @return int 
+ */
 static int ublox_m8_configure_save_bbr(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1163,121 +1189,36 @@ const struct gnss_trigger poll_trigger = {
 	.chan = GNSS_CHAN_ALL,
 };
 
-/**
- * @brief 
- * 
- * @param dev 
- * @return int 
- */
-static int ublox_m8_message_get(struct device *dev)
-{
-	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
-	int ret;
-	u16_t msg_len;
-	size_t bytes_read, bytes_put;
-
-	k_mutex_lock(&drv_data->msg_get_mtx, K_FOREVER);
-
-	/* get the message length */
-	ret = i2c_burst_read(drv_data->i2c, cfg->i2c_addr,
-			     UBLOX_M8_REGISTER_LEN, drv_data->rx_buf, 2);
-	if (ret < 0) {
-		LOG_DBG("addr error");
-		goto done;
-	}
-	/* ddc port message length is received big endian */
-	msg_len = sys_get_be16(drv_data->rx_buf);
-	if (msg_len == 0) {
-		ret = -EAGAIN;
-		goto done;
-	}
-
-	if (msg_len > 4095) {
-		LOG_WRN("large msg buffer");
-	}
-
-	/* read the first byte */
-	ret = i2c_read(drv_data->i2c, drv_data->rx_buf, 1, cfg->i2c_addr);
-	if (ret < 0) {
-		LOG_DBG("read error");
-		ret = -EIO;
-		goto done;
-	}
-	if (drv_data->rx_buf[0] == 0xFF) {
-		LOG_DBG("buffer not ready (0xFF)");
-		ret = -EAGAIN;
-		goto done;
-	}
-
-	ret = k_pipe_put(&drv_data->rx_pipe, drv_data->rx_buf, 1, &bytes_put, 1, drv_data->timeout);
-	if (ret < 0) {
-		if (ret == -EAGAIN) {
-			LOG_DBG("pipe timeout");
-			ret = -ETIMEDOUT;
-		} else {
-			LOG_DBG("pipe error");
-		}
-		goto done;
-	}
-
-	msg_len--;
-	while (msg_len > 0) {
-		bytes_read = MIN(msg_len, sizeof(drv_data->rx_buf));
-		ret = i2c_read(drv_data->i2c, drv_data->rx_buf, bytes_read, cfg->i2c_addr);
-		if (ret < 0) {
-			LOG_DBG("read error");
-			break;
-		}
-		ret = k_pipe_put(&drv_data->rx_pipe, drv_data->rx_buf, bytes_read, &bytes_put, bytes_read, drv_data->timeout);
-		if (ret < 0) {
-			if (ret == -EAGAIN) {
-				LOG_DBG("pipe timeout");
-				ret = -ETIMEDOUT;
-			} else {
-				LOG_DBG("pipe error");
-			}
-			break;;
-		}
-		msg_len -= bytes_read;
-	}
-done:
-	drv_data->poll_status = ret;
-	k_mutex_unlock(&drv_data->msg_get_mtx);
-	return ret;
-}
-
-static void ublox_m8_txready_handler(struct device *dev, struct gnss_trigger *trigger)
-{
-	int ret;
-
-	ret = ublox_m8_message_get(dev);
-	if (ret < 0) {
-	}
-	return;
-}
-
-static void ublox_m8_poll_handler(struct device *dev, struct gnss_trigger *trigger)
-{
-	int ret;
-
-	ret = ublox_m8_message_get(dev);
-	if (ret < 0) {
-	}
-	return;
-}
-
 static int ublox_m8_sample_fetch(struct device *dev, enum gnss_channel chan)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	s64_t t;
 	int ret;
 
 	ARG_UNUSED(drv_data);
 
 	switch (chan) {
 	case GNSS_CHAN_ALL:
-		/* send header with empty payload  */
-		ublox_m8_ubx_msg_get(dev, &ubx_header_nav_pvt, NULL, 0, UBX_MESSAGE_POLL, UBX_RESPONSE_POLL, drv_data->timeout);
+		// t = k_uptime_get();
+		// while (k_uptime_get() - t < UBLOX_M8_PVT_TIMEOUT_MSEC) {
+		// 	/* send header with empty payload  */
+		// 	ublox_m8_ubx_msg_get(dev, &ubx_header_nav_pvt, NULL, 0, UBX_MESSAGE_POLL, UBX_RESPONSE_POLL, drv_data->timeout);
+		// 	if (drv_data->pvt.position.fixflags & 0x01) {
+		// 		break;
+		// 	}
+		// }
+		// gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 1);
+		// t = k_uptime_get();
+		// do {
+		// 	k_sleep(K_MSEC(500));
+		// 	k_sem_give(&drv_data->msg_sem);
+		// 	/* check if gnssFixOk */
+		// 	if (drv_data->pvt.position.fixflags & 0x01) {
+		// 		break;
+		// 	}
+		// } while (k_uptime_get() - t < UBLOX_M8_PVT_TIMEOUT_MSEC);
+		k_poll_signal_raise(&drv_data->pvt_signal, 0);
 		break;
 
 	case GNSS_CHAN_TIME:
@@ -1310,6 +1251,7 @@ static int ublox_m8_channel_get(struct device *dev, enum gnss_channel chan,
 	case GNSS_CHAN_ALL:
 		// memcpy(val, &drv_data->pvt, sizeof(struct gnss_pvt));
 		*(struct gnss_pvt *)val = drv_data->pvt;
+		drv_data->pvt_ready = false;
 		break;
 
 	case GNSS_CHAN_TIME:
@@ -1546,6 +1488,15 @@ static int ublox_m8_attr_set(struct device *dev, enum gnss_channel chan,
 		}
 		break;
 
+	case GNSS_ATTR_SAVE:
+		if (!val) {
+			LOG_DBG("invalid pointer");
+			ret = -EINVAL;
+			break;
+		}
+		ublox_m8_ubx_msg_set(dev, &ubx_header_cfg_cfg, val, sizeof(struct ubx_payload_cfg_cfg), UBX_MESSAGE_SET, UBX_RESPONSE_ACK, drv_data->timeout);
+		break;
+
 	default:
 		ret = -ENOTSUP;
 		break;
@@ -1576,6 +1527,19 @@ static int ublox_m8_connect_status(struct device *dev)
 	 */
 	ret = i2c_write(drv_data->i2c, NULL, 0, cfg->i2c_addr);
 	return ret;
+}
+
+static void ublox_m8_reset(struct device *dev)
+{
+	struct ublox_m8_data *drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+
+	/* assert reset pin */
+	drv_data->device_state = GNSS_DEVICE_STATE_RESET;
+	gpio_pin_set(drv_data->reset_gpio, cfg->reset_gpio_pin, 1);
+	k_sleep(K_MSEC(1));
+	gpio_pin_set(drv_data->reset_gpio, cfg->reset_gpio_pin, 0);
+	k_sleep(K_MSEC(100));
 }
 
 static int ublox_m8_pin_init(struct device *dev)
@@ -1691,39 +1655,9 @@ static int ublox_m8_pin_init(struct device *dev)
 	 * is configured to one pulse per second.
 	 * 
 	 * See Hardware Integration Manual 1.5.3
+	 * 
+	 * Timepulse gpio is initialized in ublox_m8_trigger.c
 	 */
-	drv_data->timepulse_gpio = device_get_binding(cfg->timepulse_gpio_name);
-	if (drv_data->timepulse_gpio == NULL) {
-		LOG_ERR("Failed to get pointer to %s device",
-			    cfg->timepulse_gpio_name);
-		return -EINVAL;
-	}
-
-	/* configure pull-up to check if module is connected */
-	gpio_pin_configure(drv_data->timepulse_gpio, cfg->timepulse_gpio_pin,
-			   cfg->timepulse_gpio_flags |
-			   GPIO_INPUT | GPIO_PULL_UP);
-
-	/* read the state of the pin */
-	ret = gpio_pin_get(drv_data->timepulse_gpio, cfg->timepulse_gpio_pin);
-	if (!ret) {
-		/*
-		 * logical 0 indicates chip is driving pin low
-		 * so chip is present.
-		 * Turn off the pull-up.
-		 */
-		gpio_pin_configure(drv_data->timepulse_gpio, cfg->timepulse_gpio_pin,
-				cfg->timepulse_gpio_flags |
-				GPIO_INPUT);
-	} else {
-		/*
-		 * logical 1 indicates pin is being pulled up my mcu
-		 * so the chip is not present.
-		 * Disable input.
-		 */
-		gpio_pin_configure(drv_data->timepulse_gpio, cfg->timepulse_gpio_pin,
-				GPIO_DISCONNECTED);
-	}
 
 	/*
 	 * setup TXD gpio
@@ -1745,13 +1679,6 @@ static int ublox_m8_pin_init(struct device *dev)
 	// gpio_pin_configure(drv_data->txd_gpio, cfg->txd_gpio_pin,
 	// 		   cfg->txd_gpio_flags |
 	// 		   GPIO_OUTPUT);
-
-	/* assert reset pin */
-	drv_data->device_state = GNSS_DEVICE_STATE_RESET;
-	gpio_pin_set(drv_data->reset_gpio, cfg->reset_gpio_pin, 1);
-	k_sleep(K_MSEC(1));
-	gpio_pin_set(drv_data->reset_gpio, cfg->reset_gpio_pin, 0);
-	k_sleep(K_MSEC(100));
 
 	return 0;
 }
@@ -1798,6 +1725,11 @@ static void ublox_m8_config_work_handler(struct k_work *work)
 	}
 
 	ret = ublox_m8_configure_pm2(dev);
+	if (ret < 0) {
+		return;
+	}
+
+	ret = ublox_m8_configure_nav_msg_rate(dev);
 	if (ret < 0) {
 		return;
 	}
@@ -1856,7 +1788,7 @@ int ublox_m8_init(struct device *dev)
 
 	drv_data->timeout = K_MSEC(UBLOX_M8_MESSAGE_TIMEOUT_MSEC);
 	drv_data->poll_status = 0;
-	k_pipe_init(&drv_data->rx_pipe, drv_data->rb_buf, sizeof(drv_data->rb_buf));
+	drv_data->pvt_ready = false;
 	k_sem_init(&drv_data->msg_sem, 0, 1);
 	k_sem_init(&drv_data->ubx_frame_sem, 1, 1);
 	k_sem_init(&drv_data->ubx_get_sem, 0, 1);

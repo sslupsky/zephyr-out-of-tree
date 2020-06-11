@@ -86,24 +86,6 @@ static int cmd_init(const struct shell *shell, size_t argc, char *argv[])
 	return ret;
 }
 
-static int cmd_poll(const struct shell *shell)
-{
-	struct device *dev;
-	struct ublox_m8_data *drv_data;
-
-	dev = device_get_binding(GPS_DEVICE_NAME);
-	if (!dev) {
-		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
-		return -EIO;
-	}
-	
-	drv_data = dev->driver_data;
-
-	k_sem_give(&drv_data->msg_sem);
-
-	return 0;
-}
-
 /***********************/
 
 static int cmd_nav_pvt(const struct shell *shell)
@@ -233,6 +215,7 @@ static int cmd_nav_pvt_msg_rate(const struct shell *shell, size_t argc, char **a
 	drv_data = dev->driver_data;
 	if (argc == 2) {
 		rate = MIN(MAX(strtol(argv[1], NULL, 0), 1), 3600);
+		shell_print(shell, "setting rate to: %d", rate);
 		gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_PVT_RATE, &rate);
 	} else {
 		gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_NAV_MSG_PVT_RATE, &rate);
@@ -459,6 +442,7 @@ static int cmd_pm_status(const struct shell *shell)
 {
 	struct device *dev;
 	struct ublox_m8_data *drv_data;
+	struct ubx_payload_cfg_pm2 *pm;
 	int ret = 0;
 
 	dev = device_get_binding(GPS_DEVICE_NAME);
@@ -468,8 +452,28 @@ static int cmd_pm_status(const struct shell *shell)
 	}
 
 	drv_data = dev->driver_data;
+	pm = (struct ubx_payload_cfg_pm2 *)(drv_data->ubx_get_buf);
 
 	gnss_attr_get(dev, GNSS_CHAN_NONE, GNSS_ATTR_PM_STATUS, NULL);
+
+	shell_print(shell, "Power management configuration");
+	shell_print(shell, "    Max Startup State Duration:  %d", pm->maxStartupStateDur);
+	shell_print(shell, "    update period:               %d", pm->updatePeriod);
+	shell_print(shell, "    search period:               %d", pm->searchPeriod);
+	shell_print(shell, "    grid offset:                 %d", pm->gridOffset);
+	shell_print(shell, "    onTime:                      %d", pm->onTime);
+	shell_print(shell, "    min acqusition time:         %d", pm->minAcqTime);
+	shell_print(shell, "    extint inactivity:           %d", pm->extintInactivityMs);
+	shell_print(shell, "    flags:");
+	shell_print(shell, "        extintSel:               %d", pm->flags.extintSel);
+	shell_print(shell, "        extintWake:              %d", pm->flags.extintWake);
+	shell_print(shell, "        extintBackup:            %d", pm->flags.extintBackup);
+	shell_print(shell, "        limitPeakCurr:           %d", pm->flags.limitPeakCurr);
+	shell_print(shell, "        waitTimeFix:             %d", pm->flags.waitTimeFix);
+	shell_print(shell, "        updateRTC:               %d", pm->flags.updateRTC);
+	shell_print(shell, "        updateEPH:               %d", pm->flags.updateEPH);
+	shell_print(shell, "        doNotEnterOff:           %d", pm->flags.doNotEnterOff);
+	shell_print(shell, "        mode:                    %d", pm->flags.mode);
 
 	return ret;
 }
@@ -582,6 +586,80 @@ static int cmd_debug_idle_rate(const struct shell *shell, size_t argc, char **ar
 }
 
 /***********************/
+
+static int cmd_gnss_poll(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+	
+	drv_data = dev->driver_data;
+	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+
+	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 1);
+	k_sleep(K_MSEC(500));
+	k_sem_give(&drv_data->msg_sem);
+	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 0);
+
+	return 0;
+}
+
+static int cmd_gnss_save(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	struct ubx_payload_cfg_cfg payload = {
+		.saveMask.ioPort = 1,
+		.saveMask.msgConf = 1,
+		.saveMask.infMsg = 1,
+		.saveMask.navConf = 1,
+		.saveMask.rxmConf = 1,
+		.deviceMask.devBBR = 1,
+	};
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+	
+	drv_data = dev->driver_data;
+
+	gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_SAVE, &payload);
+
+	return 0;
+}
+
+static int cmd_gnss_load(const struct shell *shell)
+{
+	struct device *dev;
+	struct ublox_m8_data *drv_data;
+	struct ubx_payload_cfg_cfg payload = {
+		.loadMask.ioPort = 1,
+		.loadMask.msgConf = 1,
+		.loadMask.infMsg = 1,
+		.loadMask.navConf = 1,
+		.loadMask.rxmConf = 1,
+		.deviceMask.devBBR = 1,
+	};
+
+	dev = device_get_binding(GPS_DEVICE_NAME);
+	if (!dev) {
+		shell_error(shell, "device not found: %s", GPS_DEVICE_NAME);
+		return -EIO;
+	}
+	
+	drv_data = dev->driver_data;
+
+	gnss_attr_set(dev, GNSS_CHAN_NONE, GNSS_ATTR_SAVE, &payload);
+
+	return 0;
+}
 
 static int cmd_gnss_info(const struct shell *shell, size_t argc, char *argv[])
 {
@@ -779,7 +857,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(gnss_debug_cmds,
 
 SHELL_STATIC_SUBCMD_SET_CREATE(gnss_cmds,
 	SHELL_CMD_ARG(init, NULL, HELP_NONE, cmd_init, 1, 0),
-	SHELL_CMD(poll, NULL, HELP_NONE, cmd_poll),
+	SHELL_CMD(poll, NULL, HELP_NONE, cmd_gnss_poll),
+	SHELL_CMD(save, NULL, HELP_NONE, cmd_gnss_save),
+	SHELL_CMD(load, NULL, HELP_NONE, cmd_gnss_load),
 	SHELL_CMD(pm, &gnss_pm_cmds, HELP_NONE, cmd_gnss_pm),
 	SHELL_CMD(info, &gnss_info_cmds, HELP_NONE, cmd_gnss_info),
 	SHELL_CMD(port, &gnss_port_cmds, HELP_NONE, cmd_gnss_port),
