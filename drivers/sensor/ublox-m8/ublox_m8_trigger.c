@@ -169,7 +169,7 @@ static void ublox_m8_trigger_timepulse_cb(void *arg)
 	// ublox_m8_setup_timepulse_int(dev, true);
 }
 
-static void ublox_m8_trigger_pvt_cb(void *arg)
+static void ublox_m8_trigger_pvt_cb(void *arg, int timeout)
 {
 	struct device *dev = arg;
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -177,18 +177,22 @@ static void ublox_m8_trigger_pvt_cb(void *arg)
 	s64_t t;
 
 	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 1);
-	drv_data->pvt_ready = false;
+	// drv_data->pvt_ready = false;
+
+	if (!timeout) {
+		timeout = UBLOX_M8_PVT_TIMEOUT_MSEC;
+	}
 
 	t = k_uptime_get();
 	do {
 		k_sleep(K_MSEC(500));
 		k_sem_give(&drv_data->msg_sem);
 		k_yield();
-		/* check if gnssFixOk */
+		/* check if fix ok and psm state is tracking */
 		if (drv_data->pvt_ready) {
 			break;
 		}
-	} while (k_uptime_get() - t < UBLOX_M8_PVT_TIMEOUT_MSEC);
+	} while (k_uptime_get() - t < timeout);
 
 	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 0);
 
@@ -221,7 +225,7 @@ static void ublox_m8_trigger_thread(int dev_ptr, int unused)
 			drv_data->events[1].state = K_POLL_STATE_NOT_READY;
 		}
 		if (drv_data->events[2].state == K_POLL_STATE_SIGNALED) {
-			ublox_m8_trigger_pvt_cb(dev);
+			ublox_m8_trigger_pvt_cb(dev, drv_data->events[2].signal->result);
 			drv_data->events[2].signal->signaled = 0;
 			drv_data->events[2].state = K_POLL_STATE_NOT_READY;
 		}
@@ -267,7 +271,7 @@ int ublox_m8_init_interrupt(struct device *dev)
 
 	/* read the state of the pin */
 	ret = gpio_pin_get(drv_data->txready_gpio, cfg->txready_gpio_pin);
-	LOG_INF("txReady: %d", ret);
+	LOG_DBG("txReady: %d", ret);
 	// if (!ret) {
 	// 	/*
 	// 	 * logical 0 indicates chip is driving pin low
@@ -311,7 +315,7 @@ int ublox_m8_init_interrupt(struct device *dev)
 
 	/* read the state of the pin */
 	ret = gpio_pin_get(drv_data->timepulse_gpio, cfg->timepulse_gpio_pin);
-	LOG_INF("timepulse: %d", ret);
+	LOG_DBG("timepulse: %d", ret);
 	if (!ret) {
 		/*
 		 * logical 0 indicates chip is driving pin low

@@ -37,7 +37,7 @@
 
 #define UBLOX_M8_STARTUP_TIME_USEC	1000
 #define UBLOX_M8_MESSAGE_TIMEOUT_MSEC	1100
-#define UBLOX_M8_PVT_TIMEOUT_MSEC	10000
+#define UBLOX_M8_PVT_TIMEOUT_MSEC	36000
 
 #define UBLOX_M8_RECV_BUF_SIZE		128
 
@@ -175,6 +175,7 @@ struct ublox_m8_data {
 	struct device *i2c;
 	enum gnss_device_state device_state;
 	enum gnss_sentence_state sentence_state;
+	enum gnss_tracking_state tracking_state;
 	void (*state_change_cb)(u8_t state);
 	struct device *dev;
 	struct device *extint_gpio;

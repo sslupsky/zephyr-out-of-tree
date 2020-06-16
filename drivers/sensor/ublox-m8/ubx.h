@@ -330,6 +330,15 @@ enum ubx_message {
 	UBX_MESSAGE_OUTPUT,
 } __packed;
 
+enum ubx_psm_state {
+	UBX_PSM_STATE_DISABLED = 0,
+	UBX_PSM_STATE_ENABLED,
+	UBX_PSM_STATE_ACQUISITION,
+	UBX_PSM_STATE_TRACKING,
+	UBX_PSM_STATE_POT,
+	UBX_PSM_STATE_INACTIVE,
+} __packed;
+
 union ubx_cfg_prt_txready {
 	struct {
 		u16_t en : 1;
@@ -466,6 +475,40 @@ struct ubx_payload_cfg_msg {
 	u8_t rate;
 } __packed;
 
+struct ubx_payload_cfg_nav5 {
+	struct {
+		u16_t dyn : 1;			// apply dynamic model settings
+		u16_t minEl : 1;		// apply minimum elevation settings
+		u16_t posFixMode : 1;		// apply fix mode settings
+		u16_t drLim : 1;		// reserved
+		u16_t posMask : 1;		// apply position mask settings
+		u16_t timeMask : 1;		// apply time mask settings
+		u16_t staticHoldMask : 1;	// apply static hold settings
+		u16_t dgpsMask : 1;		// apply dgps settings
+		u16_t cnoThreshold : 1;		// apply CNO threshold settings
+		u16_t reserved1 : 1;		// 
+		u16_t utc : 1;			// apply UTC settings
+	} mask;
+	u8_t dynMode1;				// dynamic platform model
+	u8_t fixMode;				// position fixing mode
+	s32_t fixedAlt;				// (m) fixed altitude
+	u32_t fixedAltVar;			// (m^2) fixed altitude variance for 2D mode
+	s8_t minElev;				// (deg) minimum elevation for a GNSS satellite to be used in NAV
+	u8_t drLimit;				// reserved
+	u16_t pDop;				// position DOP mask to use
+	u16_t tDop;				// time DOP mask to use
+	u16_t pAcc;				// (m) position accuracy mask
+	u16_t tAcc;				// time accuracy mask
+	u8_t staticHoldThresh;			// (cm/s) Static hold threshold
+	u8_t dgnssTimeout;			// (s) DGNSS timeout
+	u8_t cnoThreshNumSVs;			// Number of satellites required to have C/No above cnoThresh for a fix to be attempted
+	u8_t cnoThresh;				// (dBHz) C/No threshold for decide whether to attempt a fix
+	u8_t reserved1[2];
+	u16_t staticHoldMaxDist;		// (m) Static hold distance threshold (before quitting static hold)
+	u8_t utcStandard;			// UTC standard to be used
+	u8_t reserved2[5];
+} __packed;
+
 struct ubx_payload_cfg_pm2 {
 	u8_t version;
 	u8_t reserved1;
@@ -589,6 +632,23 @@ struct ubx_payload_cfg_rate {
 	u16_t measRate;			// ms, elapsed time between GNSS measurements.  Should be greater than 50ms
 	u16_t navRate;			// cycles, ratio between the number of measurements and teh number of navigation solutions
 	u16_t timeReg;			// the time system to which measurements are aligned, 0=UTC, 1=GPS, 2=GLOSNASS, 3=BeiDou, 4=Galileo
+} __packed;
+
+struct ubx_payload_cfg_rst {
+	struct {
+		u16_t eph : 1;
+		u16_t alm : 1;
+		u16_t health : 1;
+		u16_t klob : 1;
+		u16_t pos : 1;
+		u16_t clkd : 1;
+		u16_t osc : 1;
+		u16_t utc : 1;
+		u16_t reserved1 :6;
+		u16_t aop : 1;
+	} navBbrMask;
+	u8_t resetMode;
+	u8_t reserved;
 } __packed;
 
 struct ubx_payload_cfg_rxm {
@@ -766,13 +826,29 @@ struct ubx_payload_nav_pvt {
 	u8_t gpsHour;
 	u8_t gpsMinute;
 	u8_t gpsSecond;
-	u8_t valid;
+	struct {
+		u8_t validDate : 1;
+		u8_t validTime : 1;
+		u8_t fullyResolved : 1;
+		u8_t validMag : 1;
+	} valid;
 	u32_t accuracy;
 	s32_t gpsNanosecond;
 	/* position */
-	u8_t fixType;			// Tells us when we have a solution aka lock
-	u8_t fixflags;
-	u8_t flags2;
+	u8_t fixType;
+	struct {
+		u8_t gnssFixOK : 1;	// valid fix (ie: within DOP nad accuracy masks)
+		u8_t diffSoln : 1;	// differential corrections were applied
+		u8_t psmState : 4;	
+		u8_t headVehValid : 1;	// heading of vehicle is valid (only set if the receivers is in sensor fusion mode)
+		u8_t carrSoln : 1;	// carrier phase range solution status
+	} flags;			// Tells us when we have a solution aka lock
+	struct {
+		u8_t reserved1 : 5;
+		u8_t confirmedAvail : 1;	// Information about UTC date and time validity confirmation is available
+		u8_t confirmedDate : 1;		// UTC date validity could be confirmed
+		u8_t confirmedTime : 1;		// UTC time of day could be confirmed
+	} flags2;
 	u8_t SIV;			// Number of satellites used in position solution
 	s32_t longitude;		// Degrees * 10^-7 (more accurate than floats)
 	s32_t latitude;			// Degrees * 10^-7 (more accurate than floats)
@@ -789,7 +865,9 @@ struct ubx_payload_nav_pvt {
 	u32_t speed_accuracy;
 	u32_t heading_accuracy;		// degrees * 10^-5
 	u16_t pDOP;			// Position dilution of precision 10^-2
-	u8_t flags3;
+	struct {
+		u8_t invalidLlh : 1;	// invalid lon, lat, height and hMSL
+	} flags3;
 	u8_t reserved1[5];
 	s32_t headVeh;			// degrees * 10^-5
 	s16_t magDec;			// degrees * 10^-2

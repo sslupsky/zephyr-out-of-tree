@@ -39,14 +39,25 @@ struct gnss_time {
 	u8_t gpsHour;
 	u8_t gpsMinute;
 	u8_t gpsSecond;
-	u8_t valid;
+	struct {
+		u8_t validDate : 1;
+		u8_t validTime : 1;
+		u8_t fullyResolved : 1;
+		u8_t validMag : 1;
+	} valid;
 	u32_t accuracy;
 	s32_t gpsNanosecond;
 } __packed;
 
 struct gnss_position {
 	u8_t fixType;		 //Tells us when we have a solution aka lock
-	u8_t fixflags;
+	struct {
+		u8_t gnssFixOK : 1;	// valid fix (ie: within DOP nad accuracy masks)
+		u8_t diffSoln : 1;	// differential corrections were applied
+		u8_t psmState : 4;	
+		u8_t headVehValid : 1;	// heading of vehicle is valid (only set if the receivers is in sensor fusion mode)
+		u8_t carrSoln : 1;	// carrier phase range solution status
+	} fix_status;			// Tells us when we have a solution aka lock
 	u8_t flags2;
 	u8_t SIV;			 //Number of satellites used in position solution
 	s32_t longitude;		 //Degrees * 10^-7 (more accurate than floats)
@@ -153,9 +164,10 @@ enum gnss_attribute {
 	GNSS_ATTR_NAV_MEASUREMENT_RATE,
 	GNSS_ATTR_NAV_SOLUTION_RATE,
 	GNSS_ATTR_NAV_TIMEREF,
-
+	GNSS_ATTR_NAV_SETTINGS,
 	GNSS_ATTR_NAV_MSG_PVT_RATE,
 	GNSS_ATTR_NAV_MSG_SOL_RATE,
+	GNSS_ATTR_NAV_MSG_STATUS_RATE,
 
 	GNSS_ATTR_INFO_ID,
 	GNSS_ATTR_INFO_HW_STATUS,
@@ -258,6 +270,14 @@ enum gnss_device_state {
 	GNSS_DEVICE_STATE_INACTIVE,
 	GNSS_DEVICE_STATE_LOWPOWER,
 	GNSS_DEVICE_STATE_DISCONNECTED,
+};
+
+enum gnss_tracking_state {
+	GNSS_TRACKING_STATE_DISABLED,
+	GNSS_TRACKING_STATE_ENABLED,
+	GNSS_TRACKING_STATE_ACQUISITION,
+	GNSS_TRACKING_STATE_TRACKING,
+	GNSS_TRACKING_STATE_INACTIVE,
 };
 
 enum gnss_sentence_state {
@@ -591,7 +611,7 @@ static inline int gnss_enable(struct device *dev,
 	const struct gnss_driver_api *api =
 		(const struct gnss_driver_api *)dev->driver_api;
 
-	if (api->trigger_set == NULL) {
+	if (api->enable == NULL) {
 		return -ENOTSUP;
 	}
 
