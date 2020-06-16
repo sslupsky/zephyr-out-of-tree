@@ -126,6 +126,14 @@ const struct led_animation_t animation_error = {
 	.repeat = 2,
 };
 
+const struct led_animation_t animation_gpslock = {
+	.effect = LED_EFFECT_BLINK,
+	.color = (struct led_color_t *)&LED_COLOR_BLUE,
+	.duration = 1000,
+	.duty_cycle = 100,
+	.repeat = 0,
+};
+
 static bool led_initialized = false;
 static struct led_data_t led_data;
 
