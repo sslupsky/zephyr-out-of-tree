@@ -11,6 +11,10 @@ menuconfig BQ24195
 
 if BQ24195
 
+module = BQ24195
+module-str = bq24195
+source "subsys/logging/Kconfig.template.log_config"
+
 config BQ24195_NAME
 	string "Driver name"
 	default "BQ24195"
@@ -29,6 +33,13 @@ config BQ24195_I2C_MASTER_DEV_NAME
 	help
 	  Specify the device name of the I2C master device to which BQ24195 is
 	  connected.
+
+config BQ24195_SHELL
+	bool "Enable BQ24195 shell"
+	depends on SHELL
+	default y
+	help
+	  This shell provides access to basic sensor data.
 
 choice
 	prompt "Trigger mode"

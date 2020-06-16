@@ -72,6 +72,7 @@ static void bq24195_thread_cb(void *arg)
 	struct device *dev = arg;
 	struct bq24195_data *drv_data = dev->driver_data;
 
+	pmic_update(dev);
 	if (drv_data->data_ready_handler != NULL) {
 		drv_data->data_ready_handler(dev,
 					     &drv_data->data_ready_trigger);
