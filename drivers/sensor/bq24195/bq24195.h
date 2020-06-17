@@ -43,6 +43,10 @@
 #define DEFAULT_CHARGE_CURRENT		512
 #define DEFAULT_TERMINATION_VOLTAGE	4112
 
+#define BQ24195_SIGNAL_UPDATE_IMMEDIATE			0
+#define BQ24195_SIGNAL_UPDATE_DELAYED			1
+#define BQ24195_SIGNAL_DISCONNECT_CHECK			2
+
 /**
  * Driver for the BQ24195 pmic.
  */
@@ -504,10 +508,10 @@ enum bq24195_watchdog_timeout {
 };
 
 enum bq24195_charge_status {
-	BQ24915_CHARGE_STATUS_NOT_CHARGING = 0,
-	BQ24915_CHARGE_STATUS_PRECHARGE,
-	BQ24915_CHARGE_STATUS_FAST_CHARGE,
-	BQ24915_CHARGE_STATUS_CHARGE_DONE,
+	BQ24195_CHARGE_STATUS_NOT_CHARGING = 0,
+	BQ24195_CHARGE_STATUS_PRECHARGE,
+	BQ24195_CHARGE_STATUS_FAST_CHARGE,
+	BQ24195_CHARGE_STATUS_CHARGE_DONE,
 };
 
 enum bq24195_vbus_status {
@@ -570,6 +574,9 @@ struct bq24195_data {
 	u8_t charge_cycle_count;
 	u8_t battery_disconnected;
 	struct k_sem update_sem;
+	struct k_poll_event events[2];
+	struct k_poll_signal update_signal;
+	struct k_poll_signal disconnect_signal;
 };
 
 struct bq24195_dev_config {
