@@ -59,6 +59,7 @@
 	dma = <0>;
 	// interrupts = <9 0>;
 
+	/* enable this when there is an ecc508 driver */
 	// ecc0: ecc508@c0 {
 	// 	compatible = "microchip,ecc508";
 	// 	label = "ECC508";
@@ -105,8 +106,8 @@
 };
 
 //  SERCOM4 is "SerialLoRa" / "Serial2"
-//  Note: SERCOM4 must be disabled when using SERCOM2 since
-//  they share pins PA12 and PA15
+//  Note: SERCOM4 and SERCOM2 conflict since they are configured
+//  to share pins PA12 and PA15
 &sercom4 {
 	status = "okay";
 	compatible = "atmel,sam0-uart";
@@ -159,7 +160,7 @@
 
 		/*
 		 * The final 16 KiB is reserved for the application
-		 * and is used by NFFS if enabled.
+		 * and is used by file system if enabled.
 		 */
 		storage_partition: partition@3c000 {
 			label = "storage";

@@ -1,19 +1,18 @@
-.. _arduino_zero:
+.. _arduino_mkr_1310:
 
-Arduino/Genuino Zero
-####################
+Arduino/Genuino MKR WAN 1310
+############################
 
 Overview
 ********
 
-The Arduino Zero is a maker-friendly development board with
-Atmel’s Embedded Debugger (EDBG), which provides a full
-debug interface without the need for additional hardware.
+The Arduino MKR WAN 1310 is a maker-friendly development board with
+Atmel’s SWD, which provides a full debug interface.
 
-.. image:: img/arduino_zero.png
+.. image:: img/arduino_mkr_1310.png
      :width: 500px
      :align: center
-     :alt: Arduino Zero
+     :alt: Arduino MKR WAN 1310
 
 Hardware
 ********
@@ -21,15 +20,18 @@ Hardware
 - ATSAMD21G18A ARM Cortex-M0+ processor at 48 MHz
 - 32.768 kHz crystal oscillator
 - 256 KiB flash memory and 32 KiB of RAM
-- 3 user LEDs
+- 1 user LEDs
 - One reset button
-- On-board USB based EDBG unit with serial console
 - Native USB port
+- LoRA radio
+- 16MBit Flash
+- ECC508 crypto
+- BQ24195L PMIC
 
 Supported Features
 ==================
 
-The arduino_zero board configuration supports the following hardware
+The arduino_mkr_1310 board configuration supports the following hardware
 features:
 
 +-----------+------------+--------------------------------------+
@@ -49,40 +51,46 @@ features:
 +-----------+------------+--------------------------------------+
 | SPI       | on-chip    | Serial Peripheral Interface ports    |
 +-----------+------------+--------------------------------------+
+| I2C       | on-chip    | Serial I2C ports                     |
++-----------+------------+--------------------------------------+
 | USB       | on-chip    | USB device                           |
 +-----------+------------+--------------------------------------+
 
 Other hardware features are not currently supported by Zephyr.
 
 The default configuration can be found in the Kconfig
-:zephyr_file:`boards/arm/arduino_zero/arduino_zero_defconfig`.
+:zephyr_file:`boards/arm/arduino_mkr_1310/arduino_mkr_1310_defconfig`.
 
 Connections and IOs
 ===================
 
 The `Arduino store`_ has detailed information about board
-connections. Download the `Arduino Zero Schematic`_ for more detail.
+connections. Download the `Arduino MKR WAN 1310 Schematic`_ for more detail.
 
 System Clock
 ============
 
 The SAMD21 MCU is configured to use the 32.768 kHz external oscillator
 with the on-chip PLL generating the 48 MHz system clock.  The internal
-APB and GCLK unit are set up in the same way as the upstream Arduino
+APB and GCLK unit are set up similar to the upstream Arduino
 libraries.
 
 Serial Port
 ===========
 
-The SAMD21 MCU has 6 SERCOM based USARTs. One of the USARTs
-(SERCOM5) is connected to the onboard Atmel Embedded Debugger (EDBG).
-SERCOM0 is available on the D0/D1 pins.
+The SAMD21 MCU has 6 SERCOM based USARTs. SERCOM5 is available on the D13/D14
+pins.
 
 SPI Port
 ========
 
-The SAMD21 MCU has 6 SERCOM based SPIs.  On the Arduino Zero, SERCOM4
-is available on the 6 pin connector at the edge of the board.
+The SAMD21 MCU has 6 SERCOM based SPIs.
+
+I2C Port
+========
+
+The SAMD21 MCU has 6 SERCOM based I2C ports.  On the Arduino MKR WAN 1310, 
+SERCOM0 is available on the 6 pin connector at the edge of the board.
 
 USB Device Port
 ===============
@@ -95,9 +103,8 @@ serial port that echos characters back to the host PC.
 Programming and Debugging
 *************************
 
-The Arduino Zero comes with a Atmel Embedded Debugger (EDBG).  This
-provides a debug interface to the SAMD21 chip and is supported by
-OpenOCD.
+The Arduino MKR WAN 1310 comes with Atmel SWD.  This provides a debug interface
+to the SAMD21 chip and is supported by OpenOCD.
 
 Flashing
 ========
@@ -106,11 +113,11 @@ Flashing
 
    .. zephyr-app-commands::
       :zephyr-app: samples/hello_world
-      :board: arduino_zero
+      :board: arduino_mkr_1310
       :goals: build
       :compact:
 
-#. Connect the Arduino Zero to your host computer using the USB debug
+#. Connect the Arduino MKR WAN 1310 to your host computer using the USB debug
    port.
 
 #. Run your favorite terminal program to listen for output. Under Linux the
@@ -132,7 +139,7 @@ Flashing
 
    .. zephyr-app-commands::
       :zephyr-app: samples/hello_world
-      :board: arduino_zero
+      :board: arduino_mkr_1310
       :goals: flash
       :compact:
 
@@ -144,7 +151,7 @@ References
 .. target-notes::
 
 .. _Arduino Store:
-    https://store.arduino.cc/genuino-zero
+    https://store.arduino.cc/usa/mkr-wan-1310
 
-.. _Arduino Zero Schematic:
-    https://www.arduino.cc/en/uploads/Main/Zero_V1.0.pdf
+.. _Arduino MKR WAN 1310 Schematic:
+    https://content.arduino.cc/assets/MKRWAN1310V3.0_sch.pdf
