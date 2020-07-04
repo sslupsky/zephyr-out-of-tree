@@ -48,18 +48,18 @@ class WITAP_LOG
 public:
     WITAP_LOG() {}
     ~WITAP_LOG() {}
-    void begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct BOOT_STATUS *boot, k_timeout_t timeout);
-    int update_bootcount(struct fs_mount_t *mp, struct BOOT_STATUS *boot);
-    int update_bootlog(struct fs_mount_t *mp, struct BOOT_STATUS *boot);
+    void begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct boot_status *boot, k_timeout_t timeout);
+    int update_bootcount(struct fs_mount_t *mp, struct boot_status *boot);
+    int update_bootlog(struct fs_mount_t *mp, struct boot_status *boot);
     int update_testlog(struct fs_mount_t *mp);
     bool initialized = false;
 
 private:
 //     void _initialize_log();
-    BOOT_STATUS bootStatus;
+    boot_status bootStatus;
 };
 
-void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct BOOT_STATUS *boot, k_timeout_t timeout)
+void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct boot_status *boot, k_timeout_t timeout)
 {
 	char fname[20];
 
@@ -80,7 +80,7 @@ void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, str
  * @param mp 
  * @return int 
  */
-int WITAP_LOG::update_bootcount(struct fs_mount_t *mp, struct BOOT_STATUS *boot) {
+int WITAP_LOG::update_bootcount(struct fs_mount_t *mp, struct boot_status *boot) {
 	char fname[20];
 	struct fs_file_t file;
 	int ret;
@@ -132,7 +132,7 @@ out:
  * @param mp 
  * @return int 
  */
-int WITAP_LOG::update_bootlog(struct fs_mount_t *mp, struct BOOT_STATUS *boot) {
+int WITAP_LOG::update_bootlog(struct fs_mount_t *mp, struct boot_status *boot) {
 	char fname[20], buf[43];
 	struct fs_file_t file;
 	int ret;
