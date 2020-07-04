@@ -24,7 +24,7 @@ typedef struct {
  * @brief Boot status descriptor
  * 
  */
-struct BOOT_STATUS {
+struct boot_status {
     u64_t time {};
     u32_t count {};
     u8_t  cause {};
@@ -101,7 +101,7 @@ struct isb_config_data {
 
 struct isb_device_data {
 	isb_config_reg config;
-	struct BOOT_STATUS boot;
+	struct boot_status boot;
 	u64_t uptime;
 	u64_t sleep_time;
 	u16_t battery;
@@ -144,7 +144,7 @@ struct dock1310_config_data {
 
 struct dock1310_device_data {
 	dock1310_config_reg config;
-	struct BOOT_STATUS boot;
+	struct boot_status boot;
 	u64_t uptime;
 	u64_t sleep_time;
 	u16_t battery;
