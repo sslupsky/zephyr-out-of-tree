@@ -56,7 +56,9 @@
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	dma = <0>;
+	// dma = <0>;
+	dmas = <&dmac 0 0xb>, <&dmac 0 0xa>;
+	dma-names = "tx", "rx";
 	// interrupts = <9 0>;
 
 	/* enable this when there is an ecc508 driver */

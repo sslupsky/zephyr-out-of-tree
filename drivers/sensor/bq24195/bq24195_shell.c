@@ -203,7 +203,7 @@ static int cmd_debug_register(const struct shell *shell, size_t argc, char **arg
 	}
 
 	drv_data = pmic_dev->driver_data;
-	cfg = pmic_dev->config->config_info;
+	cfg = pmic_dev->config_info;
 
 	if (argc == 2) {
 		reg = strtol(argv[1], NULL, 0);

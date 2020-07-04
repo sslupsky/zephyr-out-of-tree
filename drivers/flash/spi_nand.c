@@ -659,7 +659,7 @@ static int spi_nand_get_bad_blocks(struct device *dev, u32_t Bad_Block_Table[])
 static int spi_nand_read(struct device *dev, off_t addr, void *dest,
 			size_t size)
 {
-	const struct spi_nand_config *params = dev->config->config_info;
+	const struct spi_nand_config *params = dev->config_info;
 	int ret = 0;
 	u32_t row_addr = addr / SPI_NAND_PAGE_SIZE;
 	u32_t page_offset = page_offset_of(addr);
@@ -704,7 +704,7 @@ done:
 static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 			 size_t size)
 {
-	const struct spi_nand_config *params = dev->config->config_info;
+	const struct spi_nand_config *params = dev->config_info;
 	int ret = 0;
 	u32_t row_addr = addr / SPI_NAND_PAGE_SIZE;
 	u32_t page_offset = page_offset_of(addr);
@@ -763,7 +763,7 @@ cleanup:
 
 static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 {
-	const struct spi_nand_config *params = dev->config->config_info;
+	const struct spi_nand_config *params = dev->config_info;
 	int ret = 0;
 	u8_t reg;
 
@@ -888,7 +888,7 @@ void spi_nand_get_registers(struct device *dev, u8_t *status, u8_t *ctrl, u8_t *
 static int spi_nand_configure(struct device *dev)
 {
 	struct spi_nand_data *data = dev->driver_data;
-	const struct spi_nand_config *params = dev->config->config_info;
+	const struct spi_nand_config *params = dev->config_info;
 	int ret;
 
 	data->spi = device_get_binding(DT_INST_BUS_LABEL(0));
@@ -1027,6 +1027,11 @@ static const struct flash_pages_layout dev_layout = {
 };
 #undef LAYOUT_PAGES_COUNT
 
+static const struct flash_parameters spi_nand_parameters = {
+	.write_block_size = SPI_NAND_PARTIAL_PAGE_SIZE,
+	.erase_value = 0xff,
+};
+
 static void spi_nand_pages_layout(struct device *dev,
 				 const struct flash_pages_layout **layout,
 				 size_t *layout_size)
@@ -1036,16 +1041,24 @@ static void spi_nand_pages_layout(struct device *dev,
 }
 #endif /* CONFIG_FLASH_PAGE_LAYOUT */
 
+static const struct flash_parameters *
+spi_nand_get_parameters(const struct device *dev)
+{
+	ARG_UNUSED(dev);
+
+	return &spi_nand_parameters;
+}
+
 static const struct flash_driver_api spi_nand_api = {
 	.read = spi_nand_read,
 	.write = spi_nand_write,
 	.erase = spi_nand_erase,
 	.sync = spi_nand_sync,
 	.write_protection = spi_nand_write_protection_set,
+	.get_parameters = spi_nand_get_parameters,
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
 	.page_layout = spi_nand_pages_layout,
 #endif
-	.write_block_size = SPI_NAND_PARTIAL_PAGE_SIZE,
 };
 
 static const struct spi_nand_config flash_id = {

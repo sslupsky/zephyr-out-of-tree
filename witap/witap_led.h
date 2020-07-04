@@ -29,29 +29,29 @@
 extern "C" {
 #endif
 
-#if DT_HAS_ALIAS(led_red)
-#define LED_RED_DEVICE_NAME		DT_ALIAS_LED_RED_GPIOS_CONTROLLER
-#define LED_RED				DT_ALIAS_LED_RED_GPIOS_PIN
+#if DT_NODE_EXISTS(DT_ALIAS(led_red))
+#define LED_RED_DEVICE_NAME		DT_PROP(DT_PHANDLE(DT_ALIAS(led_red), gpios), label)
+#define LED_RED				DT_GPIO_PIN(DT_ALIAS(led_red), gpios)
 #endif
 
-#if DT_HAS_ALIAS(led_green)
-#define LED_GREEN_DEVICE_NAME		DT_ALIAS_LED_GREEN_GPIOS_CONTROLLER
-#define LED_GREEN			DT_ALIAS_LED_GREEN_GPIOS_PIN
+#if DT_NODE_EXISTS(DT_ALIAS(led_green))
+#define LED_GREEN_DEVICE_NAME		DT_PROP(DT_PHANDLE(DT_ALIAS(led_green), gpios), label)
+#define LED_GREEN			DT_GPIO_PIN(DT_ALIAS(led_green), gpios)
 #endif
 
-#if DT_HAS_ALIAS(led_blue)
-#define LED_BLUE_DEVICE_NAME		DT_ALIAS_LED_BLUE_GPIOS_CONTROLLER
-#define LED_BLUE			DT_ALIAS_LED_BLUE_GPIOS_PIN
+#if DT_NODE_EXISTS(DT_ALIAS(led_blue))
+#define LED_BLUE_DEVICE_NAME		DT_PROP(DT_PHANDLE(DT_ALIAS(led_blue), gpios), label)
+#define LED_BLUE			DT_GPIO_PIN(DT_ALIAS(led_blue), gpios)
 #endif
 
-#if DT_HAS_ALIAS(led_white)
-#define LED_WHITE_DEVICE_NAME		DT_ALIAS_LED_WHITE_GPIOS_CONTROLLER
-#define LED_WHITE			DT_ALIAS_LED_WHITE_GPIOS_PIN
+#if DT_NODE_EXISTS(DT_ALIAS(led_white))
+#define LED_WHITE_DEVICE_NAME		DT_PROP(DT_PHANDLE(DT_ALIAS(led_white), gpios), label)
+#define LED_WHITE			DT_GPIO_PIN(DT_ALIAS(led_white), gpios)
 #endif
 
-#if DT_HAS_ALIAS(led_mono)
-#define LED_MONO_DEVICE_NAME		DT_ALIAS_LED_MONO_GPIOS_CONTROLLER
-#define LED_MONO			DT_ALIAS_LED_MONO_GPIOS_PIN
+#if DT_NODE_EXISTS(DT_ALIAS(led_mono))
+#define LED_MONO_DEVICE_NAME		DT_PROP(DT_PHANDLE(DT_ALIAS(led_mono), gpios), label)
+#define LED_MONO			DT_GPIO_PIN(DT_ALIAS(led_mono), gpios)
 #endif
 
 enum LED_EFFECT_e {

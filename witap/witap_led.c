@@ -30,23 +30,23 @@ struct led_data_t {
 	struct k_sem animation_sync;
 	struct k_mutex led_lock;
 
-#if DT_HAS_ALIAS(led_red)
+#if DT_NODE_EXISTS(DT_ALIAS(led_red))
 	struct device *red_dev;
 #endif
 
-#if DT_HAS_ALIAS(led_green)
+#if DT_NODE_EXISTS(DT_ALIAS(led_green))
 	struct device *green_dev;
 #endif
 
-#if DT_HAS_ALIAS(led_blue)
+#if DT_NODE_EXISTS(DT_ALIAS(led_blue))
 	struct device *blue_dev;
 #endif
 
-#if DT_HAS_ALIAS(led_white)
+#if DT_NODE_EXISTS(DT_ALIAS(led_white))
 	struct device *white_dev;
 #endif
 
-#if DT_HAS_ALIAS(led_mono)
+#if DT_NODE_EXISTS(DT_ALIAS(led_mono))
 	struct device *mono_dev;
 #endif
 };
@@ -139,19 +139,19 @@ static struct led_data_t led_data;
 
 void led_set_color(const struct led_color_t *color)
 {
-#if DT_HAS_ALIAS(led_red)
+#if DT_NODE_EXISTS(DT_ALIAS(led_red))
 		gpio_pin_set(led_data.red_dev, LED_RED, color->red);
 #endif
-#if DT_HAS_ALIAS(led_green)
+#if DT_NODE_EXISTS(DT_ALIAS(led_green))
 		gpio_pin_set(led_data.green_dev, LED_GREEN, color->green);
 #endif
-#if DT_HAS_ALIAS(led_blue)
+#if DT_NODE_EXISTS(DT_ALIAS(led_blue))
 		gpio_pin_set(led_data.blue_dev, LED_BLUE, color->blue);
 #endif
-#if DT_HAS_ALIAS(led_white)
+#if DT_NODE_EXISTS(DT_ALIAS(led_white))
 		gpio_pin_set(led_data.white_dev, LED_WHITE, color->white);
 #endif
-#if DT_HAS_ALIAS(led_mono)
+#if DT_NODE_EXISTS(DT_ALIAS(led_mono))
 		gpio_pin_set(led_data.mono_dev, LED_MONO, color->red |color->green
 			     | color->blue | color->white);
 #endif
@@ -206,7 +206,8 @@ void led_process(void *p1, void *p2, void *p3)
 	}
 }
 
-void led_add(const struct led_animation_t *animation) {
+void led_add(const struct led_animation_t *animation)
+{
 	u32_t ret;
 
 	if ( !led_initialized ) {
@@ -230,7 +231,7 @@ done:
 void led_init()
 {
 	/* Set LED pin as output */
-#if DT_HAS_ALIAS(led_red)
+#if DT_NODE_EXISTS(DT_ALIAS(led_red))
 	led_data.red_dev = device_get_binding(LED_RED_DEVICE_NAME);
 	if (!led_data.red_dev) {
 		LOG_ERR("LED RED device driver not found");
@@ -239,7 +240,7 @@ void led_init()
 	gpio_pin_configure(led_data.red_dev, LED_RED, GPIO_OUTPUT);
 #endif
 
-#if DT_HAS_ALIAS(led_green)
+#if DT_NODE_EXISTS(DT_ALIAS(led_green))
 	led_data.green_dev = device_get_binding(LED_GREEN_DEVICE_NAME);
 	if (!led_data.green_dev) {
 		LOG_ERR("LED Green device driver not found");
@@ -248,7 +249,7 @@ void led_init()
 	gpio_pin_configure(led_data.green_dev, LED_GREEN, GPIO_OUTPUT);
 #endif
 
-#if DT_HAS_ALIAS(led_blue)
+#if DT_NODE_EXISTS(DT_ALIAS(led_blue))
 	led_data.blue_dev = device_get_binding(LED_BLUE_DEVICE_NAME);
 	if (!led_data.blue_dev) {
 		LOG_ERR("LED Blue device driver not found");
@@ -257,7 +258,7 @@ void led_init()
 	gpio_pin_configure(led_data.blue_dev, LED_BLUE, GPIO_OUTPUT);
 #endif
 
-#if DT_HAS_ALIAS(led_white)
+#if DT_NODE_EXISTS(DT_ALIAS(led_white))
 	led_data.white_dev = device_get_binding(LED_WHITE_DEVICE_NAME);
 	if (!led_data.white_dev) {
 		LOG_ERR("LED White device driver not found");
@@ -266,7 +267,7 @@ void led_init()
 	gpio_pin_configure(led_data.white_dev, LED_WHITE, GPIO_OUTPUT);
 #endif
 
-#if DT_HAS_ALIAS(led_mono)
+#if DT_NODE_EXISTS(DT_ALIAS(led_mono))
 	led_data.mono_dev = device_get_binding(LED_MONO_DEVICE_NAME);
 	if (!led_data.mono_dev) {
 		LOG_ERR("LED Mono device driver not found");

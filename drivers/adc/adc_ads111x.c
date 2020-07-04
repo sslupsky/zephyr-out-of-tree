@@ -67,7 +67,7 @@ struct ads111x_data {
 __attribute__((unused))
 static int ads111x_channel_config(struct device *dev, u8_t channel_id)
 {
-	const struct ads111x_config *config = dev->config->config_info;
+	const struct ads111x_config *config = dev->config_info;
 	struct ads111x_data *data = dev->driver_data;
 	u8_t tx_bytes[3];
 	int ret;
@@ -88,7 +88,7 @@ static int ads111x_channel_config(struct device *dev, u8_t channel_id)
 static int ads111x_channel_setup(struct device *dev,
 				 const struct adc_channel_cfg *channel_cfg)
 {
-	const struct ads111x_config *config = dev->config->config_info;
+	const struct ads111x_config *config = dev->config_info;
 	struct ads111x_data *data = dev->driver_data;
 
 	if (channel_cfg->channel_id >= config->channels) {
@@ -217,7 +217,7 @@ static int ads111x_channel_setup(struct device *dev,
 static int ads111x_validate_buffer_size(struct device *dev,
 					const struct adc_sequence *sequence)
 {
-	const struct ads111x_config *config = dev->config->config_info;
+	const struct ads111x_config *config = dev->config_info;
 	u8_t channels = 0;
 	size_t needed;
 	u32_t mask;
@@ -243,7 +243,7 @@ static int ads111x_validate_buffer_size(struct device *dev,
 static int ads111x_start_read(struct device *dev,
 			      const struct adc_sequence *sequence)
 {
-	const struct ads111x_config *config = dev->config->config_info;
+	const struct ads111x_config *config = dev->config_info;
 	struct ads111x_data *data = dev->driver_data;
 	int err;
 
@@ -312,12 +312,12 @@ static void adc_context_update_buffer_pointer(struct adc_context *ctx,
 
 static int ads111x_read_channel(struct device *dev, u8_t channel_id, u16_t *result)
 {
-	const struct ads111x_config *config = dev->config->config_info;
+	const struct ads111x_config *config = dev->config_info;
 	struct ads111x_data *data = dev->driver_data;
 	u8_t tx_bytes[3];
 	u8_t rx_bytes[2];
 	u16_t ch_config;
-	k_timeout_t sample_period;
+	u32_t sample_period;
 	int ret;
 
 	if (channel_id > 3) {
@@ -422,7 +422,7 @@ static void ads111x_alert_callback(struct device *port,
 
 static int ads111x_init(struct device *dev)
 {
-	const struct ads111x_config *config = dev->config->config_info;
+	const struct ads111x_config *config = dev->config_info;
 	struct ads111x_data *data = dev->driver_data;
 	u8_t rx_bytes[2];
 	u16_t ch_config;
@@ -541,10 +541,12 @@ static const struct adc_driver_api ads111x_adc_api = {
 			    CONFIG_ADC_ADS111X_INIT_PRIORITY, \
 			    &ads111x_adc_api)
 
+#define CALL_WITH_ARG(arg, expr) expr(arg);
+
 /*
  * ADS1114: 2 single ended channels / 1 differential channel
  */
-#define ADS1114_DEVICE(n) ADS111X_DEVICE(1114, n, 8)
+#define ADS1114_DEVICE(n) ADS111X_DEVICE(1114, n, 2)
 
 /*
  * ADS1115: 4 single ended channels / 2 differential channels
@@ -552,7 +554,7 @@ static const struct adc_driver_api ads111x_adc_api = {
 #define ADS1115_DEVICE(n) ADS111X_DEVICE(1115, n, 4)
 
 #define DT_INST_ADS111X_FOREACH(t, inst_expr) \
-	UTIL_LISTIFY(DT_NUM_INST(ti_ads##t), DT_CALL_WITH_ARG, inst_expr)
+	UTIL_LISTIFY(DT_NUM_INST_STATUS_OKAY(ti_ads##t), CALL_WITH_ARG, inst_expr)
 
 DT_INST_ADS111X_FOREACH(1114, ADS1114_DEVICE);
 DT_INST_ADS111X_FOREACH(1115, ADS1115_DEVICE);

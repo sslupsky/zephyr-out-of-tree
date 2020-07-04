@@ -48,7 +48,7 @@ struct k_thread pmic_thread;
 static int bq24195_reg_read(struct device *dev, u8_t reg, u8_t *val, int size)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
-	const struct bq24195_dev_config *cfg = dev->config->config_info;
+	const struct bq24195_dev_config *cfg = dev->config_info;
 	int ret;
 
 	ret = i2c_burst_read(drv_data->i2c, cfg->i2c_addr, reg, (u8_t *)val,
@@ -59,7 +59,7 @@ static int bq24195_reg_read(struct device *dev, u8_t reg, u8_t *val, int size)
 static int bq24195_reg_write(struct device *dev, u8_t reg, u8_t val)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
-	const struct bq24195_dev_config *cfg = dev->config->config_info;
+	const struct bq24195_dev_config *cfg = dev->config_info;
 	int ret;
 
 	u8_t tx_buf[2] = { reg, val };
@@ -861,13 +861,13 @@ static inline int bq24195_device_id_check(struct device *dev)
 	ret = bq24195_reg_read(dev, BQ24195_REGISTER_PMIC_VENDOR, &value.reg, sizeof(value.reg));
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to get Device ID register",
-			DT_INST_0_TI_BQ24195_LABEL);
+			DT_PROP(DT_NODELABEL(bq24195), label));
 		return ret;
 	}
 
 	if (value.reg != BQ24195_CHIPID) {
 		LOG_ERR("%s: Failed to match the device IDs",
-			DT_INST_0_TI_BQ24195_LABEL);
+			DT_PROP(DT_NODELABEL(bq24195), label));
 		return -EINVAL;
 	}
 
@@ -1008,11 +1008,11 @@ static int bq24195_chip_init(struct device *dev)
 		/* wait for chip to power up */
 	}
 
-	drv_data->i2c = device_get_binding(DT_INST_0_TI_BQ24195_BUS_NAME);
+	drv_data->i2c = device_get_binding(DT_BUS_LABEL(DT_NODELABEL(bq24195)));
 	if (drv_data->i2c == NULL) {
 		drv_data->device_state = PMIC_DEVICE_STATE_DEVICE_NOT_PRESENT;
 		LOG_ERR("Failed to get pointer to %s device",
-			DT_INST_0_TI_BQ24195_BUS_NAME);
+			DT_BUS_LABEL(DT_NODELABEL(bq24195)));
 		return -EINVAL;
 	}
 
@@ -1061,7 +1061,7 @@ int bq24195_init(struct device *dev)
 static struct bq24195_data bq24195_drv_data;
 
 static const struct bq24195_dev_config bq24195_config = {
-	.i2c_addr = DT_INST_0_TI_BQ24195_BASE_ADDRESS,
+	.i2c_addr = DT_PROP(DT_NODELABEL(bq24195), reg),
 	.api = {
 		.reg_read = bq24195_reg_read,
 		.reg_write = bq24195_reg_write,
@@ -1078,6 +1078,6 @@ static const struct bq24195_dev_config bq24195_config = {
 	},
 };
 
-DEVICE_AND_API_INIT(bq24195, DT_INST_0_TI_BQ24195_LABEL, bq24195_init,
+DEVICE_AND_API_INIT(bq24195, DT_PROP(DT_NODELABEL(bq24195), label), bq24195_init,
 		    &bq24195_drv_data, &bq24195_config, POST_KERNEL,
 		    CONFIG_SENSOR_INIT_PRIORITY, &pmic_driver_api);
