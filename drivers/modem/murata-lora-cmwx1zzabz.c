@@ -596,7 +596,7 @@ MODEM_CMD_DEFINE(on_cmd_atcmd_appeui)
 }
 
 
-static struct lora_at_cmd setup_cmds[] = {
+static const struct lora_at_cmd setup_cmds[] = {
 #if defined(CONFIG_MODEM_SHELL)
 	/* query modem info */
 	LORA_AT_CMD("AT+DEV?", "+OK=", on_cmd_atcmdinfo_model, 0U, "", LORA_CMD_AT_TIMEOUT),
@@ -607,7 +607,7 @@ static struct lora_at_cmd setup_cmds[] = {
 #endif
 };
 
-static struct lora_at_cmd config_otaa_cmds[] = {
+static const struct lora_at_cmd config_otaa_cmds[] = {
 	LORA_AT_CMD_NOHANDLE("AT+BAND=9", LORA_CMD_AT_TIMEOUT),
 	LORA_AT_CMD_NOHANDLE("AT+CLASS=A", LORA_CMD_AT_TIMEOUT),
 	LORA_AT_CMD_NOHANDLE("AT+PORT=10", LORA_CMD_AT_TIMEOUT),
@@ -616,23 +616,23 @@ static struct lora_at_cmd config_otaa_cmds[] = {
 	LORA_AT_CMD_NOHANDLE("AT+MODE=1", LORA_CMD_AT_TIMEOUT),
 };
 
-static struct lora_at_cmd join_otaa_cmds[] = {
+static const struct lora_at_cmd join_otaa_cmds[] = {
 	LORA_AT_CMD_NOHANDLE("AT+JOIN", LORA_CMD_JOIN_TIMEOUT),
 };
 
-static struct lora_at_cmd set_keys[] = {
+static const struct lora_at_cmd set_keys[] = {
 	LORA_AT_CMD("AT+APPEUI=" SECRET_APP_EUI, "+OK", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
 	LORA_AT_CMD("AT+APPKEY=" SECRET_APP_KEY, "+OK", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
 };
 
-static struct lora_at_cmd cfs[] = {
+static const struct lora_at_cmd cfs[] = {
 	LORA_AT_CMD("AT+CFS?", "+OK=", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
 };
 
 /* run a set of AT commands */
 int lora_at_cmd_seq_send(struct modem_iface *iface,
 		     struct modem_cmd_handler *handler,
-		     struct lora_at_cmd *cmds, size_t cmds_len,
+		     const struct lora_at_cmd *cmds, size_t cmds_len,
 		     struct k_sem *sem)
 {
 	int ret = 0, i;
