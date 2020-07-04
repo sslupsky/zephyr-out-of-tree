@@ -155,17 +155,6 @@ struct pmic_trigger {
 	enum pmic_channel chan;
 };
 
-enum pmic_state {
-	PMIC_STATE_IDLE,
-	PMIC_STATE_START,
-	PMIC_STATE_CONNECTED,
-	PMIC_STATE_DISCONNECTED,
-	PMIC_STATE_CHARGING,
-	PMIC_STATE_BATTERY_NOT_PRESENT,
-	PMIC_STATE_DEVICE_NOT_PRESENT,
-	PMIC_STATE_DISABLED,
-};
-
 enum pmic_device_state {
 	PMIC_DEVICE_STATE_UNKNOWN = 0,
 	PMIC_DEVICE_STATE_DISABLED,
@@ -219,6 +208,7 @@ struct pmic_power_config {
 	u16_t vin_max_current;
 	u16_t charge_current;
 	u16_t termination_voltage;
+	u32_t charge_disabled_timeout;
 };
 
 /**
@@ -288,6 +278,60 @@ typedef int (*pmic_channel_get_t)(struct device *dev,
  */
 typedef int (*pmic_update_t)(struct device *dev);
 
+/**
+ * @typedef pmic_battery_state_callback_t
+ * @brief Callback API upon change of state
+ *
+ * @param "struct device *dev" Pointer to the sensor device
+ * @param "struct pmic_trigger *trigger" The trigger
+ */
+typedef void (*pmic_battery_state_callback_t)(enum pmic_battery_state state);
+
+/**
+ * @typedef pmic_power_state_callback_t
+ * @brief Callback API upon change of state
+ *
+ * @param "struct device *dev" Pointer to the sensor device
+ * @param "struct pmic_trigger *trigger" The trigger
+ */
+typedef void (*pmic_power_state_callback_t)(enum pmic_power_state state);
+
+/**
+ * @typedef pmic_device_state_callback_t
+ * @brief Callback API upon change of state
+ *
+ * @param "struct device *dev" Pointer to the sensor device
+ * @param "struct pmic_trigger *trigger" The trigger
+ */
+typedef void (*pmic_device_state_callback_t)(enum pmic_device_state state);
+
+/**
+ * @typedef pmic_register_battery_state_callback_t
+ * @brief Callback API for setting a state change callback
+ *
+ * See pmic_register_battery_state_callback() for argument description
+ */
+typedef int (*pmic_register_battery_state_callback_t)(struct device *dev,
+				    pmic_battery_state_callback_t callback);
+
+/**
+ * @typedef pmic_register_power_state_callback_t
+ * @brief Callback API for setting a state change callback
+ *
+ * See pmic_register_power_state_callback() for argument description
+ */
+typedef int (*pmic_register_power_state_callback_t)(struct device *dev,
+				    pmic_power_state_callback_t callback);
+
+/**
+ * @typedef pmic_register_device_state_callback_t
+ * @brief Callback API for setting a state change callback
+ *
+ * See pmic_register_device_state_callback() for argument description
+ */
+typedef int (*pmic_register_device_state_callback_t)(struct device *dev,
+				    pmic_device_state_callback_t callback);
+
 __subsystem struct pmic_driver_api {
 	pmic_attr_get_t attr_get;
 	pmic_attr_set_t attr_set;
@@ -295,6 +339,9 @@ __subsystem struct pmic_driver_api {
 	pmic_sample_fetch_t sample_fetch;
 	pmic_channel_get_t channel_get;
 	pmic_update_t update;
+	pmic_register_battery_state_callback_t register_battery_state_callback;
+	pmic_register_power_state_callback_t register_power_state_callback;
+	pmic_register_device_state_callback_t register_device_state_callback;
 };
 
 /**
@@ -509,6 +556,99 @@ static inline int z_impl_pmic_update(struct device *dev)
 
 	return api->update(dev);
 }
+
+/**
+ * @brief Set the state change callback
+ *
+ * The handler will be called from a thread, so I2C or SPI operations are
+ * safe.  However, the thread's stack is limited and defined by the
+ * driver.  It is currently up to the caller to ensure that the handler
+ * does not overflow the stack.
+ *
+ * This API is not permitted for user threads.
+ *
+ * @param dev Pointer to the pmic device
+ * @param trig The trigger to activate
+ * @param handler The function that should be called when the trigger
+ * fires
+ *
+ * @return 0 if successful, negative errno code if failure.
+ */
+static inline int pmic_register_battery_state_callback(struct device *dev,
+				     pmic_battery_state_callback_t callback)
+{
+	const struct pmic_driver_api *api =
+		(const struct pmic_driver_api *)dev->driver_api;
+
+	if (api->register_battery_state_callback == NULL) {
+		return -ENOTSUP;
+	}
+
+	return api->register_battery_state_callback(dev, callback);
+}
+
+
+/**
+ * @brief Set the state change callback
+ *
+ * The handler will be called from a thread, so I2C or SPI operations are
+ * safe.  However, the thread's stack is limited and defined by the
+ * driver.  It is currently up to the caller to ensure that the handler
+ * does not overflow the stack.
+ *
+ * This API is not permitted for user threads.
+ *
+ * @param dev Pointer to the pmic device
+ * @param trig The trigger to activate
+ * @param handler The function that should be called when the trigger
+ * fires
+ *
+ * @return 0 if successful, negative errno code if failure.
+ */
+static inline int pmic_register_power_state_callback(struct device *dev,
+				     pmic_power_state_callback_t callback)
+{
+	const struct pmic_driver_api *api =
+		(const struct pmic_driver_api *)dev->driver_api;
+
+	if (api->register_power_state_callback == NULL) {
+		return -ENOTSUP;
+	}
+
+	return api->register_power_state_callback(dev, callback);
+}
+
+
+/**
+ * @brief Set the state change callback
+ *
+ * The handler will be called from a thread, so I2C or SPI operations are
+ * safe.  However, the thread's stack is limited and defined by the
+ * driver.  It is currently up to the caller to ensure that the handler
+ * does not overflow the stack.
+ *
+ * This API is not permitted for user threads.
+ *
+ * @param dev Pointer to the pmic device
+ * @param trig The trigger to activate
+ * @param handler The function that should be called when the trigger
+ * fires
+ *
+ * @return 0 if successful, negative errno code if failure.
+ */
+static inline int pmic_register_device_state_callback(struct device *dev,
+				     pmic_device_state_callback_t callback)
+{
+	const struct pmic_driver_api *api =
+		(const struct pmic_driver_api *)dev->driver_api;
+
+	if (api->register_device_state_callback == NULL) {
+		return -ENOTSUP;
+	}
+
+	return api->register_device_state_callback(dev, callback);
+}
+
 
 #ifdef __cplusplus
 }

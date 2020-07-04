@@ -42,7 +42,6 @@ extern "C" {
 #endif
 	void witap_pm_busy_set(witap_pm_devices dev);
 	void witap_pm_busy_clear(witap_pm_devices dev);
-	void bq24195_register_cb(struct device *dev, void (*cb)(u8_t state));
 
 #ifdef __cplusplus
 }

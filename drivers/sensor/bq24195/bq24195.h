@@ -561,7 +561,6 @@ struct bq24195_driver_api {
 /* driver structs */
 struct bq24195_data {
 	struct device *i2c;
-	enum pmic_state pmic_state;
 	enum pmic_device_state device_state;
 	enum pmic_battery_state battery_state;
 	enum pmic_power_state power_state;
@@ -569,14 +568,10 @@ struct bq24195_data {
 	void (*power_state_change_cb)(u8_t state);
 	void (*device_state_change_cb)(u8_t state);
 	s64_t charging_disabled_timestamp;
-	s64_t charge_cycle_timestamp;
-	s64_t battery_disconnect_timestamp;
-	u8_t charge_cycle_count;
-	u8_t battery_disconnected;
-	struct k_sem update_sem;
-	struct k_poll_event events[2];
+	struct k_poll_event events[1];
 	struct k_poll_signal update_signal;
-	struct k_poll_signal disconnect_signal;
+	struct pmic_power_config power_config;
+	u8_t battery_disconnected;
 };
 
 struct bq24195_dev_config {

@@ -42,9 +42,7 @@ struct k_thread pmic_thread;
 #define DEFAULT_PMIC_WAIT				1000
 
 #define DEFAULT_CHARGE_CYCLE_COUNT_THRESHOLD		3
-#define DEFAULT_CHARGE_CYCLE_SUPPRESSION_PERIOD		60000
-#define DEFAULT_CHARGE_DISABLED_TIMEOUT			60000
-#define DEFAULT_CHARGE_CYCLE_WINDOW			(DEFAULT_PMIC_WAIT * (DEFAULT_CHARGE_CYCLE_COUNT_THRESHOLD + 1))
+#define DEFAULT_CHARGE_DISABLED_TIMEOUT			120000
 
 
 static int bq24195_reg_read(struct device *dev, u8_t reg, u8_t *val, int size)
@@ -321,11 +319,6 @@ static int poll_connect_status(struct device *dev)
 		dt = k_uptime_get() - t;
 	} while ( dt < 500 && charge_count < DEFAULT_CHARGE_CYCLE_COUNT_THRESHOLD);
 	drv_data->battery_disconnected = charge_count < DEFAULT_CHARGE_CYCLE_COUNT_THRESHOLD ? 0 : 1;
-	if (drv_data->battery_disconnected) {
-		drv_data->battery_disconnect_timestamp = t;
-	} else {
-		drv_data->battery_disconnect_timestamp = 0;
-	}
 	return drv_data->battery_disconnected;
 }
 
@@ -349,13 +342,16 @@ static int bq24195_enable_charge(struct device *dev)
 	ret = bq24195_set_charge_mode(dev, BQ24195_CHARGE_BATTERY);
 	if (poll_connect_status(dev)) {
 		bq24195_disable_charge(dev);
+	} else {
+		drv_data->charging_disabled_timestamp = 0;
 	}
-	drv_data->charging_disabled_timestamp = 0;
 	return ret;
 }
 
-static int apply_pmic_defaults(struct device *dev)
+static int bq24195_configure(struct device *dev)
 {
+	struct bq24195_data *drv_data = dev->driver_data;
+	const struct bq24195_dev_config *cfg = dev->config_info;
 	int ret;
 
 	ret = bq24195_disable_watchdog(dev);
@@ -369,32 +365,41 @@ static int apply_pmic_defaults(struct device *dev)
 		return ret;
 	}
 
-	ret = bq24195_set_input_voltage_limit(dev, BQ24195_INPUT_VOLTAGE_LIMIT_4360);	// default
+	ret = bq24195_set_input_voltage_limit_mV(dev, drv_data->power_config.vin_min_voltage);		// min input voltage
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = bq24195_set_input_current_limit(dev, BQ24195_CURRENT_LIMIT_2000);		// 2A
+	ret = bq24195_set_input_current_limit_mA(dev, drv_data->power_config.vin_max_current);		// max input current
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = bq24195_set_charge_current(dev, BQ24195_CHARGE_CURRENT_512);		// 512mA
+	ret = bq24195_set_charge_current_mA(dev, drv_data->power_config.charge_current);		// charge current
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = bq24195_set_charge_voltage(dev, BQ24195_CHARGE_VOLTAGE_4112);		// 4.112V termination voltage
+	ret = bq24195_set_charge_voltage_mV(dev, drv_data->power_config.termination_voltage);		// termination voltage
 
 	return ret;
 }
 
 
-static int configure_pmic(struct device *dev)
+static int apply_default_config(struct device *dev)
 {
+	struct bq24195_data *drv_data = dev->driver_data;
+	const struct bq24195_dev_config *cfg = dev->config_info;
 	int ret;
 
-	ret = apply_pmic_defaults(dev);
+	drv_data->power_config.vin_min_voltage = cfg->default_power_config.vin_min_voltage;
+	drv_data->power_config.vin_max_current = cfg->default_power_config.vin_max_current;
+	drv_data->power_config.charge_current = cfg->default_power_config.charge_current;
+	drv_data->power_config.termination_voltage = cfg->default_power_config.termination_voltage;
+	drv_data->power_config.charge_disabled_timeout = cfg->default_power_config.charge_disabled_timeout;
+
+	ret = bq24195_configure(dev);
+
 	return ret;
 }
 
@@ -629,7 +634,7 @@ static void pmic_update_power_state(struct device *dev, enum pmic_power_state pr
 
 	drv_data->power_state = next_state;
 
-	/* fire battery state callback */
+	/* fire power state callback */
 	if (drv_data->power_state_change_cb) {
 		drv_data->power_state_change_cb((u8_t) next_state);
 	}
@@ -671,7 +676,7 @@ static void pmic_update_device_state(struct device *dev, enum pmic_device_state 
 
 	drv_data->device_state = next_state;
 
-	/* fire battery state callback */
+	/* fire device state callback */
 	if (drv_data->device_state_change_cb) {
 		drv_data->device_state_change_cb((u8_t) next_state);
 	}
@@ -698,7 +703,7 @@ static void handle_update(struct device *dev)
 
 	/* check the watchdog */
 	if (fault.fault.bit.WATCHDOG_FAULT) {
-		apply_pmic_defaults(dev);
+		bq24195_configure(dev);
 		bq24195_enable_charge(dev);
 	}
 	next_battery_state = PMIC_BATTERY_STATE_UNKNOWN;
@@ -724,7 +729,8 @@ static void handle_update(struct device *dev)
 
 	/* check if we should enable charging */
 	if (drv_data->battery_state == PMIC_BATTERY_STATE_DISCONNECTED &&
-	   ((k_uptime_get() - drv_data->charging_disabled_timestamp) >= DEFAULT_CHARGE_DISABLED_TIMEOUT)) {
+	   (drv_data->charging_disabled_timestamp) &&
+	   ((k_uptime_get() - drv_data->charging_disabled_timestamp) >= drv_data->power_config.charge_disabled_timeout)) {
 		// Re-enable charging, do not run DPDM detection
 		LOG_DBG("re-enabling charging");
 		bq24195_enable_charge(dev);
@@ -802,7 +808,6 @@ static int bq24195_update(struct device *dev)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
 
-	// k_sem_give(&drv_data->update_sem);
 	k_poll_signal_raise(&drv_data->update_signal, 0);
 	return 0;
 }
@@ -812,7 +817,6 @@ static void pmic_process(struct device *dev)
 	struct bq24195_data *drv_data = dev->driver_data;
 
 	LOG_DBG("starting pmic process thread");
-	drv_data->pmic_state = PMIC_STATE_START;
 	drv_data->device_state = PMIC_DEVICE_STATE_ACTIVE;
 	drv_data->power_state = PMIC_POWER_STATE_UNKNOWN;
 	drv_data->battery_state = PMIC_BATTERY_STATE_UNKNOWN;
@@ -821,7 +825,6 @@ static void pmic_process(struct device *dev)
 	while (true) {
 		/* FIXME:  Should we use k_poll and signals here so we can send signal to (re)load a config? */
 		/* FIXME:  Use settings to store and retrieve power configs? */
-		// k_sem_take(&drv_data->update_sem, K_MSEC(DEFAULT_PMIC_WAIT));
 		k_poll(drv_data->events, ARRAY_SIZE(drv_data->events), K_MSEC(DEFAULT_PMIC_WAIT));
 		if (drv_data->events[0].state == K_POLL_STATE_SIGNALED) {
 			/* update */
@@ -835,14 +838,6 @@ static void pmic_process(struct device *dev)
 				break;
 			}
 			handle_update(dev);
-		} else if (drv_data->events[1].state == K_POLL_STATE_SIGNALED) {
-			/* check for battery disconnect */
-			drv_data->events[1].signal->signaled = 0;
-			drv_data->events[1].state = K_POLL_STATE_NOT_READY;
-			switch (drv_data->events[1].signal->result) {
-			case BQ24195_SIGNAL_DISCONNECT_CHECK:
-				poll_connect_status(dev);
-			}
 		} else {
 			/* update on poll timeout */
 			handle_update(dev);
@@ -968,11 +963,28 @@ static int bq24195_attr_set(struct device *dev, enum pmic_channel chan,
 	return ret;
 }
 
-void bq24195_register_cb(struct device *dev, void (*cb)(u8_t state))
+static int bq24195_register_battery_state_callback(struct device *dev, pmic_battery_state_callback_t callback)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
 
-	drv_data->battery_state_change_cb = cb;
+	drv_data->battery_state_change_cb = callback;
+	return 0;
+}
+
+static int bq24195_register_power_state_callback(struct device *dev, pmic_power_state_callback_t callback)
+{
+	struct bq24195_data *drv_data = dev->driver_data;
+
+	drv_data->power_state_change_cb = callback;
+	return 0;
+}
+
+static int bq24195_register_device_state_callback(struct device *dev, pmic_device_state_callback_t callback)
+{
+	struct bq24195_data *drv_data = dev->driver_data;
+
+	drv_data->device_state_change_cb = callback;
+	return 0;
 }
 
 static const struct pmic_driver_api pmic_driver_api = {
@@ -982,6 +994,9 @@ static const struct pmic_driver_api pmic_driver_api = {
 	.channel_get = bq24195_channel_get,
 	.trigger_set = NULL,
 	.update = bq24195_update,
+	.register_battery_state_callback = bq24195_register_battery_state_callback,
+	.register_power_state_callback = bq24195_register_power_state_callback,
+	.register_device_state_callback = bq24195_register_device_state_callback,
 };
 
 static int bq24195_chip_init(struct device *dev)
@@ -1009,7 +1024,7 @@ static int bq24195_chip_init(struct device *dev)
 
 	LOG_DBG("BQ24195 pmic detected");
 
-	apply_pmic_defaults(dev);
+	apply_default_config(dev);
 
 	return 0;
 }
@@ -1023,16 +1038,14 @@ int bq24195_init(struct device *dev)
 	drv_data->device_state = PMIC_DEVICE_STATE_UNINITIALIZED;
 	ret = bq24195_chip_init(dev);
 	if (ret == 0) {
-		k_sem_init(&drv_data->update_sem, 0, 1);
+		drv_data->battery_state_change_cb = NULL;
+		drv_data->power_state_change_cb = NULL;
+		drv_data->device_state_change_cb = NULL;
 		k_poll_signal_init(&drv_data->update_signal);
 		k_poll_event_init(&drv_data->events[0],
 				K_POLL_TYPE_SIGNAL,
 				K_POLL_MODE_NOTIFY_ONLY,
 				&drv_data->update_signal);
-		k_poll_event_init(&drv_data->events[1],
-				K_POLL_TYPE_SIGNAL,
-				K_POLL_MODE_NOTIFY_ONLY,
-				&drv_data->disconnect_signal);
 		thread = k_thread_create(&pmic_thread, pmic_stack,
 				K_THREAD_STACK_SIZEOF(pmic_stack),
 				(k_thread_entry_t) pmic_process,
@@ -1061,6 +1074,7 @@ static const struct bq24195_dev_config bq24195_config = {
 		.vin_max_current = DEFAULT_INPUT_CURRENT_LIMIT,
 		.charge_current = DEFAULT_CHARGE_CURRENT,
 		.termination_voltage = DEFAULT_TERMINATION_VOLTAGE,
+		.charge_disabled_timeout = DEFAULT_CHARGE_DISABLED_TIMEOUT,
 	},
 };
 
