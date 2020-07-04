@@ -48,7 +48,7 @@ LOG_MODULE_REGISTER(modem_lora, CONFIG_MODEM_LOG_LEVEL);
 /* series of modem setup commands to run */
 struct lora_at_cmd {
 	const char *send_cmd;
-	k_timeout_t timeout;
+	u32_t timeout;
 	struct modem_cmd handle_cmd;
 };
 
@@ -137,14 +137,14 @@ static struct modem_pin modem_pins[] = {
 #define MDM_IRQ_ASSERTED		0
 
 #define LORA_CMD_READ_BUF		128
-#define LORA_CMD_AT_TIMEOUT		K_SECONDS(2)
-#define LORA_CMD_SETUP_TIMEOUT		K_SECONDS(6)
-#define LORA_CMD_JOIN_TIMEOUT		K_SECONDS(10)
+#define LORA_CMD_AT_TIMEOUT		2		// (sec)
+#define LORA_CMD_SETUP_TIMEOUT		6		// (sec)
+#define LORA_CMD_JOIN_TIMEOUT		10		// (sec)
 #define LORA_RX_STACK_SIZE		512
 #define LORA_MAX_DATA_LENGTH		128
 #define LORA_RECV_MAX_BUF		4
 #define LORA_RECV_BUF_SIZE		128
-#define LORA_BUF_ALLOC_TIMEOUT		K_SECONDS(1)
+#define LORA_BUF_ALLOC_TIMEOUT		1		// (sec)
 
 #define LORA_REJOIN_PERIOD            600000
 #define LORA_JOIN_RETRIES                  6
@@ -646,11 +646,11 @@ int lora_at_cmd_seq_send(struct modem_iface *iface,
 			ret = modem_cmd_send(iface, handler,
 					     &cmds[i].handle_cmd, 1U,
 					     cmds[i].send_cmd,
-					     sem, cmds[i].timeout);
+					     sem, K_SECONDS(cmds[i].timeout));
 		} else {
 			ret = modem_cmd_send(iface, handler,
 					     NULL, 0, cmds[i].send_cmd,
-					     sem, cmds[i].timeout);
+					     sem, K_SECONDS(cmds[i].timeout));
 		}
 
 		if (ret < 0) {
@@ -672,7 +672,7 @@ static int lora_setup_keys(struct lora_modem *lora)
 				"AT+APPEUI=" 
 				SECRET_APP_EUI,
 				&lora->sem_response,
-				LORA_CMD_AT_TIMEOUT);
+				K_SECONDS(LORA_CMD_AT_TIMEOUT));
 	if (ret < 0) {
 		LOG_ERR("set keys error, %d", ret);
 	}
@@ -683,7 +683,7 @@ static int lora_setup_keys(struct lora_modem *lora)
 				"AT+APPKEY="
 				SECRET_APP_KEY,
 				&lora->sem_response,
-				LORA_CMD_AT_TIMEOUT);
+				K_SECONDS(LORA_CMD_AT_TIMEOUT));
 	if (ret < 0) {
 		LOG_ERR("set keys error, %d", ret);
 	}
@@ -707,7 +707,7 @@ static void lora_req_ack(struct k_work *work)
 				ARRAY_SIZE(bool_response_cmds),
 				"AT+CFS?",
 				&lora.sem_response,
-				LORA_CMD_AT_TIMEOUT);
+				K_SECONDS(LORA_CMD_AT_TIMEOUT));
 	if (ret < 0) {
 		LOG_ERR("get ack status error");
 		return;
@@ -726,7 +726,7 @@ static void lora_req_ack(struct k_work *work)
 						ARRAY_SIZE(response_cmds),
 						"AT+CTX 0",
 						&lora.sem_response,
-						LORA_CMD_AT_TIMEOUT);
+						K_SECONDS(LORA_CMD_AT_TIMEOUT));
 			k_delayed_work_submit(&lora.req_ack_work, K_MSEC(LORA_ACK_TIMEOUT));
 		} else {
 			/* LoRaMac will retry sending the confirmed packet up
@@ -756,7 +756,7 @@ static void lora_configure(struct k_work *work)
 					(struct modem_cmd *)&response_cmds[0],
 					ARRAY_SIZE(response_cmds),
 					"AT", &lora->sem_response,
-					LORA_CMD_AT_TIMEOUT);
+					K_SECONDS(LORA_CMD_AT_TIMEOUT));
 		if (ret < 0) {
 			LOG_DBG("modem not ready, rc=%d", ret);
 			k_sleep(K_MSEC(200));
@@ -776,7 +776,7 @@ static void lora_configure(struct k_work *work)
 				NULL, 0,
 				"AT+DEVEUI?",
 				&lora->sem_response,
-				LORA_CMD_AT_TIMEOUT);
+				K_SECONDS(LORA_CMD_AT_TIMEOUT));
 
 	if (ret < 0) {
 		LOG_ERR("Get dev eui failed");	
@@ -789,7 +789,7 @@ static void lora_configure(struct k_work *work)
 				NULL, 0,
 				"AT+APPEUI?",
 				&lora->sem_response,
-				LORA_CMD_AT_TIMEOUT);
+				K_SECONDS(LORA_CMD_AT_TIMEOUT));
 
 	if (ret < 0) {
 		LOG_ERR("Get app eui failed");	
@@ -802,7 +802,7 @@ static void lora_configure(struct k_work *work)
 				NULL, 0,
 				"AT+APPKEY?",
 				&lora->sem_response,
-				LORA_CMD_AT_TIMEOUT);
+				K_SECONDS(LORA_CMD_AT_TIMEOUT));
 
 	if (ret < 0) {
 		LOG_ERR("Get app key failed");	
@@ -873,7 +873,7 @@ static int lora_init(struct device *device)
 	lora->cmd_handler_data.match_buf = &lora->cmd_match_buf[0];
 	lora->cmd_handler_data.match_buf_len = sizeof(lora->cmd_match_buf);
 	lora->cmd_handler_data.buf_pool = &lora_recv_pool;
-	lora->cmd_handler_data.alloc_timeout = LORA_BUF_ALLOC_TIMEOUT;
+	lora->cmd_handler_data.alloc_timeout = K_SECONDS(LORA_BUF_ALLOC_TIMEOUT);
 	lora->cmd_handler_data.eol = "\r";
 
 	k_sem_init(&lora->sem_response, 0, 1);
@@ -930,7 +930,7 @@ static int lora_init(struct device *device)
 	lora->status.req_ack = false;
 	k_delayed_work_init(&lora->req_ack_work, lora_req_ack);
 
-	(void)k_delayed_work_submit(&lora->lora_configure_work, 0);
+	(void)k_delayed_work_submit(&lora->lora_configure_work, K_SECONDS(0));
 	(void)k_delayed_work_submit(&lora->heartbeat_work, K_SECONDS(LORA_HEARTBEAT_TIMEOUT));
 
 	LOG_DBG("iface->read %p iface->write %p",
@@ -961,7 +961,7 @@ int uart_pipe_send(const u8_t *data, int len)
 		(void)lora.context.iface.write(&lora.context.iface, data, len);
 
 		// k_sem_reset(&lora.sem_response);
-		ret = k_sem_take(&lora.sem_response, LORA_CMD_AT_TIMEOUT);
+		ret = k_sem_take(&lora.sem_response, K_SECONDS(LORA_CMD_AT_TIMEOUT));
 		if (ret == 0) {
 			ret = lora.cmd_handler_data.last_error;
 		} else if (ret == -EAGAIN) {
