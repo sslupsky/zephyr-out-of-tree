@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2020 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+
 description: ATMEL GCLK (Generic Clock Controller)
 
 compatible: "atmel,sam0-gclk"
