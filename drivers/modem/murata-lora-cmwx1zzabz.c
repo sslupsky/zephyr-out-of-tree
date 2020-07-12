@@ -53,7 +53,7 @@ LOG_MODULE_REGISTER(modem_lora, CONFIG_MODEM_LOG_LEVEL);
 /* series of modem setup commands to run */
 struct lora_at_cmd {
 	const char *send_cmd;
-	u32_t timeout;
+	uint32_t timeout;
 	struct modem_cmd handle_cmd;
 };
 
@@ -171,16 +171,16 @@ static struct modem_pin modem_pins[] = {
 
 struct lora_status_t
 {
-	u32_t heartbeat_period;
-	u32_t join_retries;
-	u32_t join_count;
-	u32_t ack_count;
-	u32_t failed_ack_count;
-	u32_t reset_count;
-	s16_t rssi;                /*< Rssi of the received packet */
-	u8_t snr;                 /*< Snr of the received packet */
-	u8_t application_port;    /*< Application port we will receive to */
-	u8_t nbtrials;
+	uint32_t heartbeat_period;
+	uint32_t join_retries;
+	uint32_t join_count;
+	uint32_t ack_count;
+	uint32_t failed_ack_count;
+	uint32_t reset_count;
+	int16_t rssi;                /*< Rssi of the received packet */
+	uint8_t snr;                 /*< Snr of the received packet */
+	uint8_t application_port;    /*< Application port we will receive to */
+	uint8_t nbtrials;
 	bool network_joined;
 	bool req_ack;      /*< ENABLE if acknowledge is requested */
 	bool ack_failed;
@@ -202,8 +202,8 @@ static struct lora_modem {
 	struct modem_context context;
 
 	struct modem_cmd_handler_data cmd_handler_data;
-	u8_t cmd_read_buf[LORA_CMD_READ_BUF];
-	u8_t cmd_match_buf[LORA_CMD_READ_BUF];
+	uint8_t cmd_read_buf[LORA_CMD_READ_BUF];
+	uint8_t cmd_match_buf[LORA_CMD_READ_BUF];
 	struct k_sem sem_response;
 
 	struct modem_iface_uart_data lora_data;
@@ -213,7 +213,7 @@ static struct lora_modem {
 
 	struct lora_status_t status;
 	bool setup_done;
-	u8_t *ppp_recv_buf;
+	uint8_t *ppp_recv_buf;
 	size_t ppp_recv_buf_len;
 	uart_pipe_recv_cb ppp_recv_cb;
 	struct k_sem ppp_send_sem;
@@ -947,10 +947,10 @@ static int lora_init(struct device *device)
 	return 0;
 }
 
-int uart_pipe_send(const u8_t *data, int len)
+int uart_pipe_send(const uint8_t *data, int len)
 {
 	int ret;
-	u8_t buf[12];
+	uint8_t buf[12];
 
 	k_sem_take(&lora.ppp_send_sem, K_FOREVER);
 
@@ -985,7 +985,7 @@ int uart_pipe_send(const u8_t *data, int len)
 	return ret;
 }
 
-void uart_pipe_register(u8_t *buf, size_t len, uart_pipe_recv_cb cb)
+void uart_pipe_register(uint8_t *buf, size_t len, uart_pipe_recv_cb cb)
 {
 	lora.ppp_recv_buf = buf;
 	lora.ppp_recv_buf_len = len;
