@@ -16,6 +16,7 @@
  *                                                               
  */
 
+#define DT_DRV_COMPAT murata_lora
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(modem_lora, CONFIG_MODEM_LOG_LEVEL);
@@ -31,10 +32,14 @@ LOG_MODULE_REGISTER(modem_lora, CONFIG_MODEM_LOG_LEVEL);
 #include <net/net_if.h>
 #include <drivers/gpio.h>
 
-#include "../../../zephyr/drivers/modem/modem_context.h"
-#include "../../../zephyr/drivers/modem/modem_iface_uart.h"
-#include "../../../zephyr/drivers/modem/modem_cmd_handler.h"
+#include <modem/modem_context.h>
+#include <modem/modem_iface_uart.h>
+#include <modem/modem_cmd_handler.h>
 #include "secret.h"
+
+/* Murata LoRa devicetree macros */
+#define DT_LORA_NODE		DT_INST(0, murata_lora)
+#define DT_LORA_UART_LABEL	DT_BUS_LABEL(DT_INST(0, murata_lora))
 
 #define LORA_AT_CMD(cmd_send_, match_cmd_, func_cb_, num_param_, delim_, timeout_) { \
 	.send_cmd = cmd_send_, \
@@ -52,17 +57,6 @@ struct lora_at_cmd {
 	struct modem_cmd handle_cmd;
 };
 
-/* pin settings */
-enum mdm_control_pins {
-	MDM_RESET = 0,
-	MDM_BOOT0,
-	MDM_IRQ,
-	MDM_RF_SSN,
-	MDM_SCK,
-	MDM_MOSI_TX,
-	MDM_MISO_RX,
-};
-
 enum lora_mode {
 	LORA_ABP = 0,
 	LORA_OTAA,
@@ -78,7 +72,16 @@ enum lora_band {
 	US915_HYBRID,
 };
 
-#define LORA_NODEID DT_INST(0, murata_lora)
+/* modem pin settings */
+enum mdm_control_pins {
+	MDM_RESET = 0,
+	MDM_BOOT0,
+	MDM_IRQ,
+	MDM_RF_SSN,
+	MDM_SCK,
+	MDM_MOSI_TX,
+	MDM_MISO_RX,
+};
 
 static struct modem_pin modem_pins[] = {
 	/*
@@ -88,65 +91,59 @@ static struct modem_pin modem_pins[] = {
 	 * DT_INST_0_MURATA_LORA_MDM_RESET_GPIOS_CONTROLLER
 	 * DT_INST_0_MURATA_LORA_MDM_RESET_GPIOS_PIN
 	 */
-	MODEM_PIN(DT_PROP(DT_PHANDLE(LORA_NODEID, mdm_reset_gpios), label),
-		  DT_GPIO_PIN(LORA_NODEID, mdm_reset_gpios),
+	MODEM_PIN(DT_PROP(DT_PHANDLE(DT_LORA_NODE, mdm_reset_gpios), label),
+		  DT_GPIO_PIN(DT_LORA_NODE, mdm_reset_gpios),
 		  GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
 
-#if DT_NODE_EXISTS(DT_PHANDLE(LORA_NODEID, mdm_boot0_gpios))
+#if DT_NODE_EXISTS(DT_PHANDLE(DT_LORA_NODE, mdm_boot0_gpios))
 	/*
 	 * MDM_BOOT0
 	 * MKR WAN 1310 has 1M (R7) pull down
 	 */
-	MODEM_PIN(DT_PROP(DT_PHANDLE(LORA_NODEID, mdm_boot0_gpios), label),
-		  DT_GPIO_PIN(LORA_NODEID, mdm_boot0_gpios),
+	MODEM_PIN(DT_PROP(DT_PHANDLE(DT_LORA_NODE, mdm_boot0_gpios), label),
+		  DT_GPIO_PIN(DT_LORA_NODE, mdm_boot0_gpios),
 		  GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_HIGH),
 #endif
 
-#if DT_NODE_EXISTS(DT_PHANDLE(LORA_NODEID, mdm_rf_ssn_gpios))
+#if DT_NODE_EXISTS(DT_PHANDLE(DT_LORA_NODE, mdm_rf_ssn_gpios))
 	/*
 	 * MDM_RF_SSN
 	 * MKR WAN 1310 has 1M (R12) pull up
 	 */
-	MODEM_PIN(DT_PROP(DT_PHANDLE(LORA_NODEID, mdm_rf_ssn_gpios), label),
-		  DT_GPIO_PIN(LORA_NODEID, mdm_rf_ssn_gpios),
+	MODEM_PIN(DT_PROP(DT_PHANDLE(DT_LORA_NODE, mdm_rf_ssn_gpios), label),
+		  DT_GPIO_PIN(DT_LORA_NODE, mdm_rf_ssn_gpios),
 		  GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
 #endif
 
-#if DT_NODE_EXISTS(DT_PHANDLE(LORA_NODEID, mdm_rf_irq_gpios))
+#if DT_NODE_EXISTS(DT_PHANDLE(DT_LORA_NODE, mdm_rf_irq_gpios))
 	/* MDM_IRQ */
-	MODEM_PIN(DT_PROP(DT_PHANDLE(LORA_NODEID, mdm_rf_irq_gpios), label),
-		  DT_GPIO_PIN(LORA_NODEID, mdm_rf_irq_gpios),
+	MODEM_PIN(DT_PROP(DT_PHANDLE(DT_LORA_NODE, mdm_rf_irq_gpios), label),
+		  DT_GPIO_PIN(DT_LORA_NODE, mdm_rf_irq_gpios),
 		  GPIO_DISCONNECTED),
 #endif
 
-#if DT_NODE_EXISTS(DT_PHANDLE(LORA_NODEID, mdm_sck_gpios))
+#if DT_NODE_EXISTS(DT_PHANDLE(DT_LORA_NODE, mdm_sck_gpios))
 	/* MDM_SCK */
-	MODEM_PIN(DT_PROP(DT_PHANDLE(LORA_NODEID, mdm_sck_gpios), label),
-		  DT_GPIO_PIN(LORA_NODEID, mdm_sck_gpios),
+	MODEM_PIN(DT_PROP(DT_PHANDLE(DT_LORA_NODE, mdm_sck_gpios), label),
+		  DT_GPIO_PIN(DT_LORA_NODE, mdm_sck_gpios),
 		  GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
 #endif
 
-#if DT_NODE_EXISTS(DT_PHANDLE(LORA_NODEID, mdm_mosi_tx_gpios))
+#if DT_NODE_EXISTS(DT_PHANDLE(DT_LORA_NODE, mdm_mosi_tx_gpios))
 	/* MDM_MOSI_TX */
-	MODEM_PIN(DT_PROP(DT_PHANDLE(LORA_NODEID, mdm_mosi_tx_gpios), label),
-		  DT_GPIO_PIN(LORA_NODEID, mdm_mosi_tx_gpios),
+	MODEM_PIN(DT_PROP(DT_PHANDLE(DT_LORA_NODE, mdm_mosi_tx_gpios), label),
+		  DT_GPIO_PIN(DT_LORA_NODE, mdm_mosi_tx_gpios),
 		  GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
 #endif
 
-#if DT_NODE_EXISTS(DT_PHANDLE(LORA_NODEID, mdm_miso_rx_gpios))
+#if DT_NODE_EXISTS(DT_PHANDLE(DT_LORA_NODE, mdm_miso_rx_gpios))
 	/* MDM_MISO_RX */
-	MODEM_PIN(DT_PROP(DT_PHANDLE(LORA_NODEID, mdm_miso_rx_gpios), label),
-		  DT_GPIO_PIN(LORA_NODEID, mdm_miso_rx_gpios),
+	MODEM_PIN(DT_PROP(DT_PHANDLE(DT_LORA_NODE, mdm_miso_rx_gpios), label),
+		  DT_GPIO_PIN(DT_LORA_NODE, mdm_miso_rx_gpios),
 		  GPIO_OUTPUT_INACTIVE | GPIO_ACTIVE_LOW),
 #endif
 };
 
-#define MDM_UART_DEV_NAME		DT_BUS_LABEL(DT_INST(0, murata_lora))
-#define MDM_PIN_RESET			GPIO_ACTIVE_LOW
-#define MDM_PIN_BOOT0			GPIO_ACTIVE_HIGH
-#define MDM_BOOT0_DISABLE		0
-#define MDM_IRQ_NOT_ASSERTED		1
-#define MDM_IRQ_ASSERTED		0
 
 #define LORA_CMD_READ_BUF		128
 #define LORA_CMD_AT_TIMEOUT		2		// (sec)
@@ -911,7 +908,7 @@ static int lora_init(struct device *device)
 	lora->lora_data.rx_rb_buf_len = sizeof(lora->lora_rx_rb_buf);
 
 	ret = modem_iface_uart_init(&lora->context.iface,
-				  &lora->lora_data, MDM_UART_DEV_NAME);
+				  &lora->lora_data, DT_LORA_UART_LABEL);
 	if (ret < 0) {
 		LOG_DBG("iface uart error %d", ret);
 		return ret;
