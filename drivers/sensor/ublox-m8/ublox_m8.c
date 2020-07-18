@@ -1810,7 +1810,7 @@ int ublox_m8_init(struct device *dev)
 
 	drv_data->dev = dev;
 	drv_data->device_state = GNSS_DEVICE_STATE_UNINITIALIZED;
-	while (k_uptime_ticks() < k_us_to_cyc_ceil32(UBLOX_M8_STARTUP_TIME_USEC)) {
+	while (k_uptime_ticks() < k_us_to_ticks_ceil32(UBLOX_M8_STARTUP_TIME_USEC)) {
 		/* wait for chip to power up */
 	}
 

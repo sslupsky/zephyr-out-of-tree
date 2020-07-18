@@ -158,7 +158,7 @@ int icm20649_init(struct device *dev)
 	struct icm20649_data *drv_data = dev->driver_data;
 	u8_t id, i;
 
-	while (k_uptime_ticks() < k_us_to_cyc_ceil32(ICM20648_STARTUP_TIME_USEC)) {
+	while (k_uptime_ticks() < k_us_to_ticks_ceil32(ICM20648_STARTUP_TIME_USEC)) {
 		/* wait for chip to power up */
 	}
 

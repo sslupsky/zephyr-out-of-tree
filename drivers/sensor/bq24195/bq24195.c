@@ -1004,7 +1004,7 @@ static int bq24195_chip_init(struct device *dev)
 	struct bq24195_data *drv_data = dev->driver_data;
 	int ret;
 
-	while (k_uptime_ticks() < k_us_to_cyc_ceil32(BQ24195_STARTUP_TIME_USEC)) {
+	while (k_uptime_ticks() < k_us_to_ticks_ceil32(BQ24195_STARTUP_TIME_USEC)) {
 		/* wait for chip to power up */
 	}
 

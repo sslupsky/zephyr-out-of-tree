@@ -429,7 +429,7 @@ static int ads111x_init(struct device *dev)
 	k_tid_t thread;
 	int ret;
 
-	while (k_uptime_ticks() < k_us_to_cyc_ceil32(ADS111X_POWER_ON_TIME_USEC)) {
+	while (k_uptime_ticks() < k_us_to_ticks_ceil32(ADS111X_POWER_ON_TIME_USEC)) {
 		/* wait for chip to power up */
 	}
 
