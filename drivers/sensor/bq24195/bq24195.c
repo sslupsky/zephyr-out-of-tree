@@ -179,6 +179,7 @@ static int bq24195_set_input_voltage_limit_mV(struct device *dev, u16_t voltage)
 	return ret;
 }
 
+__unused
 static int bq24195_set_input_voltage_limit(struct device *dev, enum bq24195_input_voltage_limit voltage)
 {
 	int ret;
@@ -197,6 +198,7 @@ static int bq24195_set_input_current_limit_mA(struct device *dev, u16_t current)
 	return ret;
 }
 
+__unused
 static int bq24195_set_input_current_limit(struct device *dev, enum bq24195_input_current_limit current)
 {
 	int ret;
@@ -215,6 +217,7 @@ static int bq24195_set_charge_current_mA(struct device *dev, u16_t current)
 	return ret;
 }
 
+__unused
 static int bq24195_set_charge_current(struct device *dev, enum bq24195_charge_current current)
 {
 	int ret;
@@ -233,6 +236,7 @@ static int bq24195_set_charge_voltage_mV(struct device *dev, u16_t voltage)
 	return ret;
 }
 
+__unused
 static int bq24195_set_charge_voltage(struct device *dev, enum bq24195_charge_voltage voltage)
 {
 	int ret;
@@ -397,7 +401,6 @@ static int bq24195_enable_charge(struct device *dev)
 static int bq24195_configure(struct device *dev)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
-	const struct bq24195_dev_config *cfg = dev->config_info;
 	int ret;
 
 	ret = bq24195_enable_buck(dev);
@@ -410,7 +413,6 @@ static int bq24195_configure(struct device *dev)
 		return ret;
 	}
 
-	//disableDPDM();
 	ret = bq24195_disable_charge(dev);
 	if (ret < 0) {
 		return ret;
@@ -433,15 +435,15 @@ static int bq24195_configure(struct device *dev)
 
 	ret = bq24195_set_charge_voltage_mV(dev, drv_data->power_config.termination_voltage);		// termination voltage
 
+	LOG_DBG("device configured");
 	return ret;
 }
 
 
-static int apply_default_config(struct device *dev)
+static void load_default_config(struct device *dev)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
 	const struct bq24195_dev_config *cfg = dev->config_info;
-	int ret;
 
 	drv_data->power_config.vin_min_voltage = cfg->default_power_config.vin_min_voltage;
 	drv_data->power_config.vin_max_current = cfg->default_power_config.vin_max_current;
@@ -449,34 +451,17 @@ static int apply_default_config(struct device *dev)
 	drv_data->power_config.termination_voltage = cfg->default_power_config.termination_voltage;
 	drv_data->power_config.charge_disabled_timeout = cfg->default_power_config.charge_disabled_timeout;
 
-	ret = bq24195_configure(dev);
+	LOG_DBG("load default config: "
+		 "Vinmin = %d mV, "
+		 "Iinmax = %d mA, "
+		 "Ichg = %d mA, "
+		 "Vterm = %d mV",
+		 drv_data->power_config.vin_min_voltage,
+		 drv_data->power_config.vin_max_current,
+		 drv_data->power_config.charge_current,
+		 drv_data->power_config.termination_voltage);
 
-	return ret;
-}
-
-
-static bool is_battery_present(struct device *dev)
-{
-	int ret;
-	BQ24195_SYSTEM_STATUS_t value;
-
-	ret = bq24195_reg_read(dev, BQ24195_REGISTER_SYSTEM_STATUS, (u8_t *)&value.reg, sizeof(value.reg));
-	return (value.bit.DPM_STAT != 0);
-}
-
-
-/**
- *  @brief  Configure the PMIC HiZ mode
- *  @param  enable
- *          enable to disable
- *  @return value from selected register
- */
-static int bq24195_set_hiz(struct device *dev, bool enable)
-{
-	int ret;
-
-	ret = bq24195_reg_update(dev, BQ24195_REGISTER_INPUT_SOURCE_CONTROL, 0b10000000, enable << 7);
-	return ret;
+	return;
 }
 
 
@@ -485,6 +470,7 @@ static int bq24195_set_hiz(struct device *dev, bool enable)
  *  @param  none
  *  @return value from selected register
  */
+__unused
 static int bq24195_disable(struct device *dev)
 {
 	int ret;
@@ -509,6 +495,7 @@ static int bq24195_disable(struct device *dev)
  *  @param  none
  *  @return false if register read failed
  */
+__unused
 static int bq24195_reset_watchdog(struct device *dev)
 {
 	int ret;
@@ -522,6 +509,7 @@ static int bq24195_reset_watchdog(struct device *dev)
 	return ret;
 }
 
+__unused
 static int bq24195_disable_batfet(struct device *dev, bool disable) {
 	int ret;
 
@@ -529,6 +517,7 @@ static int bq24195_disable_batfet(struct device *dev, bool disable) {
 	return ret;
 }
 
+__unused
 static bool isPowerGood(struct device *dev) {
 	int ret;
 	BQ24195_SYSTEM_STATUS_t value;
@@ -538,6 +527,7 @@ static bool isPowerGood(struct device *dev) {
 }
 
 
+__unused
 static int bq24195_get_registers(struct device *dev, BQ24195_device_t *reg)
 {
 	int ret;
@@ -691,6 +681,7 @@ static void pmic_update_power_state(struct device *dev, enum pmic_power_state pr
 	}
 }
 
+__unused
 static void pmic_update_device_state(struct device *dev, enum pmic_device_state present_state, enum pmic_device_state next_state)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
@@ -724,6 +715,19 @@ static void pmic_update_device_state(struct device *dev, enum pmic_device_state 
 	default:
 		break;
 	}
+
+	static const char* states[] = {
+		"UNKNOWN",
+		"DISABLED",
+		"UNINITIALIZED",
+		"INITIALIZED",
+		"ACTIVE",
+		"HOT",
+		"COLD",
+		"FAULT",
+		"NOT_PRESENT",
+	};
+	LOG_DBG("Device state %s -> %s", states[present_state], states[next_state]);
 
 	drv_data->device_state = next_state;
 
@@ -782,8 +786,7 @@ static void handle_update(struct device *dev)
 	if (drv_data->battery_state == PMIC_BATTERY_STATE_DISCONNECTED &&
 	   (drv_data->charging_disabled_timestamp) &&
 	   ((k_uptime_get() - drv_data->charging_disabled_timestamp) >= drv_data->power_config.charge_disabled_timeout)) {
-		// Re-enable charging, do not run DPDM detection
-		LOG_DBG("re-enabling charging");
+		// Re-enable charging
 		bq24195_enable_charge(dev);
 	}
 
