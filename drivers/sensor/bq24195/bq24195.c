@@ -324,6 +324,50 @@ static int poll_connect_status(struct device *dev)
 	return drv_data->battery_disconnected;
 }
 
+/**
+ *  @brief  Configure the PMIC HiZ mode
+ *  @param  enable
+ *          enable to disable
+ *  @return value from selected register
+ */
+__unused
+static int bq24195_set_hiz(struct device *dev, bool enable)
+{
+	int ret;
+
+	ret = bq24195_reg_update(dev, BQ24195_REGISTER_INPUT_SOURCE_CONTROL, 0b10000000, enable << 7);
+	return ret;
+}
+
+
+/**
+ *  @brief  Enable PMIC Buck converter (disable HiZ)
+ *  @return value from selected register
+ */
+static int bq24195_enable_buck(struct device *dev)
+{
+	int ret;
+
+	ret = bq24195_reg_update(dev, BQ24195_REGISTER_INPUT_SOURCE_CONTROL, 0b10000000, 0);
+	return ret;
+}
+
+
+/**
+ *  @brief  Disable PMIC Buck converter (enable HiZ)
+ *  @param  enable
+ *          enable to disable
+ *  @return value from selected register
+ */
+static int bq24195_disable_buck(struct device *dev)
+{
+	int ret;
+
+	ret = bq24195_reg_update(dev, BQ24195_REGISTER_INPUT_SOURCE_CONTROL, 0b10000000, BIT(7));
+	return ret;
+}
+
+
 static int bq24195_disable_charge(struct device *dev)
 {
 	struct bq24195_data *drv_data = dev->driver_data;
@@ -355,6 +399,11 @@ static int bq24195_configure(struct device *dev)
 	struct bq24195_data *drv_data = dev->driver_data;
 	const struct bq24195_dev_config *cfg = dev->config_info;
 	int ret;
+
+	ret = bq24195_enable_buck(dev);
+	if (ret < 0) {
+		return ret;
+	}
 
 	ret = bq24195_disable_watchdog(dev);
 	if (ret < 0) {
@@ -450,7 +499,7 @@ static int bq24195_disable(struct device *dev)
 		return ret;
 	}
 
-	ret = bq24195_set_hiz(dev, true);
+	ret = bq24195_disable_buck(dev);
 	return ret;
 }
 
