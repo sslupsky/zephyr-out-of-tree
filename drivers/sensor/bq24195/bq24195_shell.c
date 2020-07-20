@@ -16,6 +16,7 @@
  *                                                               
  */
 
+#define DT_DRV_COMPAT ti_bq24195
 
 #include <errno.h>
 #include <zephyr/types.h>
@@ -65,10 +66,13 @@ static int cmd_init(const struct shell *shell, size_t argc, char *argv[])
 
 	if (argc == 2) {
 		pmic_dev = device_get_binding(argv[1]);
-		if (!pmic_dev) {
-			shell_error(shell, "device not found: %s", argv[1]);
-			return -EIO;
-		}
+	} else {
+		pmic_dev = device_get_binding(DT_INST_LABEL(0));
+	}
+
+	if (!pmic_dev) {
+		shell_error(shell, "device not found");
+		return -EIO;
 	}
 
 	drv_data = pmic_dev->driver_data;
@@ -206,9 +210,19 @@ static int cmd_debug_register(const struct shell *shell, size_t argc, char **arg
 	cfg = pmic_dev->config_info;
 
 	if (argc == 2) {
-		reg = strtol(argv[1], NULL, 0);
-		if (cfg->api.reg_read) {
-			cfg->api.reg_read(pmic_dev, reg, &val, sizeof(val));
+		if (strncmp(argv[1], "all", sizeof("all")) == 0) {
+			for (reg = 0; reg < ARRAY_SIZE(reg_names); reg++) {
+				if (cfg->api.reg_read) {
+					cfg->api.reg_read(pmic_dev, reg, &val, sizeof(val));
+				shell_print(shell, "REG%02X (%s):  0x%02x", reg, reg_names[reg], val);
+				}
+			}
+		} else {
+			reg = strtol(argv[1], NULL, 0);
+			if (cfg->api.reg_read) {
+				cfg->api.reg_read(pmic_dev, reg, &val, sizeof(val));
+			shell_print(shell, "REG%02X (%s):  0x%02x", reg, reg_names[reg], val);
+			}
 		}
 	} else if (argc == 3) {
 		reg = strtol(argv[1], NULL, 0);
@@ -216,9 +230,9 @@ static int cmd_debug_register(const struct shell *shell, size_t argc, char **arg
 		if (cfg->api.reg_write) {
 			cfg->api.reg_write(pmic_dev, reg, val);
 		}
+		shell_print(shell, "REG%02X (%s):  0x%02x", reg, reg_names[reg], val);
 	}
 
-	shell_print(shell, "REG%02X (%s):  0x%02x", reg, reg_names[reg], val);
 	return ret;
 }
 
@@ -415,7 +429,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(pmic_debug_cmds,
 SHELL_STATIC_SUBCMD_SET_CREATE(pmic_cmds,
 	SHELL_CMD(debug, &pmic_debug_cmds, HELP_NONE, cmd_pmic_debug),
 	SHELL_CMD(info, &pmic_info_cmds, HELP_NONE, cmd_pmic_info),
-	SHELL_CMD_ARG(init, NULL, HELP_NONE, cmd_init, 2, 0),
+	SHELL_CMD_ARG(init, NULL, HELP_NONE, cmd_init, 1, 1),
 	SHELL_CMD(load, NULL, HELP_NONE, cmd_pmic_load),
 	SHELL_CMD(pm, &pmic_pm_cmds, HELP_NONE, cmd_pmic_pm),
 	SHELL_CMD(poll, NULL, HELP_NONE, cmd_pmic_poll),
