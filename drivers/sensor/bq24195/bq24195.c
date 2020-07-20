@@ -16,6 +16,8 @@
  *                                                               
  */
 
+#define DT_DRV_COMPAT ti_bq24195
+
 #include <device.h>
 #include <drivers/i2c.h>
 #include <sys/util.h>
@@ -861,13 +863,13 @@ static inline int bq24195_device_id_check(struct device *dev)
 	ret = bq24195_reg_read(dev, BQ24195_REGISTER_PMIC_VENDOR, &value.reg, sizeof(value.reg));
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to get Device ID register",
-			DT_PROP(DT_NODELABEL(bq24195), label));
+			DT_INST_LABEL(0));
 		return ret;
 	}
 
 	if (value.reg != BQ24195_CHIPID) {
 		LOG_ERR("%s: Failed to match the device IDs",
-			DT_PROP(DT_NODELABEL(bq24195), label));
+			DT_INST_LABEL(0));
 		return -EINVAL;
 	}
 
@@ -1008,11 +1010,11 @@ static int bq24195_chip_init(struct device *dev)
 		/* wait for chip to power up */
 	}
 
-	drv_data->i2c = device_get_binding(DT_BUS_LABEL(DT_NODELABEL(bq24195)));
+	drv_data->i2c = device_get_binding(DT_INST_BUS_LABEL(0));
 	if (drv_data->i2c == NULL) {
 		drv_data->device_state = PMIC_DEVICE_STATE_DEVICE_NOT_PRESENT;
 		LOG_ERR("Failed to get pointer to %s device",
-			DT_BUS_LABEL(DT_NODELABEL(bq24195)));
+			DT_INST_BUS_LABEL(0));
 		return -EINVAL;
 	}
 
@@ -1061,7 +1063,7 @@ int bq24195_init(struct device *dev)
 static struct bq24195_data bq24195_drv_data;
 
 static const struct bq24195_dev_config bq24195_config = {
-	.i2c_addr = DT_PROP(DT_NODELABEL(bq24195), reg),
+	.i2c_addr = DT_INST_REG_ADDR(0),
 	.api = {
 		.reg_read = bq24195_reg_read,
 		.reg_write = bq24195_reg_write,
@@ -1078,6 +1080,6 @@ static const struct bq24195_dev_config bq24195_config = {
 	},
 };
 
-DEVICE_AND_API_INIT(bq24195, DT_PROP(DT_NODELABEL(bq24195), label), bq24195_init,
+DEVICE_AND_API_INIT(bq24195, DT_INST_LABEL(0), bq24195_init,
 		    &bq24195_drv_data, &bq24195_config, POST_KERNEL,
 		    CONFIG_SENSOR_INIT_PRIORITY, &pmic_driver_api);
