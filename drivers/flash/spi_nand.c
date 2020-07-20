@@ -21,7 +21,7 @@
 #include "spi_nand.h"
 // #include "flash_priv.h"
 
-LOG_MODULE_REGISTER(spi_nand, CONFIG_FLASH_LOG_LEVEL);
+LOG_MODULE_REGISTER(spi_nand, CONFIG_SPI_NAND_LOG_LEVEL);
 
 /* Device Power Management Notes
  *

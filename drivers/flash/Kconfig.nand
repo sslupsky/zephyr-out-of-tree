@@ -8,6 +8,10 @@ menuconfig SPI_NAND
 
 if SPI_NAND
 
+module = SPI_NAND
+module-str = spi_nand
+source "subsys/logging/Kconfig.template.log_config"
+
 config SPI_NAND_INIT_PRIORITY
 	int
 	default 80
