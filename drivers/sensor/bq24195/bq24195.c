@@ -869,8 +869,6 @@ static void pmic_process(struct device *dev)
 
 	LOG_DBG("starting pmic process thread");
 	drv_data->device_state = PMIC_DEVICE_STATE_ACTIVE;
-	drv_data->power_state = PMIC_POWER_STATE_UNKNOWN;
-	drv_data->battery_state = PMIC_BATTERY_STATE_UNKNOWN;
 	bq24195_enable_charge(dev);
 
 	while (true) {
@@ -1075,9 +1073,10 @@ static int bq24195_chip_init(struct device *dev)
 
 	LOG_DBG("BQ24195 pmic detected");
 
-	apply_default_config(dev);
+	load_default_config(dev);
+	ret = bq24195_configure(dev);
 
-	return 0;
+	return ret;
 }
 
 int bq24195_init(struct device *dev)
@@ -1087,6 +1086,8 @@ int bq24195_init(struct device *dev)
 	int ret;
 
 	drv_data->device_state = PMIC_DEVICE_STATE_UNINITIALIZED;
+	drv_data->battery_state = PMIC_BATTERY_STATE_UNKNOWN;
+	drv_data->power_state = PMIC_POWER_STATE_UNKNOWN;
 	ret = bq24195_chip_init(dev);
 	if (ret == 0) {
 		drv_data->battery_state_change_cb = NULL;
@@ -1104,6 +1105,7 @@ int bq24195_init(struct device *dev)
 
 		k_thread_name_set(thread, "pmic");
 		drv_data->device_state = PMIC_DEVICE_STATE_INITIALIZED;
+		bq24195_update(dev);
 	}
 
 	return ret;
