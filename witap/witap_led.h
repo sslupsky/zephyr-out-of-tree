@@ -85,6 +85,7 @@ extern const struct led_animation_t animation_success;
 extern const struct led_animation_t animation_wait;
 extern const struct led_animation_t animation_error;
 extern const struct led_animation_t animation_gpslock;
+extern const struct led_animation_t animation_usb;
 
 void led_animation_blink(const struct led_animation_t *animation);
 void led_add(const struct led_animation_t *animation );
