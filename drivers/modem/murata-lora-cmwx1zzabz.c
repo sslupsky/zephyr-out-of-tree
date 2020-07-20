@@ -625,15 +625,18 @@ static const struct lora_at_cmd config_otaa_cmds[] = {
 	LORA_AT_CMD_NOHANDLE("AT+MODE=1", LORA_CMD_AT_TIMEOUT),
 };
 
+__unused
 static const struct lora_at_cmd join_otaa_cmds[] = {
 	LORA_AT_CMD_NOHANDLE("AT+JOIN", LORA_CMD_JOIN_TIMEOUT),
 };
 
+__unused
 static const struct lora_at_cmd set_keys[] = {
 	LORA_AT_CMD("AT+APPEUI=" SECRET_APP_EUI, "+OK", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
 	LORA_AT_CMD("AT+APPKEY=" SECRET_APP_KEY, "+OK", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
 };
 
+__unused
 static const struct lora_at_cmd cfs[] = {
 	LORA_AT_CMD("AT+CFS?", "+OK=", lora_cmd_ok, 0U, "", LORA_CMD_AT_TIMEOUT),
 };
@@ -653,7 +656,7 @@ int lora_at_cmd_seq_send(struct modem_iface *iface,
 
 		if (cmds[i].handle_cmd.cmd && cmds[i].handle_cmd.func) {
 			ret = modem_cmd_send(iface, handler,
-					     &cmds[i].handle_cmd, 1U,
+					     (struct modem_cmd *) &cmds[i].handle_cmd, 1U,
 					     cmds[i].send_cmd,
 					     sem, K_SECONDS(cmds[i].timeout));
 		} else {
