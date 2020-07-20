@@ -81,7 +81,10 @@ extern "C" enum power_states sys_pm_policy_next_state(s32_t ticks)
 	int i;
 
 	if (!force_sleep) {
-		if (usbState != USB_DC_DISCONNECTED) {
+		if (usbState == USB_DC_CONNECTED ||
+		    usbState == USB_DC_CONFIGURED ||
+		    usbState == USB_DC_RESUME ||
+		    usbState == USB_DC_RESET) {
 			return SYS_POWER_STATE_ACTIVE;
 		}
 
