@@ -63,8 +63,8 @@ void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, str
 {
 	char fname[20];
 
-	snprintf(fname, sizeof(fname), "%s%s", log_mp->mnt_point, witap_log_fname);
 	if (log_mp) {
+		snprintf(fname, sizeof(fname), "%s%s", log_mp->mnt_point, witap_log_fname);
 		witap_log_backend_enable(fname, CONFIG_MYAPP_LOG_LEVEL, timeout);
 	}
 	if (boot_mp) {
