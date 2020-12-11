@@ -1191,7 +1191,7 @@ const struct gnss_trigger poll_trigger = {
 static int ublox_m8_sample_fetch(struct device *dev, enum gnss_channel chan)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	int ret;
+	int ret = 0;
 
 	ARG_UNUSED(drv_data);
 
