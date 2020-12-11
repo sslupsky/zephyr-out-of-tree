@@ -16,6 +16,8 @@
  *                                                               
  */
 
+#define DT_DRV_COMPAT ublox_m8
+
 #include <device.h>
 #include <drivers/i2c.h>
 #include <drivers/gnss.h>
@@ -1003,7 +1005,7 @@ static int ublox_m8_get_device_id(struct device *dev)
 	ret = drv_data->last_error;
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to get unique id",
-			DT_INST_0_UBLOX_M8_LABEL);
+			DT_LABEL(DT_INST(0,DT_DRV_COMPAT)));
 	}
 
 	return ret;
@@ -1027,7 +1029,7 @@ static int ublox_m8_configure_uart_port(struct device *dev)
 	ret = drv_data->last_error;
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to configure UART port",
-			DT_INST_0_UBLOX_M8_LABEL);
+			DT_LABEL(DT_INST(0,DT_DRV_COMPAT)));
 	}
 
 	return ret;
@@ -1051,7 +1053,7 @@ static int ublox_m8_configure_ddc_port(struct device *dev)
 	ret = drv_data->last_error;
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to configure DDC port",
-			DT_INST_0_UBLOX_M8_LABEL);
+			DT_LABEL(DT_INST(0,DT_DRV_COMPAT)));
 	}
 
 	return ret;
@@ -1075,7 +1077,7 @@ static int ublox_m8_configure_pm2(struct device *dev)
 	ret = drv_data->last_error;
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to configure PM2",
-			DT_INST_0_UBLOX_M8_LABEL);
+			DT_LABEL(DT_INST(0,DT_DRV_COMPAT)));
 	}
 
 	return ret;
@@ -1099,7 +1101,7 @@ static int ublox_m8_configure_rxm(struct device *dev)
 	ret = drv_data->last_error;
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to configure RXM",
-			DT_INST_0_UBLOX_M8_LABEL);
+			DT_LABEL(DT_INST(0,DT_DRV_COMPAT)));
 	}
 
 	return ret;
@@ -1127,7 +1129,7 @@ static int ublox_m8_configure_nav_msg_rate(struct device *dev)
 	ret = drv_data->last_error;
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to configure nav msg rate",
-			DT_INST_0_UBLOX_M8_LABEL);
+			DT_LABEL(DT_INST(0,DT_DRV_COMPAT)));
 	}
 
 	return ret;
@@ -1151,7 +1153,7 @@ static int ublox_m8_configure_nav_settings(struct device *dev)
 	ret = drv_data->last_error;
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to configure nav settings",
-			DT_INST_0_UBLOX_M8_LABEL);
+			DT_LABEL(DT_INST(0,DT_DRV_COMPAT)));
 	}
 
 	return ret;
@@ -1175,7 +1177,7 @@ static int ublox_m8_configure_save_bbr(struct device *dev)
 	ret = drv_data->last_error;
 	if (ret < 0) {
 		LOG_ERR("%s: Failed to save to BBR",
-			DT_INST_0_UBLOX_M8_LABEL);
+			DT_LABEL(DT_INST(0,DT_DRV_COMPAT)));
 	}
 
 	return ret;
@@ -1880,31 +1882,31 @@ static const struct gnss_driver_api ublox_m8_driver_api = {
 static struct ublox_m8_data ublox_m8_drv_data;
 
 static const struct ublox_m8_dev_config ublox_m8_config = {
-	.i2c_name = DT_INST_0_UBLOX_M8_BUS_NAME,
-	.i2c_addr = DT_INST_0_UBLOX_M8_BASE_ADDRESS,
-	.txready_gpio_name = DT_INST_0_UBLOX_M8_TXREADY_GPIOS_CONTROLLER,
-	.txready_gpio_pin = DT_INST_0_UBLOX_M8_TXREADY_GPIOS_PIN,
-	.txready_gpio_flags = DT_INST_0_UBLOX_M8_TXREADY_GPIOS_FLAGS,
-	.reset_gpio_name = DT_INST_0_UBLOX_M8_RESET_GPIOS_CONTROLLER,
-	.reset_gpio_pin = DT_INST_0_UBLOX_M8_RESET_GPIOS_PIN,
-	.reset_gpio_flags = DT_INST_0_UBLOX_M8_RESET_GPIOS_FLAGS,
-	.timepulse_gpio_name = DT_INST_0_UBLOX_M8_TIMEPULSE_GPIOS_CONTROLLER,
-	.timepulse_gpio_pin = DT_INST_0_UBLOX_M8_TIMEPULSE_GPIOS_PIN,
-	.timepulse_gpio_flags = DT_INST_0_UBLOX_M8_TIMEPULSE_GPIOS_FLAGS,
-	.safeboot_gpio_name = DT_INST_0_UBLOX_M8_SAFEBOOT_GPIOS_CONTROLLER,
-	.safeboot_gpio_pin = DT_INST_0_UBLOX_M8_SAFEBOOT_GPIOS_PIN,
-	.safeboot_gpio_flags = DT_INST_0_UBLOX_M8_SAFEBOOT_GPIOS_FLAGS,
-	.extint_gpio_name = DT_INST_0_UBLOX_M8_EXTINT_GPIOS_CONTROLLER,
-	.extint_gpio_pin = DT_INST_0_UBLOX_M8_EXTINT_GPIOS_PIN,
-	.extint_gpio_flags = DT_INST_0_UBLOX_M8_EXTINT_GPIOS_FLAGS,
-	.rxd_gpio_name = DT_INST_0_UBLOX_M8_RXD_GPIOS_CONTROLLER,
-	.rxd_gpio_pin = DT_INST_0_UBLOX_M8_RXD_GPIOS_PIN,
-	.rxd_gpio_flags = DT_INST_0_UBLOX_M8_RXD_GPIOS_FLAGS,
-	// .txd_gpio_name = DT_INST_0_UBLOX_M8_TXD_GPIOS_CONTROLLER,
-	// .txd_gpio_pin = DT_INST_0_UBLOX_M8_TXD_GPIOS_PIN,
-	// .txd_gpio_flags = DT_INST_0_UBLOX_M8_TXD_GPIOS_FLAGS,
+	.i2c_name = DT_BUS_LABEL(DT_INST(0,DT_DRV_COMPAT)),
+	.i2c_addr = DT_REG_ADDR(DT_INST(0,DT_DRV_COMPAT)),
+	.txready_gpio_name = DT_GPIO_LABEL(DT_INST(0,DT_DRV_COMPAT),txready_gpios),
+	.txready_gpio_pin = DT_GPIO_PIN(DT_INST(0,DT_DRV_COMPAT),txready_gpios),
+	.txready_gpio_flags = DT_GPIO_FLAGS(DT_INST(0,DT_DRV_COMPAT),txready_gpios),
+	.reset_gpio_name = DT_GPIO_LABEL(DT_INST(0,DT_DRV_COMPAT),reset_gpios),
+	.reset_gpio_pin = DT_GPIO_PIN(DT_INST(0,DT_DRV_COMPAT),reset_gpios),
+	.reset_gpio_flags = DT_GPIO_FLAGS(DT_INST(0,DT_DRV_COMPAT),reset_gpios),
+	.timepulse_gpio_name = DT_GPIO_LABEL(DT_INST(0,DT_DRV_COMPAT),timepulse_gpios),
+	.timepulse_gpio_pin = DT_GPIO_PIN(DT_INST(0,DT_DRV_COMPAT),timepulse_gpios),
+	.timepulse_gpio_flags = DT_GPIO_FLAGS(DT_INST(0,DT_DRV_COMPAT),timepulse_gpios),
+	.safeboot_gpio_name = DT_GPIO_LABEL(DT_INST(0,DT_DRV_COMPAT),safeboot_gpios),
+	.safeboot_gpio_pin = DT_GPIO_PIN(DT_INST(0,DT_DRV_COMPAT),safeboot_gpios),
+	.safeboot_gpio_flags = DT_GPIO_FLAGS(DT_INST(0,DT_DRV_COMPAT),safeboot_gpios),
+	.extint_gpio_name = DT_GPIO_LABEL(DT_INST(0,DT_DRV_COMPAT),extint_gpios),
+	.extint_gpio_pin = DT_GPIO_PIN(DT_INST(0,DT_DRV_COMPAT),extint_gpios),
+	.extint_gpio_flags = DT_GPIO_FLAGS(DT_INST(0,DT_DRV_COMPAT),extint_gpios),
+	.rxd_gpio_name = DT_GPIO_LABEL(DT_INST(0,DT_DRV_COMPAT),rxd_gpios),
+	.rxd_gpio_pin = DT_GPIO_PIN(DT_INST(0,DT_DRV_COMPAT),rxd_gpios),
+	.rxd_gpio_flags = DT_GPIO_FLAGS(DT_INST(0,DT_DRV_COMPAT),rxd_gpios),
+	// .txd_gpio_name = DT_GPIO_LABEL(DT_INST(0,DT_DRV_COMPAT),txd_gpios),
+	// .txd_gpio_pin = DT_GPIO_PIN(DT_INST(0,DT_DRV_COMPAT),txd_gpios),
+	// .txd_gpio_flags = DT_GPIO_FLAGS(DT_INST(0,DT_DRV_COMPAT),txd_gpios),
 };
 
-DEVICE_AND_API_INIT(ublox_m8, DT_INST_0_UBLOX_M8_LABEL, ublox_m8_init,
+DEVICE_AND_API_INIT(ublox_m8, DT_LABEL(DT_INST(0,DT_DRV_COMPAT)), ublox_m8_init,
 		    &ublox_m8_drv_data, &ublox_m8_config, POST_KERNEL,
 		    CONFIG_GNSS_INIT_PRIORITY, &ublox_m8_driver_api);
