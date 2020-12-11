@@ -34,13 +34,13 @@
 #define LOG_LEVEL CONFIG_GNSS_LOG_LEVEL
 LOG_MODULE_REGISTER(UBLOX_M8, CONFIG_GNSS_LOG_LEVEL);
 
-FOR_EACH(UBX_HEADER_CFG_DEFINE, cfg, msg, nav5, pm2, prt, pms, pwr, rate, rst, rxm);
-FOR_EACH(UBX_HEADER_CFG_DEFINE, tp5);
-FOR_EACH(UBX_HEADER_NAV_DEFINE, pvt, status, geofence, sat, timeutc);
-FOR_EACH(UBX_HEADER_SEC_DEFINE, uniqid);
-FOR_EACH(UBX_HEADER_ACK_DEFINE, ack, nak);
-FOR_EACH(UBX_HEADER_RXM_DEFINE, pmreq);
-FOR_EACH(UBX_HEADER_MON_DEFINE, gnss, hw2, hw, io, ver);
+FOR_EACH(UBX_HEADER_CFG_DEFINE, (;), cfg, msg, nav5, pm2, prt, pms, pwr, rate, rst, rxm);
+FOR_EACH(UBX_HEADER_CFG_DEFINE, (;), tp5);
+FOR_EACH(UBX_HEADER_NAV_DEFINE, (;), pvt, status, geofence, sat, timeutc);
+FOR_EACH(UBX_HEADER_SEC_DEFINE, (;), uniqid);
+FOR_EACH(UBX_HEADER_ACK_DEFINE, (;), ack, nak);
+FOR_EACH(UBX_HEADER_RXM_DEFINE, (;), pmreq);
+FOR_EACH(UBX_HEADER_MON_DEFINE, (;), gnss, hw2, hw, io, ver);
 
 const struct ubx_frame_status ubx_frame_status_init = {
 	.response_request = UBX_RESPONSE_NONE,
