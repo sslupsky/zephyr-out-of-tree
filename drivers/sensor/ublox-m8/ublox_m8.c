@@ -342,7 +342,7 @@ static int ubx_validate_frame_checksum(struct ubx_frame *frame)
 static int ublox_m8_flush_msg_buffer(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret;
 	u8_t rx_buf[64];
 	u16_t len;
@@ -594,7 +594,7 @@ static void ublox_m8_msg_thread(int dev_ptr, int unused)
 {
 	struct device *dev = INT_TO_POINTER(dev_ptr);
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret;
 	size_t len;
 	u32_t idle_count = 0;
@@ -794,7 +794,7 @@ __attribute__((unused))
 static int ublox_m8_register_read(struct device *dev, u8_t reg, u8_t *val, int size)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret;
 
 	ret = i2c_burst_read(drv_data->i2c, cfg->i2c_addr, reg, (u8_t *)val,
@@ -805,7 +805,7 @@ static int ublox_m8_register_read(struct device *dev, u8_t reg, u8_t *val, int s
 static int ublox_m8_message_send(struct device *dev, struct ubx_frame *frame, k_timeout_t timeout)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret;
 
 	/* ubx length is sent little endian */
@@ -904,7 +904,7 @@ static int ublox_m8_ubx_msg_set(struct device *dev, const union ubx_header *head
 				k_timeout_t timeout)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	struct ubx_frame frame;
 	int ret;
 
@@ -948,7 +948,7 @@ static int ublox_m8_ubx_msg_get(struct device *dev, const union ubx_header *head
 				k_timeout_t timeout)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	struct ubx_frame frame;
 	int ret;
 
@@ -1441,7 +1441,7 @@ static int ublox_m8_attr_set(struct device *dev, enum gnss_channel chan,
 			     void *val)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret = 0;
 	u8_t payload[3];
 
@@ -1516,7 +1516,7 @@ static int ublox_m8_attr_set(struct device *dev, enum gnss_channel chan,
 static int ublox_m8_connect_status(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret;
 
 	/*
@@ -1530,7 +1530,7 @@ static int ublox_m8_connect_status(struct device *dev)
 static void ublox_m8_reset(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 
 	/* assert reset pin */
 	drv_data->device_state = GNSS_DEVICE_STATE_RESET;
@@ -1543,7 +1543,7 @@ static void ublox_m8_reset(struct device *dev)
 static int ublox_m8_pin_init(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret = 0;
 
 	/*
@@ -1807,7 +1807,7 @@ static int ublox_m8_enable(struct device *dev, gnss_status_callback_t handler)
 int ublox_m8_init(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret;
 
 	drv_data->dev = dev;
