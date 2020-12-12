@@ -9,5 +9,6 @@ menu "OOT Sensor Drivers"
 rsource "icm20649/Kconfig"
 rsource "bq24195/Kconfig"
 rsource "ublox-m8/Kconfig"
+rsource "opt3001/Kconfig"
 
 endmenu
