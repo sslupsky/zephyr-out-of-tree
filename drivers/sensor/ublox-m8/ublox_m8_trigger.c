@@ -33,7 +33,7 @@ static inline void ublox_m8_setup_txready_int(struct device *dev,
 			     bool enable)
 {
 	struct ublox_m8_data *data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	unsigned int flags = enable
 		? GPIO_INT_EDGE_TO_ACTIVE
 		: GPIO_INT_DISABLE;
@@ -47,7 +47,7 @@ static inline void ublox_m8_setup_timepulse_int(struct device *dev,
 			     bool enable)
 {
 	struct ublox_m8_data *data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	unsigned int flags = enable
 		? GPIO_INT_EDGE_TO_ACTIVE
 		: GPIO_INT_DISABLE;
@@ -173,7 +173,7 @@ static void ublox_m8_trigger_pvt_cb(void *arg, int timeout)
 {
 	struct device *dev = arg;
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	s64_t t;
 
 	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 1);
@@ -254,7 +254,7 @@ static void ublox_m8_trigger_timepulse_work_cb(struct k_work *work)
 int ublox_m8_init_interrupt(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 	int ret;
 
 	/* setup data txReady gpio interrupt */

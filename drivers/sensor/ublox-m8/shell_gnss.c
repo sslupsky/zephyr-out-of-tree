@@ -691,7 +691,7 @@ static int cmd_gnss_poll(const struct shell *shell)
 	}
 	
 	drv_data = dev->driver_data;
-	const struct ublox_m8_dev_config *cfg = dev->config->config_info;
+	const struct ublox_m8_dev_config *cfg = dev->config_info;
 
 	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 1);
 	k_sleep(K_MSEC(500));
