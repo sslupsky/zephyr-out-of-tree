@@ -20,11 +20,11 @@
 
 / {
 	model = "Scanimetrics WiTAP ISB";
-	compatible = "scanimetrics,witap_isb", "atmel,samd21g18a", "atmel,samd21";
+	compatible = "scanimetrics,witap_isb", "atmel,samd21j18a", "atmel,samd21";
 
 	chosen {
-		zephyr,console = &sercom2;
-		zephyr,shell-uart = &sercom2;
+		zephyr,console = &sercom4;
+		zephyr,shell-uart = &sercom4;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &code_partition;
@@ -44,7 +44,7 @@
 			label = "Red";
 		};
 		led1: led_1 {
-			gpios = <&porta 19 (GPIO_ACTIVE_HIGH)>;
+			gpios = <&portb 17 (GPIO_ACTIVE_HIGH)>;
 			label = "Green";
 		};
 		led2: led_2 {
@@ -71,10 +71,6 @@
 			gpios = <&porta 10 (GPIO_ACTIVE_HIGH)>;
 			label = "host-int1";
 		};
-		hostint2: pa11 {
-			gpios = <&porta 11 (GPIO_ACTIVE_HIGH)>;
-			label = "host-int2";
-		};
 	};
 
 	interrupt-pins {
@@ -87,12 +83,12 @@
 			gpios = <&porta 14 (GPIO_ACTIVE_HIGH)>;
 			label = "imu-int2";
 		};
-		alsalert: pa16 {
-			gpios = <&porta 16 (GPIO_ACTIVE_HIGH)>;
+		alsalert: pb16 {
+			gpios = <&portb 16 (GPIO_ACTIVE_HIGH)>;
 			label = "als-alert";
 		};
-		thsalert: pa17 {
-			gpios = <&porta 17 (GPIO_ACTIVE_HIGH)>;
+		thsalert: pa19 {
+			gpios = <&porta 19 (GPIO_ACTIVE_HIGH)>;
 			label = "ths-alert";
 		};
 	};
@@ -103,17 +99,45 @@
 			gpios = <&porta 3 0>;
 			label = "pa3";
 		};
-		pa12: pa12 {
-			gpios = <&porta 12 0>;
-			label = "pa12";
+		pa11: pa11 {
+			gpios = <&porta 11 0>;
+			label = "pa11";
 		};
-		pa13: pa13 {
-			gpios = <&porta 13 0>;
-			label = "pa13";
-		};
+		// pa12: pa12 {
+		// 	gpios = <&porta 12 0>;
+		// 	label = "pa12";
+		// };
+		// pa13: pa13 {
+		// 	gpios = <&porta 13 0>;
+		// 	label = "pa13";
+		// };
 		pa18: pa18 {
 			gpios = <&porta 18 0>;
 			label = "pa18";
+		};
+		pa27: pa27 {
+			gpios = <&porta 27 0>;
+			label = "pa27";
+		};
+		pa28: pa28 {
+			gpios = <&porta 28 0>;
+			label = "pa28";
+		};
+		pb4: pb4 {
+			gpios = <&portb 4 0>;
+			label = "pb4";
+		};
+		pb5: pb5 {
+			gpios = <&portb 5 0>;
+			label = "pb5";
+		};
+		pb6: pb6 {
+			gpios = <&portb 6 0>;
+			label = "pb6";
+		};
+		pb7: pb7 {
+			gpios = <&portb 7 0>;
+			label = "pb7";
 		};
 		pb10: pb10 {
 			gpios = <&portb 10 0>;
@@ -122,6 +146,30 @@
 		pb11: pb11 {
 			gpios = <&portb 11 0>;
 			label = "pb11";
+		};
+		pb12: pb12 {
+			gpios = <&portb 12 0>;
+			label = "pb12";
+		};
+		pb13: pb13 {
+			gpios = <&portb 13 0>;
+			label = "pb13";
+		};
+		pb14: pb14 {
+			gpios = <&portb 14 0>;
+			label = "pb14";
+		};
+		pb15: pb15 {
+			gpios = <&portb 15 0>;
+			label = "pb15";
+		};
+		pb30: pb30 {
+			gpios = <&portb 30 0>;
+			label = "pb30";
+		};
+		pb31: pb31 {
+			gpios = <&portb 31 0>;
+			label = "pb31";
 		};
 	};
 };
@@ -132,7 +180,6 @@
 
 //  SERCOM0 is used for board to board communication between ISB and MKR WAN (DOCK)
 &sercom0 {
-	status = "okay";
 	compatible = "atmel,sam0-i2c";
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -153,13 +200,33 @@
 	};
 };
 
+//  SERCOM1 is connected to the onboard GPS module i2c
+&sercom1 {
+	compatible = "atmel,sam0-i2c";
+	//  see ZEPHYR_INCLUDE_DT_BINDINGS_I2C_I2C_H_ for frequency defines
+	clock-frequency = <I2C_BITRATE_FAST>;
+	// label = "I2C_1";
+	#address-cells = <1>;
+	#size-cells = <0>;
 	dmas = <&dmac 1 0x04>, <&dmac 1 0x03>;
 	dma-names = "tx", "rx";
 	// interrupts = <10 0>;
 
-//  SERCOM3 is the local bus for onboard sensors
-&sercom3 {
-	status = "okay";
+	samm8q: samm8q@42 {
+		compatible = "ublox,m8";
+		label = "SAM-M8Q";
+		reg = <0x42>;
+		extint-gpios = <&portb 9 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&portb 8 GPIO_ACTIVE_LOW>;
+		safeboot-gpios = <&portb 22 GPIO_ACTIVE_LOW>;
+		timepulse-gpios = <&portb 23 GPIO_ACTIVE_HIGH>;
+		rxd-gpios = <&porta 22 GPIO_ACTIVE_HIGH>;
+		txready-gpios = <&porta 23 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+//  SERCOM2 is the onboard internal sensor i2c bus
+&sercom2 {
 	compatible = "atmel,sam0-i2c";
 	//  see zephyr/include/dt-bindings/i2c/i2c.h for device tree frequency defines
 	clock-frequency = <I2C_BITRATE_FAST>;
@@ -173,13 +240,14 @@
 		compatible = "sensirion,sht3xd";
 		label = "SHT3XD";
 		reg = <0x44>;
-		// alert-gpios = <&porta 17 GPIO_INT_ACTIVE_HIGH>;
+		alert-gpios = <&porta 19 GPIO_ACTIVE_HIGH>;
 	};
 
 	als0: opt3001@45 {
-		compatible = "ti,opt3001";
+		compatible = "ti,opt3001-oot";
 		label = "OPT3001";
 		reg = <0x45>;
+		int-gpios = <&portb 16 0>;
 	};
 
 	bps0: bme280@76 {
@@ -192,17 +260,39 @@
 		compatible = "invensense,icm20649";
 		label = "ICM20649";
 		reg = <0x68>;
-		irq-gpios = <&porta 15 0>;
+		irq-gpios = <&porta 15 0>, <&porta 14 0>;
 	};
 };
 
-//  SERCOM5 is connected to the onboard GPS module
+//  SERCOM3 is the GPS module serial UART
+&sercom3 {
+	compatible = "atmel,sam0-uart";
+	clocks = <&gclk 0x17>, <&pm 0x20 5>, <&gclk0>;
+	clock-names = "GCLK", "PM", "GEN";
+	current-speed = <115200>;
+	//  GPS RXD <-- MCU TXD (PAD0)
+	txpo = <0>;
+	//  GPS TXD --> MCU RXD (PAD1)
+	rxpo = <1>;
+};
+
+//  SERCOM4 is the Zephyr console UART
+&sercom4 {
+	compatible = "atmel,sam0-uart";
+	clocks = <&gclk 0x18>, <&pm 0x20 6>, <&gclk0>;
+	clock-names = "GCLK", "PM", "GEN";
+	current-speed = <115200>;
+	//  CONSOLE TXD <-- MCU TXD (PAD0)
+	txpo = <0>;
+	//  CONSOLE RXD --> MCU RXD (PAD1)
+	rxpo = <1>;
+};
+
+//  SERCOM5 is the external sensor i2c bus
 &sercom5 {
-	status = "disabled";
 	compatible = "atmel,sam0-i2c";
-	//  see ZEPHYR_INCLUDE_DT_BINDINGS_I2C_I2C_H_ for frequency defines
-	clock-frequency = <I2C_BITRATE_STANDARD>;
-	// label = "I2C_1";
+	//  see zephyr/include/dt-bindings/i2c/i2c.h for device tree frequency defines
+	clock-frequency = <I2C_BITRATE_FAST>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	dmas = <&dmac 3 0x0c>, <&dmac 3 0x0b>;
