@@ -138,6 +138,8 @@
 	#size-cells = <0>;
 	//  see ZEPHYR_INCLUDE_DT_BINDINGS_I2C_I2C_H_ for frequency defines
 	clock-frequency = <I2C_BITRATE_FAST>;
+	dmas = <&dmac 0 0x02>, <&dmac 0 0x01>;
+	dma-names = "tx", "rx";
 	// interrupts = <9 0>;
 
 	eeprom@54 {
@@ -151,15 +153,9 @@
 	};
 };
 
-//  use SERCOM2 as UART for console and USB CDC
-&sercom2 {
-	status = "okay";
-	compatible = "atmel,sam0-uart";
-	current-speed = <115200>;
-	rxpo = <1>;
-	txpo = <0>;
-	// interrupts = <11 0>;
-};
+	dmas = <&dmac 1 0x04>, <&dmac 1 0x03>;
+	dma-names = "tx", "rx";
+	// interrupts = <10 0>;
 
 //  SERCOM3 is the local bus for onboard sensors
 &sercom3 {
@@ -169,8 +165,9 @@
 	clock-frequency = <I2C_BITRATE_FAST>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	dma = <0>;
-	interrupts = <12 0>;
+	dmas = <&dmac 2 0x06>, <&dmac 2 0x05>;
+	dma-names = "tx", "rx";
+	// interrupts = <11 0>;
 
 	ths0: sht3xd@44 {
 		compatible = "sensirion,sht3xd";
@@ -208,23 +205,9 @@
 	// label = "I2C_1";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	dmas = <&dmac 3 0x0c>, <&dmac 3 0x0b>;
+	dma-names = "tx", "rx";
 	// interrupts = <14 0>;
-
-	samm8q: samm8q@42 {
-		compatible = "ublox,m8";
-		label = "SAM-M8Q";
-		reg = <0x42>;
-		extint-gpios = <&portb 9 GPIO_ACTIVE_HIGH>;
-		reset-gpios = <&portb 8 GPIO_ACTIVE_LOW>;
-		safeboot-gpios = <&porta 28 GPIO_ACTIVE_LOW>;
-		timepulse-gpios = <&porta 27 GPIO_ACTIVE_HIGH>;
-		rxd-gpios = <&portb 22 GPIO_ACTIVE_HIGH>;
-		// txd-gpios = <&portb 23 GPIO_ACTIVE_HIGH>;
-		// txd is used for txready.
-		// See hardware integration UBX-16018358 - R06
-		// section 1.4.2
-		txready-gpios = <&portb 23 GPIO_ACTIVE_HIGH>;
-	};
 };
 
 /*
