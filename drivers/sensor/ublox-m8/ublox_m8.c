@@ -1843,7 +1843,7 @@ int ublox_m8_init(struct device *dev)
 	drv_data->poll_status = 0;
 	drv_data->pvt_ready = false;
 	drv_data->tracking_state = GNSS_TRACKING_STATE_DISABLED;
-	k_sem_init(&drv_data->msg_sem, 0, 1);
+	k_sem_init(&drv_data->msg_sem, 1, 1);
 	k_sem_init(&drv_data->ubx_frame_sem, 1, 1);
 	k_sem_init(&drv_data->ubx_get_sem, 0, 1);
 	k_sem_init(&drv_data->ubx_ack_sem, 0, 1);
