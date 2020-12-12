@@ -9,5 +9,6 @@ rsource "flash/Kconfig"
 rsource "modem/Kconfig"
 rsource "sensor/Kconfig"
 rsource "adc/Kconfig"
+rsource "timer/Kconfig"
 
 endmenu

@@ -50,7 +50,13 @@ LOG_MODULE_REGISTER(rtc_sam0, LOG_LEVEL_DBG);
  * Due to the nature of clock synchronization, reading from or writing to some
  * RTC registers takes approximately six RTC_GCLK cycles.
  *
+ * The actual delay is 6 GCLK + 3 APB cycles. Generally, APB >> GCLK.
+ * However, if for some reason, the clocks were the same, then the delay would
+ * be equivalent to 9 cycles.
+ *
+ * We will assume APB >> GCLK and "round up" to 7 GCLK cycles.
  * The worst case update time after sleep requires 2 sync busy synchronizations.
+ * Thus, the threshold is 7 x 2 = 14 cycles.
  *
  * This constant defines a safe threshold for the comparator.
  */
@@ -128,17 +134,14 @@ static inline void rtc_sync(void)
 static uint32_t rtc_count(void)
 {
 #ifdef RTC_READREQ_RREQ
-	u32_t ret;
-
 	rtc_sync();
-	if ((RTC0->READREQ.reg & RTC_READREQ_RCONT) == 0) {
+	if ((RTC0->READREQ.bit.RCONT) == 0) {
 		RTC0->READREQ.reg |= RTC_READREQ_RCONT;
 		RTC0->READREQ.reg |= RTC_READREQ_RREQ;
 		rtc_sync();
 	}
 
-	ret = RTC0->COUNT.reg;
-	return ret;
+	return RTC0->COUNT.reg;
 #endif
 	rtc_sync();
 	return RTC0->COUNT.reg;
@@ -248,10 +251,10 @@ int z_clock_driver_init(struct device *device)
 
 	/* Configure RTC with 32-bit mode, configured prescaler and MATCHCLR. */
 #ifdef RTC_MODE0_CTRL_MODE
-	u16_t ctrl = RTC_MODE0_CTRL_MODE(0)
+	uint16_t ctrl = RTC_MODE0_CTRL_MODE(0)
 		| RTC_MODE0_CTRL_PRESCALER(DT_INST_PROP(0, prescaler));
 #else
-	u16_t ctrl = RTC_MODE0_CTRLA_MODE(0)
+	uint16_t ctrl = RTC_MODE0_CTRLA_MODE(0)
 		| RTC_MODE0_CTRLA_PRESCALER(DT_INST_PROP(0, prescaler));
 #endif
 
@@ -354,7 +357,7 @@ uint32_t z_clock_elapsed(void)
 {
 #ifdef CONFIG_TICKLESS_KERNEL
 	int key;
-	u32_t ret;
+	uint32_t ret;
 
 	key = irq_lock();
 	ret = (rtc_count() - rtc_last) / CYCLES_PER_TICK;
@@ -368,7 +371,7 @@ uint32_t z_clock_elapsed(void)
 uint32_t z_timer_cycle_get_32(void)
 {
 	int key;
-	u32_t ret;
+	uint32_t ret;
 
 	/* Just return the absolute value of RTC cycle counter. */
 	key = irq_lock();
@@ -377,6 +380,22 @@ uint32_t z_timer_cycle_get_32(void)
 	return ret;
 }
 
-s64_t sam0_rtc_timer_boot_time(void) {
+/**
+ * @brief Prepare RTC to wake from STANDBY
+ *
+ * The kernel does not like it when the RTC does not tick
+ * after waking from sleep.  RCONT enables continuously syncing the
+ * COUNT register but after sleep, we need to wait for a new read
+ * request to complete.
+ *
+ * So, we issue a new READREQ to start the sync
+ *
+ */
+void rtc_wake(void)
+{
+	RTC0->READREQ.reg = RTC_READREQ_RREQ || RTC_READREQ_RCONT;
+}
+
+int64_t sam0_rtc_timer_boot_time(void) {
 	return rtc_boot_uptime;
 }

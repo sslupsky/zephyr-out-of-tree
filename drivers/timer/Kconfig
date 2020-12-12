@@ -1,0 +1,22 @@
+# Sensor configuration options
+
+# Copyright (c) 2016 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+
+menu "OOT Timer Drivers"
+
+config SAM0_RTC_TIMER_OOT
+	bool "Out Of Tree Atmel SAM0 series RTC timer"
+	depends on SOC_FAMILY_SAM0
+	select TICKLESS_CAPABLE
+	help
+	  This module implements a kernel device driver for the Atmel SAM0
+	  series Real Time Counter and provides the standard "system clock
+	  driver" interfaces.
+
+endmenu
+
+if SAM0_RTC_TIMER_OOT
+
+endif #SAM0_RTC_TIMER_OOT
