@@ -10,10 +10,16 @@
 
 static int board_pinmux_init(struct device *dev)
 {
-	struct device __attribute__((unused)) *muxa = device_get_binding(DT_LABEL(DT_NODELABEL(pinmux_a)));
-	struct device __attribute__((unused)) *muxb = device_get_binding(DT_LABEL(DT_NODELABEL(pinmux_b)));
+	struct device *muxa = device_get_binding(DT_LABEL(DT_NODELABEL(pinmux_a));
+	struct device *muxb = device_get_binding(DT_LABEL(DT_NODELABEL(pinmux_b)));
+	struct device *muxc = device_get_binding(DT_LABEL(DT_NODELABEL(pinmux_c)));
+	struct device *muxd = device_get_binding(DT_LABEL(DT_NODELABEL(pinmux_d)));
 
 	ARG_UNUSED(dev);
+	ARG_UNUSED(muxa);
+	ARG_UNUSED(muxb);
+	ARG_UNUSED(muxc);
+	ARG_UNUSED(muxd);
 
 #if (ATMEL_SAM0_DT_SERCOM_CHECK(0, atmel_sam0_uart) && CONFIG_UART_SAM0)
 #error Pin mapping is not configured

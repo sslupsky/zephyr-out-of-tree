@@ -15,12 +15,12 @@
  */
 
 /dts-v1/;
-#include <atmel/samd21.dtsi>
+#include <atmel/samd5xx20.dtsi>
 #include <dt-bindings/gpio/gpio.h>
 
 / {
-	model = "Scanimetrics WiTAP ISB";
-	compatible = "scanimetrics,witap_isb", "atmel,samd21j18a", "atmel,samd21";
+	model = "Scanimetrics WiTAP ISB V2";
+	compatible = "scanimetrics,witap_isb_v2";
 
 	chosen {
 		zephyr,console = &sercom4;
@@ -318,14 +318,14 @@
 		#size-cells = <1>;
 
 		boot_partition: partition@0 {
-			label = "sam-ba";
-			reg = <0x00000000 0x2000>;
+			label = "uf2";
+			reg = <0x00000000 DT_SIZE_K(16)>;
 			read-only;
 		};
 
-		code_partition: partition@2000 {
+		code_partition: partition@4000 {
 			label = "code";
-			reg = <0x2000 0x3c000>;
+			reg = <0x4000 DT_SIZE_K(1024 - 16 - 16)>;
 			read-only;
 		};
 
@@ -333,9 +333,9 @@
 		 * The final 16 KiB is reserved for the application
 		 * and is used by NFFS if enabled.
 		 */
-		storage_partition: partition@3e000 {
+		storage_partition: partition@fc000 {
 			label = "storage";
-			reg = <0x0003e000 0x00002000>;
+			reg = <0x000fc000 DT_SIZE_K(16)>;
 		};
 	};
 };

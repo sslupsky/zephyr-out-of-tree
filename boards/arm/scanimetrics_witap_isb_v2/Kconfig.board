@@ -3,6 +3,6 @@
 # Copyright (c) 2017 Google LLC.
 # SPDX-License-Identifier: Apache-2.0
 
-config BOARD_SCANIMETRICS_WITAP_ISB
-	bool "Scanimetrics WiTAP ISB"
-	depends on SOC_PART_NUMBER_SAMD21J18A
+config BOARD_SCANIMETRICS_WITAP_ISB_V2
+	bool "Scanimetrics WiTAP ISB V2"
+	depends on SOC_PART_NUMBER_SAMD51J20A
