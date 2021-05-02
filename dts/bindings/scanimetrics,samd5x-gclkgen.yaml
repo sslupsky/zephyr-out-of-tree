@@ -1,0 +1,37 @@
+#
+# Copyright (c) 2020 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+description: Atmel SAMD5x GCLK Generator
+
+compatible: "scanimetrics,samd5x-gclkgen"
+
+include: [clock-controller.yaml, base.yaml]
+
+properties:
+    clock-frequency:
+        type: int
+        required:  false
+        description:  generic clock generator frequency
+
+    div:
+        type: int
+        required: false
+        description: generic clock generator division factor
+
+    runstdby:
+        type: int
+        required: false
+        description: generic clock generator run in standby
+
+    divsel:
+        type: int
+        required: false
+        description: generic clock generator divide selection
+
+    "#clock-cells":
+      const: 1
+
+clock-cells:
+  - periph_ch

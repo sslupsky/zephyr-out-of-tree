@@ -1,0 +1,31 @@
+#
+# Copyright (c) 2020 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+description: ATMEL Oscillator (Oscillator Controller)
+
+compatible: "scanimetrics,samd5x-xosc32k"
+
+include: [clock-controller.yaml, base.yaml]
+
+properties:
+    status:
+        type: string
+        required: false
+        description: indicates the operational status of a oscillator
+        enum:
+           - "okay"
+           - "disabled"
+
+    clock-frequency:
+        type: int
+        description:  crystal oscillator frequency
+
+    runstdby:
+        type: int
+        required: false
+        description:  oscillator runstdby
+
+clock-cells:
+  - source_osc

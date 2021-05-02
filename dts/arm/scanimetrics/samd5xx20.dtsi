@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2019 ML!PA Consulting GmbH
+ * Copyright (c) 2020 Scanimetrics Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <mem.h>
-#include <atmel/samd5x.dtsi>
+#include <scanimetrics/samd5x.dtsi>
 
 / {
 	soc {

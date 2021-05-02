@@ -1,0 +1,119 @@
+/*
+ * Copyright (c) 2020 Scanimetics Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <atmel/samd2x.dtsi>
+
+/ {
+	aliases {
+		gclk-0 = &gclk0;
+		gclk-1 = &gclk1;
+		gclk-2 = &gclk2;
+		gclk-3 = &gclk3;
+		gclk-4 = &gclk4;
+		gclk-5 = &gclk5;
+		gclk-6 = &gclk6;
+		gclk-7 = &gclk7;
+	};
+};
+
+&gclk {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* DFLL/1 -> GCLK0 */
+	gclk0: gclk@0 {
+		compatible = "scanimetrics,samd2x-gclkgen";
+		#clock-cells = <1>;
+		reg = <0>;
+		label = "GCLK_0";
+		clock-frequency = <48000000>;
+		div = <1>;
+		divsel = <0>;
+		runstdby = <0>;
+	};
+
+	gclk1: gclk@1 {
+		compatible = "scanimetrics,samd2x-gclkgen";
+		#clock-cells = <1>;
+		reg = <1>;
+		label = "GCLK_1";
+		clock-frequency = <32768>;
+		div = <1>;
+		divsel = <0>;
+		runstdby = <0>;
+	};
+
+	/* OSCULP32K/32 -> GCLK2 */
+	/* Divider = 2 ^ (GENDIV.DIV + 1) = 32, see 15.8.4 */
+	gclk2: gclk@2 {
+		compatible = "scanimetrics,samd2x-gclkgen";
+		#clock-cells = <1>;
+		reg = <2>;
+		label = "GCLK_2";
+		clock-frequency = <32768>;
+		div = <4>;
+		divsel = <1>;
+		runstdby = <0>;
+	};
+
+	/* OSC8M/1 -> GCLK3 */
+	gclk3: gclk@3 {
+		compatible = "scanimetrics,samd2x-gclkgen";
+		#clock-cells = <1>;
+		reg = <3>;
+		label = "GCLK_3";
+		clock-frequency = <8000000>;
+		div = <1>;
+		divsel = <0>;
+		runstdby = <0>;
+	};
+
+	/* XOSC32K/1 -> GCLK4 */
+	/* GCLK4 is used for GCLK_SERCOM_SLOW clock */
+	gclk4: gclk@4 {
+		compatible = "scanimetrics,samd2x-gclkgen";
+		#clock-cells = <1>;
+		reg = <4>;
+		label = "GCLK_4";
+		clock-frequency = <32768>;
+		div = <1>;
+		divsel = <0>;
+		runstdby = <0>;
+	};
+
+	gclk5: gclk@5 {
+		compatible = "scanimetrics,samd2x-gclkgen";
+		#clock-cells = <1>;
+		reg = <5>;
+		label = "GCLK_5";
+		clock-frequency = <48000000>;
+		div = <1>;
+		divsel = <0>;
+		runstdby = <0>;
+	};
+
+	gclk6: gclk@6 {
+		compatible = "scanimetrics,samd2x-gclkgen";
+		#clock-cells = <1>;
+		reg = <6>;
+		label = "GCLK_6";
+		clock-frequency = <48000000>;
+		div = <1>;
+		divsel = <0>;
+		runstdby = <0>;
+	};
+
+	gclk7: gclk@7 {
+		compatible = "scanimetrics,samd2x-gclkgen";
+		#clock-cells = <1>;
+		reg = <7>;
+		label = "GCLK_7";
+		clock-frequency = <48000000>;
+		div = <1>;
+		divsel = <0>;
+		runstdby = <0>;
+	};
+};
