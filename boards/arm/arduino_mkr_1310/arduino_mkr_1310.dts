@@ -158,6 +158,8 @@
 &sercom0 {
 	status = "okay";
 	compatible = "atmel,sam0-i2c";
+	clocks = <&gclk0 0x14>, <&pm 0x20 2>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	//  see zephyr/include/dt-bindings/i2c/i2c.h for device tree frequency defines
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 	#address-cells = <1>;
@@ -180,6 +182,8 @@
 	compatible = "atmel,sam0-spi";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	clocks = <&gclk0 0x15>, <&pm 0x20 3>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	dopo = <0>;
 	dipo = <3>;
 	// rxdma = 0;
@@ -193,6 +197,8 @@
 	compatible = "atmel,sam0-spi";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	clocks = <&gclk0 0x16>, <&pm 0x20 4>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	dopo = <0>;
 	dipo = <3>;
 	cs-gpios = <&portb 8 GPIO_ACTIVE_LOW>, <&porta 14 GPIO_ACTIVE_LOW>;
@@ -218,6 +224,8 @@
 &sercom4 {
 	status = "okay";
 	compatible = "atmel,sam0-uart";
+	clocks = <&gclk3 0x18>, <&pm 0x20 6>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	current-speed = <19200>;
 	rxpo = <3>;
 	txpo = <0>;
@@ -230,6 +238,8 @@
 	compatible = "atmel,sam0-uart";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	clocks = <&gclk0 0x19>, <&pm 0x20 7>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	current-speed = <115200>;
 	rxpo = <3>;
 	txpo = <2>;
