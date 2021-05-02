@@ -33,6 +33,16 @@
 	/* These aliases are provided for compatibility with samples */
 	aliases {
 		led0 = &led0;
+
+		/* These aliases are provided for MKR pin mapping */
+		mkr-pin-dac0 = &mkr_pin_a0;
+		mkr-pin-mosi = &mkr_pin_d8;
+		mkr-pin-sck = &mkr_pin_d9;
+		mkr-pin-miso = &mkr_pin_d10;
+		mkr-pin-sda = &mkr_pin_d11;
+		mkr-pin-scl = &mkr_pin_d12;
+		mkr-pin-rx = &mkr_pin_d13;
+		mkr-pin-tx = &mkr_pin_d14;
 	};
 
 	leds {
@@ -40,6 +50,102 @@
 		led0: led_0 {
 			gpios = <&porta 20 GPIO_ACTIVE_HIGH>;
 			label = "Yellow";
+		};
+	};
+
+	mkr_pins {
+		compatible = "gpio";
+		mkr_pin_aref: pa3 {
+			gpios = <&porta 3 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_aref";
+		};
+		mkr_pin_a0: pa2 {
+			gpios = <&porta 2 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_a0";
+		};
+		mkr_pin_a1: pb2 {
+			gpios = <&portb 2 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_a1";
+		};
+		mkr_pin_a2: pb3 {
+			gpios = <&portb 3 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_a2";
+		};
+		mkr_pin_a3: pa4 {
+			gpios = <&porta 4 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_a3";
+		};
+		mkr_pin_a4: pa5 {
+			gpios = <&porta 5 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_a4";
+		};
+		mkr_pin_a5: pa6 {
+			gpios = <&porta 6 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_a5";
+		};
+		mkr_pin_a6: pa7 {
+			gpios = <&porta 7 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_a6";
+		};
+		mkr_pin_d0: pa22 {
+			gpios = <&porta 22 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d0";
+		};
+		mkr_pin_d1: pa23 {
+			gpios = <&porta 23 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d1";
+		};
+		mkr_pin_d2: pa10 {
+			gpios = <&porta 10 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d2";
+		};
+		mkr_pin_d3: pa11 {
+			gpios = <&porta 11 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d3";
+		};
+		mkr_pin_d4: pb10 {
+			gpios = <&portb 10 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d4";
+		};
+		mkr_pin_d5: pb11 {
+			gpios = <&portb 11 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d5";
+		};
+		mkr_pin_d6: pa20 {
+			gpios = <&porta 20 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d6";
+		};
+		mkr_pin_d7: pa21 {
+			gpios = <&porta 21 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d7";
+		};
+		mkr_pin_d8: pa16 {
+			gpios = <&porta 16 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d8";
+		};
+		mkr_pin_d9: pa17 {
+			gpios = <&porta 17 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d9";
+		};
+		mkr_pin_d10: pa19 {
+			gpios = <&porta 19 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d10";
+		};
+		mkr_pin_d11: pa8 {
+			gpios = <&porta 8 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d11";
+		};
+		mkr_pin_d12: pa9 {
+			gpios = <&porta 9 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d12";
+		};
+		mkr_pin_d13: pb23 {
+			gpios = <&portb 23 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d13";
+		};
+		mkr_pin_d14: pb22 {
+			gpios = <&portb 22 (GPIO_ACTIVE_HIGH)>;
+			label = "mkr_pin_d14";
 		};
 	};
 };
