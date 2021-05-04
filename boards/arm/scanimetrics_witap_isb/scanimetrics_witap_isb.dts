@@ -93,6 +93,22 @@
 		};
 	};
 
+	debug-pins {
+		compatible = "gpio";
+		debug0: debug_0 {
+			gpios = <&portb 4 0>;
+			label = "DEBUG0";
+		};
+		debug1: debug_1 {
+			gpios = <&portb 5 0>;
+			label = "DEBUG1";
+		};
+		debug2: debug_2 {
+			gpios = <&portb 0 0>;
+			label = "DEBUG2";
+		};
+	};
+
 	unused-pins {
 		compatible = "gpio";
 		pa3: pa3 {
