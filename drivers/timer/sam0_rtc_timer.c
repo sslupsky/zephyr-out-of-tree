@@ -86,6 +86,7 @@ BUILD_ASSERT(CYCLES_PER_TICK > 1,
 static volatile uint32_t rtc_last;
 static volatile int64_t rtc_boot_uptime;
 static volatile int64_t uptime;
+static struct k_spinlock lock;
 
 #ifndef CONFIG_TICKLESS_KERNEL
 
@@ -201,15 +202,12 @@ static void rtc_isr(void *arg)
 
 #ifdef CONFIG_TICKLESS_KERNEL
 
-	int key = irq_lock();
-
 	/* Read the current counter and announce the elapsed time in ticks. */
 	uint32_t count = rtc_count();
 
 	uint32_t ticks = (count - rtc_last) / CYCLES_PER_TICK;
 
 	rtc_last += ticks * CYCLES_PER_TICK;
-	irq_unlock(key);
 	z_clock_announce(ticks);
 
 #else /* !CONFIG_TICKLESS_KERNEL */
@@ -314,8 +312,6 @@ void z_clock_set_timeout(int32_t ticks, bool idle)
 	ticks = (ticks == K_TICKS_FOREVER) ? MAX_TICKS : ticks;
 	ticks = MAX(MIN(ticks - 1, (int32_t) MAX_TICKS), 0);
 
-	int key = irq_lock();
-
 	/* Compute number of RTC cycles until the next timeout. */
 	uint32_t count = rtc_count();
 	uint32_t timeout = ticks * CYCLES_PER_TICK + count % CYCLES_PER_TICK;
@@ -330,7 +326,6 @@ void z_clock_set_timeout(int32_t ticks, bool idle)
 
 	rtc_sync();
 	RTC0->COMP[0].reg = count + timeout;
-	irq_unlock(key);
 
 #else /* !CONFIG_TICKLESS_KERNEL */
 
@@ -349,10 +344,10 @@ void z_clock_set_timeout(int32_t ticks, bool idle)
 	/* Avoid race condition between reading counter and ISR incrementing
 	 * it.
 	 */
-	int key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 
 	rtc_timeout = rtc_counter + ticks;
-	irq_unlock(key);
+	k_spin_unlock(&lock, key);
 
 #endif /* CONFIG_TICKLESS_KERNEL */
 }
@@ -360,12 +355,12 @@ void z_clock_set_timeout(int32_t ticks, bool idle)
 uint32_t z_clock_elapsed(void)
 {
 #ifdef CONFIG_TICKLESS_KERNEL
-	int key;
 	uint32_t ret;
 
-	key = irq_lock();
+	k_spinlock_key_t key = k_spin_lock(&lock);
 	ret = (rtc_count() - rtc_last) / CYCLES_PER_TICK;
-	irq_unlock(key);
+
+	k_spin_unlock(&lock, key);
 	return ret;
 #else
 	return rtc_counter - rtc_last;
@@ -374,7 +369,6 @@ uint32_t z_clock_elapsed(void)
 
 uint32_t z_timer_cycle_get_32(void)
 {
-	int key;
 	uint32_t ret;
 
 	/* Just return the absolute value of RTC cycle counter. */
@@ -383,7 +377,10 @@ uint32_t z_timer_cycle_get_32(void)
 	 *        So, this value is converted to ticks and then the
 	 *        ticks are converted to SYS HW cycles
 	 */
+	k_spinlock_key_t key = k_spin_lock(&lock);
 	ret = k_ticks_to_cyc_near32(rtc_count() / CYCLES_PER_TICK);
+
+	k_spin_unlock(&lock, key);
 	return ret;
 }
 
