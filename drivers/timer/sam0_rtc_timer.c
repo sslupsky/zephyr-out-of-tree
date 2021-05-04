@@ -374,9 +374,12 @@ uint32_t z_timer_cycle_get_32(void)
 	uint32_t ret;
 
 	/* Just return the absolute value of RTC cycle counter. */
-	key = irq_lock();
-	ret = rtc_count();
-	irq_unlock(key);
+	/*
+	 * Note:  rtc_count() returns the number of rtc hw clock cycles
+	 *        So, this value is converted to ticks and then the
+	 *        ticks are converted to SYS HW cycles
+	 */
+	ret = k_ticks_to_cyc_near32(rtc_count() / CYCLES_PER_TICK);
 	return ret;
 }
 
