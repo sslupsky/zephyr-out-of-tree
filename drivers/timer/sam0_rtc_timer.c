@@ -329,8 +329,8 @@ void z_clock_set_timeout(int32_t ticks, bool idle)
 
 #else /* !CONFIG_TICKLESS_KERNEL */
 
-	if (ticks == K_FOREVER) {
-		/* Disable comparator for K_FOREVER and other negative
+	if (ticks == K_TICKS_FOREVER) {
+		/* Disable comparator for K_TICKS_FOREVER and other negative
 		 * values.
 		 */
 		rtc_timeout = rtc_counter;
