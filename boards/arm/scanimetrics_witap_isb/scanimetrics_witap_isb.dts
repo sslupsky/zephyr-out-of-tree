@@ -15,7 +15,7 @@
  */
 
 /dts-v1/;
-#include <atmel/samd21.dtsi>
+#include <scanimetrics/samd21.dtsi>
 #include <dt-bindings/gpio/gpio.h>
 
 / {
@@ -183,6 +183,8 @@
 	compatible = "atmel,sam0-i2c";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	clocks = <&gclk0 0x14>, <&pm 0x20 2>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	//  see ZEPHYR_INCLUDE_DT_BINDINGS_I2C_I2C_H_ for frequency defines
 	clock-frequency = <I2C_BITRATE_FAST>;
 	dmas = <&dmac 0 0x02>, <&dmac 0 0x01>;
@@ -208,6 +210,8 @@
 	// label = "I2C_1";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	clocks = <&gclk0 0x15>, <&pm 0x20 3>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	dmas = <&dmac 1 0x04>, <&dmac 1 0x03>;
 	dma-names = "tx", "rx";
 	// interrupts = <10 0>;
@@ -232,6 +236,8 @@
 	clock-frequency = <I2C_BITRATE_FAST>;
 	#address-cells = <1>;
 	#size-cells = <0>;
+	clocks = <&gclk0 0x16>, <&pm 0x20 4>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	dmas = <&dmac 2 0x06>, <&dmac 2 0x05>;
 	dma-names = "tx", "rx";
 	// interrupts = <11 0>;
@@ -267,8 +273,8 @@
 //  SERCOM3 is the GPS module serial UART
 &sercom3 {
 	compatible = "atmel,sam0-uart";
-	clocks = <&gclk 0x17>, <&pm 0x20 5>, <&gclk0>;
-	clock-names = "GCLK", "PM", "GEN";
+	clocks = <&gclk0 0x17>, <&pm 0x20 5>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	current-speed = <115200>;
 	//  GPS RXD <-- MCU TXD (PAD0)
 	txpo = <0>;
@@ -279,8 +285,8 @@
 //  SERCOM4 is the Zephyr console UART
 &sercom4 {
 	compatible = "atmel,sam0-uart";
-	clocks = <&gclk 0x18>, <&pm 0x20 6>, <&gclk0>;
-	clock-names = "GCLK", "PM", "GEN";
+	clocks = <&gclk0 0x18>, <&pm 0x20 6>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	current-speed = <115200>;
 	//  CONSOLE TXD <-- MCU TXD (PAD0)
 	txpo = <0>;
@@ -295,6 +301,8 @@
 	clock-frequency = <I2C_BITRATE_FAST>;
 	#address-cells = <1>;
 	#size-cells = <0>;
+	clocks = <&gclk0 0x19>, <&pm 0x20 7>, <&gclk4 0x13>;
+	clock-names = "GCLK", "PM", "GCLK_SLOW";
 	dmas = <&dmac 3 0x0c>, <&dmac 3 0x0b>;
 	dma-names = "tx", "rx";
 	// interrupts = <14 0>;
@@ -346,12 +354,10 @@
 
 &rtc {
 	status = "okay";
-	/*  use GCLK4 (xosc32k) as the source for the rtc  */
-	/*  RTC clock frequency is defined in soc.h  */
-	clock-generator = <4>;
+	clocks = <&gclk4 0x04>, <&pm 0x18 5>;
+	clock-names = "GCLK", "PM";
 	prescaler = <0>;
-	/* RTC uses highest priority interrupt */
-	interrupts = <3 0>;
+	clock-frequency = <32768>;
 };
 
 &adc {
