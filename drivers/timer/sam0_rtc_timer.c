@@ -34,12 +34,12 @@ LOG_MODULE_REGISTER(rtc_sam0, LOG_LEVEL_DBG);
 #ifdef MCLK
 #define RTC_CLOCK_HW_CYCLES_PER_SEC SOC_ATMEL_SAM0_OSC32K_FREQ_HZ
 #else
-#define RTC_CLOCK_HW_CYCLES_PER_SEC SOC_ATMEL_SAM0_GCLK0_FREQ_HZ
+#define RTC_CLOCK_HW_CYCLES_PER_SEC ATMEL_SAM0_DT_RTC_FREQ_HZ(0)
 #endif
 
 /* Number of sys timer cycles per on tick. */
-#define CYCLES_PER_TICK							\
-	(ATMEL_SAM0_DT_RTC_FREQ_HZ / CONFIG_SYS_CLOCK_TICKS_PER_SEC)
+#define CYCLES_PER_TICK (RTC_CLOCK_HW_CYCLES_PER_SEC \
+			 / CONFIG_SYS_CLOCK_TICKS_PER_SEC)
 
 /* Maximum number of ticks. */
 #define MAX_TICKS (UINT32_MAX / CYCLES_PER_TICK - 2)
@@ -77,6 +77,10 @@ BUILD_ASSERT(CYCLES_PER_TICK > 1,
 	     "CYCLES_PER_TICK must be greater than 1 for ticking mode");
 
 #endif /* CONFIG_TICKLESS_KERNEL */
+
+/* Helper macro to get the correct GCLK GEN based on configuration. */
+#define GCLK_GEN(n) GCLK_EVAL(n)
+#define GCLK_EVAL(n) GCLK_CLKCTRL_GEN_GCLK##n
 
 /* Tick/cycle count of the last announce call. */
 static volatile uint32_t rtc_last;
@@ -228,16 +232,16 @@ int z_clock_driver_init(struct device *device)
 {
 	ARG_UNUSED(device);
 
-	/* Set up bus clock and GCLK generator. */
 #ifdef MCLK
 	MCLK->APBAMASK.reg |= MCLK_APBAMASK_RTC;
 	OSC32KCTRL->RTCCTRL.reg = OSC32KCTRL_RTCCTRL_RTCSEL_ULP32K;
 #else
+	/* Set up bus clock and GCLK generator. */
 	PM->APBAMASK.reg |= PM_APBAMASK_RTC;
 	GCLK->CLKCTRL.reg =
 	    GCLK_CLKCTRL_ID(DT_INST_CLOCKS_CELL_BY_NAME(0, gclk, clkctrl_id)) |
 	    GCLK_CLKCTRL_CLKEN |
-	    GCLK_CLKCTRL_GEN(DT_INST_CLOCKS_GCLK_PROP(0, clock_generator));
+	    GCLK_CLKCTRL_GEN(ATMEL_SAM0_DT_INST_GCLK_REG_ADDR(0));
 
 	/* Synchronize GCLK. */
 	while (GCLK->STATUS.bit.SYNCBUSY) {
