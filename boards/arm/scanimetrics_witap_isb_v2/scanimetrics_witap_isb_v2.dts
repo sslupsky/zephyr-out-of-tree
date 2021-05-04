@@ -15,15 +15,25 @@
  */
 
 /dts-v1/;
-#include <atmel/samd5xx20.dtsi>
+#include <scanimetrics/samd5xx20.dtsi>
 #include <dt-bindings/gpio/gpio.h>
+#include <../../modules/hal/atmel/asf/sam0/include/samd51/instance/sercom0.h>
+#include <../../modules/hal/atmel/asf/sam0/include/samd51/instance/sercom1.h>
+#include <../../modules/hal/atmel/asf/sam0/include/samd51/instance/sercom2.h>
+#include <../../modules/hal/atmel/asf/sam0/include/samd51/instance/sercom3.h>
+#include <../../modules/hal/atmel/asf/sam0/include/samd51/instance/sercom4.h>
+#include <../../modules/hal/atmel/asf/sam0/include/samd51/instance/sercom5.h>
+#include <../../modules/hal/atmel/asf/sam0/include/samd51/instance/sercom6.h>
+#include <../../modules/hal/atmel/asf/sam0/include/samd51/instance/sercom7.h>
 
 / {
 	model = "Scanimetrics WiTAP ISB V2";
 	compatible = "scanimetrics,witap_isb_v2";
 
 	chosen {
+		/* console UART can be overridden by CONFIG_UART_CONSOLE_ON_DEV_NAME */
 		zephyr,console = &sercom4;
+		/* shell UART can be overridden by CONFIG_UART_SHELL_ON_DEV_NAME */
 		zephyr,shell-uart = &sercom4;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
@@ -185,9 +195,8 @@
 	#size-cells = <0>;
 	//  see ZEPHYR_INCLUDE_DT_BINDINGS_I2C_I2C_H_ for frequency defines
 	clock-frequency = <I2C_BITRATE_FAST>;
-	dmas = <&dmac 0 0x02>, <&dmac 0 0x01>;
+	dmas = <&dmac 0 SERCOM0_DMAC_ID_TX>, <&dmac 0 SERCOM0_DMAC_ID_RX>;
 	dma-names = "tx", "rx";
-	// interrupts = <9 0>;
 
 	eeprom@54 {
 		compatible = "atmel,at24";
@@ -208,9 +217,8 @@
 	// label = "I2C_1";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	dmas = <&dmac 1 0x04>, <&dmac 1 0x03>;
+	dmas = <&dmac 1 SERCOM1_DMAC_ID_TX>, <&dmac 1 SERCOM1_DMAC_ID_RX>;
 	dma-names = "tx", "rx";
-	// interrupts = <10 0>;
 
 	samm8q: samm8q@42 {
 		compatible = "ublox,m8";
@@ -232,9 +240,8 @@
 	clock-frequency = <I2C_BITRATE_FAST>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	dmas = <&dmac 2 0x06>, <&dmac 2 0x05>;
+	dmas = <&dmac 2 SERCOM2_DMAC_ID_TX>, <&dmac 2 SERCOM2_DMAC_ID_RX>;
 	dma-names = "tx", "rx";
-	// interrupts = <11 0>;
 
 	ths0: sht3xd@44 {
 		compatible = "sensirion,sht3xd";
@@ -267,8 +274,8 @@
 //  SERCOM3 is the GPS module serial UART
 &sercom3 {
 	compatible = "atmel,sam0-uart";
-	clocks = <&gclk 0x17>, <&pm 0x20 5>, <&gclk0>;
-	clock-names = "GCLK", "PM", "GEN";
+	// clocks = <&gclk 0x17>, <&pm 0x20 5>, <&gclk0>;
+	// clock-names = "GCLK", "PM", "GEN";
 	current-speed = <115200>;
 	//  GPS RXD <-- MCU TXD (PAD0)
 	txpo = <0>;
@@ -279,13 +286,25 @@
 //  SERCOM4 is the Zephyr console UART
 &sercom4 {
 	compatible = "atmel,sam0-uart";
-	clocks = <&gclk 0x18>, <&pm 0x20 6>, <&gclk0>;
-	clock-names = "GCLK", "PM", "GEN";
+	// clocks = <&gclk 0x18>, <&pm 0x20 6>, <&gclk0>;
+	// clock-names = "GCLK", "PM", "GEN";
 	current-speed = <115200>;
 	//  CONSOLE TXD <-- MCU TXD (PAD0)
 	txpo = <0>;
 	//  CONSOLE RXD --> MCU RXD (PAD1)
-	rxpo = <1>;
+	// rxpo = <1>;
+/*
+ * Errata 2.18.19 SERCOM-USART: Overconsumption in Standby mode
+ * When SERCOM USART CTRLA.RUNSTDBY= 0 and the Receiver is disabled
+ * (CTRLB.RXEN= 0), the clock request to the GCLK generator feeding the SERCOM
+ * will stay asserted during Standby mode, leading to unexpected
+ * over-consumption.
+ *
+ * Workaround
+ * Configure CTRLA.RXPO and CTRLA.TXPO in order to use the same SERCOM PAD for
+ * RX and TX or add an external pull-up on the RX pin.
+ */
+	rxpo = <0>;
 };
 
 //  SERCOM5 is the external sensor i2c bus
@@ -295,9 +314,8 @@
 	clock-frequency = <I2C_BITRATE_FAST>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	dmas = <&dmac 3 0x0c>, <&dmac 3 0x0b>;
+	dmas = <&dmac 3 SERCOM5_DMAC_ID_TX>, <&dmac 3 SERCOM5_DMAC_ID_RX>;
 	dma-names = "tx", "rx";
-	// interrupts = <14 0>;
 };
 
 /*
@@ -362,16 +380,6 @@
 };
 
 &rtc {
-	status = "okay";
-	/*  use GCLK4 (xosc32k) as the source for the rtc  */
-	/*  RTC clock frequency is defined in soc.h  */
-	clock-generator = <4>;
 	prescaler = <0>;
-	/* RTC uses highest priority interrupt */
-	interrupts = <3 0>;
-};
-
-&adc {
-	status = "okay";
-	// interrupts = <19 0>;
+	clock-frequency = <32768>;
 };
