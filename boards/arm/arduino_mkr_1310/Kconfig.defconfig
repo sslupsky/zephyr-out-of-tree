@@ -3,9 +3,6 @@
 # Copyright (c) 2017 Google LLC.
 # SPDX-License-Identifier: Apache-2.0
 
-if BOARD_ARDUINO_MKR_1310
-
 config BOARD
 	default "arduino_mkr_1310"
-
-endif # BOARD_ARDUINO_MKR_1310
+	depends on BOARD_ARDUINO_MKR_1310

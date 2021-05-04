@@ -390,12 +390,29 @@ uint32_t z_timer_cycle_get_32(void)
  *
  * So, we issue a new READREQ to start the sync
  *
+ * For samd5x, synchronization is started automatically when waking from sleep
+ * see 13.3.3
+ *
  */
 void rtc_wake(void)
 {
+#ifdef RTC_READREQ_RREQ
 	RTC0->READREQ.reg = RTC_READREQ_RREQ || RTC_READREQ_RCONT;
+#endif
 }
 
 int64_t sam0_rtc_timer_boot_time(void) {
 	return rtc_boot_uptime;
 }
+
+/**
+ * @brief Timer idle exit notification
+ *
+ * The system is exiting the idle so wake up the RTC counter (SAMD21)
+ *
+ */
+void z_clock_idle_exit(void)
+{
+	rtc_wake();
+}
+

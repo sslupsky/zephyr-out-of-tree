@@ -21,6 +21,10 @@
 #include <usb/usb_device.h>
 #include <drivers/pmic.h>
 
+#ifndef PM_SLEEPCFG_SLEEPMODE_STANDBY
+#define PM_SLEEPCFG_SLEEPMODE_STANDBY SCB_SCR_SLEEPDEEP_Msk
+#endif
+
 enum witap_pm_devices {
 	WITAP_PM_I2C,
 	WITAP_PM_SPI,
@@ -42,7 +46,7 @@ extern "C" {
 #endif
 	void witap_pm_busy_set(witap_pm_devices dev);
 	void witap_pm_busy_clear(witap_pm_devices dev);
-
+	void witap_pm_config_sleepmode(uint8_t sleepmode);
 #ifdef __cplusplus
 }
 #endif

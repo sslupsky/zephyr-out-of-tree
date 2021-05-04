@@ -23,6 +23,42 @@ LOG_MODULE_DECLARE(myApp, CONFIG_MYAPP_LOG_LEVEL);
 
 #define SECS_TO_TICKS		CONFIG_SYS_CLOCK_TICKS_PER_SEC
 
+atomic_t device_busy = 0;
+
+extern "C" void witap_pm_busy_set(witap_pm_devices dev)
+{
+	atomic_set_bit(&device_busy, dev);
+	return;
+}
+
+extern "C" void witap_pm_busy_clear(witap_pm_devices dev)
+{
+	atomic_clear_bit(&device_busy, dev);
+	return;
+}
+
+extern "C" void witap_pm_config_sleepmode(uint8_t sleepmode)
+{
+#ifdef PM_SLEEPCFG_SLEEPMODE
+	PM->SLEEPCFG.reg = PM_SLEEPCFG_SLEEPMODE(sleepmode);
+	while(PM->SLEEPCFG.reg != PM_SLEEPCFG_SLEEPMODE(sleepmode)) {
+	}
+	if (PM_SLEEPCFG_SLEEPMODE_STANDBY == sleepmode) {
+		SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+	} else {
+		SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+	}
+#else
+	PM->SLEEP.reg = PM_SLEEP_IDLE(sleepmode);
+	if (PM_SLEEPCFG_SLEEPMODE_STANDBY == sleepmode) {
+		SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+	} else {
+		SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+	}
+#endif
+}
+
+#ifdef CONFIG_SYS_PM_POLICY_APP
 #ifndef CONFIG_SYS_PM_MIN_RESIDENCY_SLEEP_1
 #define CONFIG_SYS_PM_MIN_RESIDENCY_SLEEP_1 1
 #endif
@@ -62,20 +98,6 @@ static const s32_t pm_min_residency[] = {
 #endif /* CONFIG_SYS_POWER_DEEP_SLEEP_STATES */
 };
 
-atomic_t device_busy = 0;
-
-extern "C" void witap_pm_busy_set(witap_pm_devices dev)
-{
-	atomic_set_bit(&device_busy, dev);
-	return;
-}
-
-extern "C" void witap_pm_busy_clear(witap_pm_devices dev)
-{
-	atomic_clear_bit(&device_busy, dev);
-	return;
-}
-
 extern "C" enum power_states sys_pm_policy_next_state(s32_t ticks)
 {
 	int i;
@@ -88,7 +110,7 @@ extern "C" enum power_states sys_pm_policy_next_state(s32_t ticks)
 			return SYS_POWER_STATE_ACTIVE;
 		}
 
-		if (application_boot) {
+		if (!application_boot) {
 			return SYS_POWER_STATE_ACTIVE;
 		}
 
@@ -118,6 +140,7 @@ extern "C" enum power_states sys_pm_policy_next_state(s32_t ticks)
 	LOG_ERR("active: no policy");
 	return SYS_POWER_STATE_ACTIVE;
 }
+#endif  /* CONFIG_SYS_PM_POLICY_APP */
 
 static int cmd_sleep(const struct shell *shell, size_t argc, char **argv)
 {

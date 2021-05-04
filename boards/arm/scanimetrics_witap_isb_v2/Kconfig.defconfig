@@ -3,9 +3,6 @@
 # Copyright (c) 2017 Google LLC.
 # SPDX-License-Identifier: Apache-2.0
 
-if BOARD_SCANIMETRICS_WITAP_ISB_V2
-
 config BOARD
 	default "scanimetrics_witap_isb_v2"
-
-endif # BOARD_SCANIMETRICS_WITAP_ISB_V2
+	depends on BOARD_SCANIMETRICS_WITAP_ISB_V2

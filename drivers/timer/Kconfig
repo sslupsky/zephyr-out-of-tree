@@ -6,7 +6,7 @@
 
 menu "OOT Timer Drivers"
 
-config SAM0_RTC_TIMER_OOT
+config OOT_SAM0_RTC_TIMER
 	bool "Out Of Tree Atmel SAM0 series RTC timer"
 	depends on SOC_FAMILY_SAM0
 	select TICKLESS_CAPABLE
@@ -17,6 +17,9 @@ config SAM0_RTC_TIMER_OOT
 
 endmenu
 
-if SAM0_RTC_TIMER_OOT
+if OOT_SAM0_RTC_TIMER
+
+endif #OOT_SAM0_RTC_TIMER
+
 
 endif #SAM0_RTC_TIMER_OOT
