@@ -325,23 +325,40 @@
 
 		code_partition: partition@4000 {
 			label = "code";
-			reg = <0x4000 DT_SIZE_K(1024 - 16 - 16)>;
+			reg = <0x4000 DT_SIZE_K(1024 - 16 - 32)>;
 			read-only;
 		};
 
 		/*
-		 * The final 16 KiB is reserved for the application
-		 * and is used by NFFS if enabled.
+		 * 32 KiB is reserved for the application
+		 * and is used by LITTLEFS if enabled.
 		 */
-		storage_partition: partition@fc000 {
+		storage_partition: partition@f8000 {
 			label = "storage";
-			reg = <0x000fc000 DT_SIZE_K(16)>;
+			reg = <0x000f8000 DT_SIZE_K(32)>;
+		};
+
+		/*
+		 * MCUBoot partitions
+		 */
+		image_0_primary_partition: partition@20000 {
+			label = "image_0_primary";
+			reg = <0x20000 DT_SIZE_K(384)>;
+			read-only;
+		};
+
+		image_0_secondary_partition: partition@80000 {
+			label = "image_0_secondary";
+			reg = <0x80000 DT_SIZE_K(384)>;
+			read-only;
+		};
+
+		scratch_partition:  partition@e0000 {
+			label = "scratch";
+			reg = <0xe0000 DT_SIZE_K(128)>;
+			read-only;
 		};
 	};
-};
-
-&usb0 {
-	status = "okay";
 };
 
 &rtc {
