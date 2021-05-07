@@ -264,6 +264,10 @@ uint8_t CayenneLPP::addAnalogInput(uint8_t channel, float value) {
 	return addField(LPP_ANALOG_INPUT, channel, value);
 }
 
+uint8_t CayenneLPP::addAnalogInput(uint8_t channel, int16_t value) {
+	return addField(LPP_ANALOG_INPUT, channel, value, 100);
+}
+
 uint8_t CayenneLPP::addAnalogOutput(uint8_t channel, float value) {
 	return addField(LPP_ANALOG_OUTPUT, channel, value);
 }

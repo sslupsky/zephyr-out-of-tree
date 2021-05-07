@@ -153,6 +153,7 @@ public:
 	uint8_t addDigitalInput(uint8_t channel, uint32_t value);
 	uint8_t addDigitalOutput(uint8_t channel, uint32_t value);
 	uint8_t addAnalogInput(uint8_t channel, float value);
+	uint8_t addAnalogInput(uint8_t channel, int16_t value);
 	uint8_t addAnalogOutput(uint8_t channel, float value);
 	uint8_t addLuminosity(uint8_t channel, uint32_t value);
 	uint8_t addPresence(uint8_t channel, uint32_t value);
