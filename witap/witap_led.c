@@ -86,7 +86,36 @@ const struct led_color_t LED_COLOR_WHITE = {
 	.white = 1,
 };
 
+const struct led_color_t LED_COLOR_YELLOW = {
+	.red = 1,
+	.green = 1,
+	.blue = 0,
+	.white = 1,
+};
+
+const struct led_color_t LED_COLOR_CYAN = {
+	.red = 0,
+	.green = 1,
+	.blue = 1,
+	.white = 1,
+};
+
+const struct led_color_t LED_COLOR_MAGENTA = {
+	.red = 1,
+	.green = 0,
+	.blue = 1,
+	.white = 1,
+};
+
 const struct led_animation_t animation_heartbeat = {
+	.effect = LED_EFFECT_BLINK,
+	.color = (struct led_color_t *)&LED_COLOR_GREEN,
+	.duration = 1000,
+	.duty_cycle = 100,
+	.repeat = 0,
+};
+
+const struct led_animation_t animation_heartbeat_error = {
 	.effect = LED_EFFECT_BLINK,
 	.color = (struct led_color_t *)&LED_COLOR_RED,
 	.duration = 1000,
@@ -136,7 +165,7 @@ const struct led_animation_t animation_gpslock = {
 
 const struct led_animation_t animation_usb = {
 	.effect = LED_EFFECT_BLINK,
-	.color = (struct led_color_t *)&LED_COLOR_GREEN,
+	.color = (struct led_color_t *)&LED_COLOR_MAGENTA,
 	.duration = 200,
 	.duty_cycle = 500,
 	.repeat = 3,

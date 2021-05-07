@@ -80,6 +80,7 @@ struct led_animation_t {
 } __attribute__((packed)) ;
 
 extern const struct led_animation_t animation_heartbeat;
+extern const struct led_animation_t animation_heartbeat_error;
 extern const struct led_animation_t animation_boot;
 extern const struct led_animation_t animation_success;
 extern const struct led_animation_t animation_wait;
