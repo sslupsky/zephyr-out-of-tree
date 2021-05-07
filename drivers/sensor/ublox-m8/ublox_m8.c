@@ -987,6 +987,7 @@ static int ublox_m8_ubx_msg_get(struct device *dev, const union ubx_header *head
  * @retval -EIO I2C error
  *         -ETIMEDOUT if module did not respond
  */
+__unused
 static int ublox_m8_get_device_id(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1018,6 +1019,7 @@ static int ublox_m8_get_device_id(struct device *dev)
  * @param dev 
  * @return int 
  */
+__unused
 static int ublox_m8_configure_uart_port(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1042,6 +1044,7 @@ static int ublox_m8_configure_uart_port(struct device *dev)
  * @param dev 
  * @return int 
  */
+__unused
 static int ublox_m8_configure_ddc_port(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1066,6 +1069,7 @@ static int ublox_m8_configure_ddc_port(struct device *dev)
  * @param dev 
  * @return int 
  */
+__unused
 static int ublox_m8_configure_pm2(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1090,6 +1094,7 @@ static int ublox_m8_configure_pm2(struct device *dev)
  * @param dev 
  * @return int 
  */
+__unused
 static int ublox_m8_configure_rxm(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1114,6 +1119,7 @@ static int ublox_m8_configure_rxm(struct device *dev)
  * @param dev 
  * @return int 
  */
+__unused
 static int ublox_m8_configure_nav_msg_rate(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1142,6 +1148,7 @@ static int ublox_m8_configure_nav_msg_rate(struct device *dev)
  * @param dev 
  * @return int 
  */
+__unused
 static int ublox_m8_configure_nav_settings(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1166,6 +1173,7 @@ static int ublox_m8_configure_nav_settings(struct device *dev)
  * @param dev 
  * @return int 
  */
+__unused
 static int ublox_m8_configure_save_bbr(struct device *dev)
 {
 	struct ublox_m8_data *drv_data = dev->driver_data;
@@ -1838,6 +1846,17 @@ int ublox_m8_init(struct device *dev)
 		drv_data->device_state = GNSS_DEVICE_STATE_DISCONNECTED;
 		return -ENODEV;
 	}
+
+	/*
+	 * FIXME:  Power Save mode needs to be configured for the EXTINT
+	 * pin to put the device to sleep.  So, EXTINT = 0 here only works
+	 * if the device is already configured which would be the
+	 * case for a software/wdt/pin reset.  If the device is otherwise
+	 * not configured (such as a power on reset) then the device is
+	 * not configured and therefore will not be put into power save
+	 * mode here.
+	 */
+	gpio_pin_set(drv_data->extint_gpio, cfg->extint_gpio_pin, 0);
 
 	drv_data->timeout = K_MSEC(UBLOX_M8_MESSAGE_TIMEOUT_MSEC);
 	drv_data->poll_status = 0;
