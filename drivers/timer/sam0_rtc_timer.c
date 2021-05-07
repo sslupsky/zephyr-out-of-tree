@@ -298,6 +298,18 @@ int z_clock_driver_init(struct device *device)
 	RTC0->CTRLA.reg |= RTC_MODE0_CTRLA_ENABLE;
 #endif
 
+	/* Errata:
+	 * When CTRLA.COUNTSYNC is enabled, the first COUNT value is not
+	 * correctly synchronized and thus it is a wrong value.
+	 * Workaround
+	 * After enabling COUNTSYNC, read the COUNT register until its value
+	 * is changed when compared to its first value read. After this, all
+	 * consequent value read from the COUNT register is valid.
+	 */
+	uint32_t count = rtc_count();
+	while (rtc_count() == count) {
+	}
+
 	/* Enable RTC interrupt. */
 	NVIC_ClearPendingIRQ(DT_INST_IRQN(0));
 	IRQ_CONNECT(DT_INST_IRQN(0),
