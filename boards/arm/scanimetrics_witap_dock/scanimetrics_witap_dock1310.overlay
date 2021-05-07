@@ -1,0 +1,153 @@
+/*
+ * Copyright (c) 2020 Scanimetrics Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	debugs {
+		compatible = "gpio";
+		debug0: debug_0 {
+			gpios = <&porta 6 0>;
+			label = "DEBUG0";
+		};
+		debug1: debug_1 {
+			gpios = <&portb 3 0>;
+			label = "DEBUG1";
+		};
+	};
+
+	aliases {
+		debug0 = &debug0;
+		debug1 = &debug1;
+		led-mono = &led0;
+		adcint1 = &a0;
+		adcint2 = &d7;
+		sensor1-en = &a5;
+		sensor2-en = &a2;
+		sensor1-pwr-en = &a3;
+		sensor2-pwr-en = &a1;
+		bat-sense = &a4;
+		ext-int1 = &a6;
+		s3-sda = &d0;
+		s3-scl = &d1;
+		fram-cs = &d2;
+		flash-cs = &d3;
+		sd-cs = &d4;
+		sd-pwr-en = &d5;
+		s0-sda = &d11;
+		s0-scl = &d12;
+		hold = &d13;
+		ts-int = &d14;
+	};
+};
+
+&sercom0 {
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+	ads1115_0: ads1115@48 {
+		compatible = "ti,ads1115";
+		reg = <0x48>;
+		label = "ADS1115";
+		#io-channel-cells = <4>;
+		alert-gpios = <&porta 02 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+	};
+
+	ads1115_1: ads1115@49 {
+		compatible = "ti,ads1115";
+		reg = <0x49>;
+		label = "ADS1115";
+		#io-channel-cells = <4>;
+		alert-gpios = <&porta 21 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+	};
+
+	tmp116: tmp116@4a {
+		compatible = "ti,tmp116";
+		reg = <0x4a>;
+		label = "TMP116";
+	};
+};
+
+&sercom1 {
+	cs-gpios = <&porta 11 GPIO_ACTIVE_LOW>, <&portb 10 GPIO_ACTIVE_LOW>;
+
+	/* NAND flash */
+	flash1: flash@0 {
+		compatible = "jedec,spi-nand";
+		label = "SPINAND0";
+		jedec-id = [98 cd];
+		size = <0x20000000>;
+		spi-max-frequency = <12000000>;
+		reg = <0>;
+		hold-gpios = <&portb 23 GPIO_ACTIVE_LOW>;
+		spi-transfer-mode = <3>;
+	};
+
+	/* SD Card */
+        sdhc0: sdhc@1 {
+                compatible = "zephyr,mmc-spi-slot";
+                reg = <1>;
+                status = "okay";
+                label = "SDHC0";
+                spi-max-frequency = <12000000>;
+        };
+};
+
+&sercom2 {
+};
+
+/*  SERCOM3 is used for board to board i2c communication  */
+/*  The dock is the master  */
+/*  The ISB is the slave and emulates an AT24 EEPROM  */
+&sercom3 {
+	status = "okay";
+	compatible = "atmel,sam0-i2c";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clocks = <&gclk0 0x17>, <&pm 0x20 5>;
+	clock-names = "GCLK", "PM";
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+	eeprom@54 {
+		compatible = "atmel,at24";
+		reg = <0x54>;
+		label = "EEPROM_SLAVE_0";
+		size = <256>;
+		pagesize = <16>;
+		address-width = <8>;
+		timeout = <5>;
+	};
+};
+
+&sercom4 {
+};
+
+&sercom5 {
+};
+
+&usb0 {
+};
+
+&rtc {
+};
+
+&adc {
+	status = "okay";
+};
+
+/* NAND flash partition table */
+&flash1 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		external_partition: partition@0 {
+			label = "external";
+			reg = <0x00000000 0x20000000>;
+		};
+	};
+
+};
