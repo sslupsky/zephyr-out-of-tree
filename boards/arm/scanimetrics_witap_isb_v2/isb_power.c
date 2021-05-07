@@ -11,16 +11,6 @@
 LOG_MODULE_REGISTER(soc, CONFIG_SOC_LOG_LEVEL);
 
 /*
- * Waits for RTC bus synchronization.
- */
-static inline void rtc_sync(void)
-{
-	while (RTC->MODE0.STATUS.reg & RTC_STATUS_SYNCBUSY) {
-		/* Wait for bus synchronization... */
-	}
-}
-
-/*
  * Power state map:
  * SYS_POWER_STATE_SLEEP_1: IDLE
  * SYS_POWER_STATE_SLEEP_2: STANDBY
@@ -49,7 +39,7 @@ void sys_set_power_state(enum power_states state)
 #ifdef CONFIG_HAS_SYS_POWER_STATE_SLEEP_1
 	case SYS_POWER_STATE_SLEEP_1:
         SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-        PM->SLEEP.reg = 1;
+        PM->SLEEPCFG.bit.SLEEPMODE = 0x04;
         __DSB();
         __WFI();
 		break;
