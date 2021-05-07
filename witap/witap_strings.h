@@ -20,6 +20,8 @@
 #ifndef WITAP_STRINGS_H
 #define WITAP_STRINGS_H
 
+#include <soc.h>
+
 /**
  * @brief Text to ASCII Figlet Art
  *        Raw string literals:  https://stackoverflow.com/questions/1135841/c-multiline-string-literal
@@ -49,34 +51,80 @@ char const STRING_HEADER[]  = "\n\n\n\n";
 char const STRING_FORM_FEED[] = "\n\n\n\n\n\n\n\n\n\n";
 char const STRING_SYNTAX_ERROR[]  = "Syntax error";
 
-#define RCAUSE_POR	"POR"
-#define RCAUSE_BOD12	"BOD12"
-#define RCAUSE_BOD33	"BOD33"
-#define RCAUSE_EXT	"EXT"
-#define RCAUSE_WDT	"WDT"
-#define RCAUSE_SYST	"SYST"
+char const STRING_RCAUSE_POR[] =	"POR";
+char const STRING_RCAUSE_BODCORE[] =	"BODCORE";
+char const STRING_RCAUSE_BODVDD[] =	"BODVDD";
+char const STRING_RCAUSE_NVM[] =	"NVM";
+char const STRING_RCAUSE_EXT[] =	"EXT";
+char const STRING_RCAUSE_WDT[] =	"WDT";
+char const STRING_RCAUSE_SYST[] =	"SYST";
+char const STRING_RCAUSE_BACKUP[] =	"BACKUP";
 
-inline void rcause_str(char *buf, u8_t rcause)
+#ifdef MCLK
+#define RCAUSE_POR	RSTC_RCAUSE_POR
+#define RCAUSE_BODCORE	RSTC_RCAUSE_BODCORE
+#define RCAUSE_BODVDD	RSTC_RCAUSE_BODVDD
+#define RCAUSE_NVM	RSTC_RCAUSE_NVM
+#define RCAUSE_EXT	RSTC_RCAUSE_EXT
+#define RCAUSE_WDT	RSTC_RCAUSE_WDT
+#define RCAUSE_SYST	RSTC_RCAUSE_SYST
+#define RCAUSE_BACKUP	RSTC_RCAUSE_BACKUP
+#else
+#define RCAUSE_POR	PM_RCAUSE_POR
+#define RCAUSE_BODCORE	PM_RCAUSE_BOD12
+#define RCAUSE_BODVDD	PM_RCAUSE_BOD33
+#define RCAUSE_NVM	0
+#define RCAUSE_EXT	PM_RCAUSE_EXT
+#define RCAUSE_WDT	PM_RCAUSE_WDT
+#define RCAUSE_SYST	PM_RCAUSE_SYST
+#define RCAUSE_BACKUP	0
+#endif
+
+#ifndef RSTC
+#define RSTC PM
+#endif
+
+inline uint8_t parse_reset(char *buf)
 {
-	buf[0] = 0;
-	if (rcause & PM_RCAUSE_POR) {
-		strcat(buf, "POR ");
+	uint8_t rcause = RSTC->RCAUSE.reg;
+
+	if (buf) {
+		buf[0] = 0;
+		if (rcause & RCAUSE_POR) {
+			strcat(buf, STRING_SPACE);
+			strcat(buf, STRING_RCAUSE_POR);
+		}
+		if (rcause & RCAUSE_BODCORE) {
+			strcat(buf, STRING_SPACE);
+			strcat(buf, STRING_RCAUSE_BODCORE);
+		}
+		if (rcause & RCAUSE_BODVDD) {
+			strcat(buf, STRING_SPACE);
+			strcat(buf, STRING_RCAUSE_BODVDD);
+		}
+		if (rcause & RCAUSE_NVM) {
+			strcat(buf, STRING_SPACE);
+			strcat(buf, STRING_RCAUSE_NVM);
+		}
+		if (rcause & RCAUSE_EXT) {
+			strcat(buf, STRING_SPACE);
+			strcat(buf, STRING_RCAUSE_EXT);
+		}
+		if (rcause & RCAUSE_WDT) {
+			strcat(buf, STRING_SPACE);
+			strcat(buf, STRING_RCAUSE_WDT);
+		}
+		if (rcause & RCAUSE_SYST) {
+			strcat(buf, STRING_SPACE);
+			strcat(buf, STRING_RCAUSE_SYST);
+		}
+		if (rcause & RCAUSE_BACKUP) {
+			strcat(buf, STRING_SPACE);
+			strcat(buf, STRING_RCAUSE_BACKUP);
+		}
 	}
-	if (rcause & PM_RCAUSE_BOD12) {
-		strcat(buf, "BOD12 ");
-	}
-	if (rcause & PM_RCAUSE_BOD33) {
-		strcat(buf, "BOD33 ");
-	}
-	if (rcause & PM_RCAUSE_EXT) {
-		strcat(buf, "EXT ");
-	}
-	if (rcause & PM_RCAUSE_WDT) {
-		strcat(buf, "WDT ");
-	}
-	if (rcause & PM_RCAUSE_SYST) {
-		strcat(buf, "SYST ");
-	}
+
+	return rcause;
 }
 
 #endif
