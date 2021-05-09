@@ -84,8 +84,6 @@ BUILD_ASSERT(CYCLES_PER_TICK > 1,
 
 /* Tick/cycle count of the last announce call. */
 static volatile uint32_t rtc_last;
-static volatile int64_t rtc_boot_uptime;
-static volatile int64_t uptime;
 static struct k_spinlock lock;
 
 #ifndef CONFIG_TICKLESS_KERNEL
@@ -154,15 +152,6 @@ static uint32_t rtc_count(void)
 
 static void rtc_reset(void)
 {
-	struct timespec tp;
-	struct tm tm;
-
-	clock_gettime(CLOCK_REALTIME, &tp);
-	gmtime_r(&tp.tv_sec, &tm);
-
-	uptime = k_uptime_get();
-
-	rtc_boot_uptime = tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
 	rtc_sync();
 
 	/* Disable interrupt. */
@@ -419,10 +408,6 @@ void rtc_wake(void)
 #ifdef RTC_READREQ_RREQ
 	RTC0->READREQ.reg = RTC_READREQ_RREQ || RTC_READREQ_RCONT;
 #endif
-}
-
-int64_t sam0_rtc_timer_boot_time(void) {
-	return rtc_boot_uptime;
 }
 
 /**
