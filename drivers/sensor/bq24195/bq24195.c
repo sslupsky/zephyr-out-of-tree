@@ -1,7 +1,7 @@
 /**
  * @file Untitled-1
  * @author Steven Slupsky (sslupsky@scanimetrics.com)
- * @brief 
+ * @brief BQ24195 PMIC driver
  * @version 0.1
  * @date 2020-05-18
  * 
@@ -16,6 +16,13 @@
  *                                                               
  */
 
+/*
+ *	The starting point for this driver is the BQ24195 particle IoT driver code:
+ * 	particle_iot_power_manager.cpp
+ * 	particle_iot_spark_wiring_power.cpp
+ * 
+ * 	From the particle IoT github repository
+*/
 #define DT_DRV_COMPAT ti_bq24195
 
 #include <device.h>
