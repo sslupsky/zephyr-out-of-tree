@@ -20,6 +20,3 @@ endmenu
 if OOT_SAM0_RTC_TIMER
 
 endif #OOT_SAM0_RTC_TIMER
-
-
-endif #SAM0_RTC_TIMER_OOT
