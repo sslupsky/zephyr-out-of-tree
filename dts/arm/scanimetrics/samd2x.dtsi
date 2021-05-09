@@ -30,8 +30,8 @@
 		reg = <0>;
 		label = "GCLK_0";
 		clock-frequency = <48000000>;
-		div = <1>;
-		divsel = <0>;
+		clock-div = <1>;
+		clock-divsel = <0>;
 		runstdby = <0>;
 	};
 
@@ -41,8 +41,8 @@
 		reg = <1>;
 		label = "GCLK_1";
 		clock-frequency = <32768>;
-		div = <1>;
-		divsel = <0>;
+		clock-div = <1>;
+		clock-divsel = <0>;
 		runstdby = <0>;
 	};
 
@@ -54,8 +54,8 @@
 		reg = <2>;
 		label = "GCLK_2";
 		clock-frequency = <32768>;
-		div = <4>;
-		divsel = <1>;
+		clock-div = <4>;
+		clock-divsel = <1>;
 		runstdby = <0>;
 	};
 
@@ -66,8 +66,8 @@
 		reg = <3>;
 		label = "GCLK_3";
 		clock-frequency = <8000000>;
-		div = <1>;
-		divsel = <0>;
+		clock-div = <1>;
+		clock-divsel = <0>;
 		runstdby = <0>;
 	};
 
@@ -79,8 +79,8 @@
 		reg = <4>;
 		label = "GCLK_4";
 		clock-frequency = <32768>;
-		div = <1>;
-		divsel = <0>;
+		clock-div = <1>;
+		clock-divsel = <0>;
 		runstdby = <0>;
 	};
 
@@ -90,8 +90,8 @@
 		reg = <5>;
 		label = "GCLK_5";
 		clock-frequency = <48000000>;
-		div = <1>;
-		divsel = <0>;
+		clock-div = <1>;
+		clock-divsel = <0>;
 		runstdby = <0>;
 	};
 
@@ -101,8 +101,8 @@
 		reg = <6>;
 		label = "GCLK_6";
 		clock-frequency = <48000000>;
-		div = <1>;
-		divsel = <0>;
+		clock-div = <1>;
+		clock-divsel = <0>;
 		runstdby = <0>;
 	};
 
@@ -112,8 +112,8 @@
 		reg = <7>;
 		label = "GCLK_7";
 		clock-frequency = <48000000>;
-		div = <1>;
-		divsel = <0>;
+		clock-div = <1>;
+		clock-divsel = <0>;
 		runstdby = <0>;
 	};
 };
