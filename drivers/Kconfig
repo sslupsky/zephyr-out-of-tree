@@ -10,5 +10,7 @@ rsource "modem/Kconfig"
 rsource "sensor/Kconfig"
 rsource "adc/Kconfig"
 rsource "timer/Kconfig"
+rsource "i2c/Kconfig"
+rsource "serial/Kconfig"
 
 endmenu

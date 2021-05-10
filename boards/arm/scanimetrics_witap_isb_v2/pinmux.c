@@ -21,28 +21,28 @@ static int board_pinmux_init(struct device *dev)
 	ARG_UNUSED(muxc);
 	ARG_UNUSED(muxd);
 
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(0, atmel_sam0_uart) && CONFIG_UART_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(0, atmel_sam0_uart) && (CONFIG_UART_SAM0 || CONFIG_OOT_UART_SAM0))
 #error Pin mapping is not configured
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(1, atmel_sam0_uart) && CONFIG_UART_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(1, atmel_sam0_uart) && (CONFIG_UART_SAM0 || CONFIG_OOT_UART_SAM0))
 #error Pin mapping is not configured
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(2, atmel_sam0_uart) && CONFIG_UART_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(2, atmel_sam0_uart) && (CONFIG_UART_SAM0 || CONFIG_OOT_UART_SAM0))
 #error Pin mapping is not configured
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(3, atmel_sam0_uart) && CONFIG_UART_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(3, atmel_sam0_uart) && (CONFIG_UART_SAM0 || CONFIG_OOT_UART_SAM0))
 // 	pinmux_pin_set(muxa, 22, PINMUX_FUNC_C);
 // 	pinmux_pin_set(muxa, 23, PINMUX_FUNC_C);
 // #error Pin mapping is not configured
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(4, atmel_sam0_uart) && CONFIG_UART_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(4, atmel_sam0_uart) && (CONFIG_UART_SAM0 || CONFIG_OOT_UART_SAM0))
 //  zephyr console uart (also used for usb_cdc)
 //  SERCOM4 is connected on ISB Rev 2036C.
 	// pinmux_pin_set(muxb, 12, PINMUX_FUNC_C);
 	// pinmux_pin_set(muxb, 13, PINMUX_FUNC_C);
 // #error Pin mapping is not configured
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(5, atmel_sam0_uart) && CONFIG_UART_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(5, atmel_sam0_uart) && (CONFIG_UART_SAM0 || CONFIG_OOT_UART_SAM0))
 #error Pin mapping is not configured
 #endif
 
@@ -66,26 +66,26 @@ static int board_pinmux_init(struct device *dev)
 #error Pin mapping is not configured
 #endif
 
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(0, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(0, atmel_sam0_i2c) && (CONFIG_I2C_SAM0 || CONFIG_OOT_I2C_SAM0))
 	/* SERCOM0 on SDA=PA08, SCL=PA09 */
 	pinmux_pin_set(muxa, 8, PINMUX_FUNC_C);
 	pinmux_pin_set(muxa, 9, PINMUX_FUNC_C);
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(1, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(1, atmel_sam0_i2c) && (CONFIG_I2C_SAM0 || CONFIG_OOT_I2C_SAM0))
 	pinmux_pin_set(muxa, 16, PINMUX_FUNC_C);
 	pinmux_pin_set(muxa, 17, PINMUX_FUNC_C);
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(2, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(2, atmel_sam0_i2c) && (CONFIG_I2C_SAM0 || CONFIG_OOT_I2C_SAM0))
 	pinmux_pin_set(muxa, 12, PINMUX_FUNC_C);
 	pinmux_pin_set(muxa, 13, PINMUX_FUNC_C);
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(3, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(3, atmel_sam0_i2c) && (CONFIG_I2C_SAM0 || CONFIG_OOT_I2C_SAM0))
 #error Pin mapping is not configured
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(4, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(4, atmel_sam0_i2c) && (CONFIG_I2C_SAM0 || CONFIG_OOT_I2C_SAM0))
 #error Pin mapping is not configured
 #endif
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(5, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(5, atmel_sam0_i2c) && (CONFIG_I2C_SAM0 || CONFIG_OOT_I2C_SAM0))
 	/* SERCOM5 on SDA=PB02, SCL=PB03 */
 	pinmux_pin_set(muxb, 2, PINMUX_FUNC_D);
 	pinmux_pin_set(muxb, 3, PINMUX_FUNC_D);
