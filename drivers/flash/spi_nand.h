@@ -12,6 +12,24 @@
 #define SPI_NAND_INVALID_PAGE 0xffffffff
 
 #define SPI_NAND_JEDEC_ID_LEN		DT_INST_PROP_LEN(0, jedec_id)
+#define SPI_NAND_SIZE			DT_INST_PROP(0, size)
+#define SPI_NAND_PAGE_SIZE		DT_INST_PROP(0, page_bytes)
+#define SPI_NAND_PARTIAL_PAGE_SIZE	DT_INST_PROP(0, partial_page_bytes)
+#define SPI_NAND_SECTOR_SIZE		DT_INST_PROP(0, sector_bytes)
+#define SPI_NAND_PAGES_PER_BLOCK	DT_INST_PROP(0, pages_per_block)
+#define SPI_NAND_BLOCK_SIZE		(SPI_NAND_PAGE_SIZE * SPI_NAND_PAGES_PER_BLOCK)
+#define SPI_NAND_BLOCKS			DT_INST_PROP(0, blocks)
+#define SPI_NAND_MAX_PAGE_PROG_TIME	DT_INST_PROP(0, max_page_prog_time)
+#define SPI_NAND_MAX_PAGE_READ_TIME	DT_INST_PROP(0, max_page_read_time)
+#define SPI_NAND_MAX_BLOCK_ERASE_TIME	DT_INST_PROP(0, max_block_erase_time)
+#define SPI_NAND_PAGE_PROG		DT_INST_PROP(0, page_prog)
+#define SPI_NAND_MAX_RESET_TIME		(10000U)	/* reset time out */
+
+/* Test whether offset is aligned. */
+#define SPI_NAND_IS_PAGE_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_PAGE_SIZE - 1U)) == 0)
+#define SPI_NAND_IS_SECTOR_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_SECTOR_SIZE - 1U)) == 0)
+#define SPI_NAND_IS_BLOCK_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_BLOCK_SIZE - 1U)) == 0)
+
 
 struct spi_nand_config {
 	/* JEDEC id from devicetree */
@@ -171,64 +189,92 @@ struct SPI_NAND_FEATURE_TABLE_t {
 };
 
 struct SPI_NAND_PARAMETER_PAGE_t {
-	u8_t signature[16];                   ///<  "NAND"
-	u8_t reserved[16];
-	u8_t device_manufacturer[12];        ///<  "TOSHIBA"
-	u8_t device_model[20];               ///<  "TC58CVG2S0HRAIG"
-	u8_t manufacturerID;                 ///<  98h
-	u8_t reserved2[15];
+	u8_t signature[4];                   ///<  ASCII text, "NAND"
+	u8_t onfi_version[2];			///<  ONFI Revision Number
+	u8_t features[2];
+	u8_t optional_commands[2];
+	u8_t reserved[22];
+	u8_t device_manufacturer[12];        ///<  ASCII text, ex: "TOSHIBA"
+	u8_t device_model[20];               ///<  ASCII text, ex: "TC58CVG2S0HRAIG"
+	u8_t manufacturerID;                 ///<  Toshiba = 98h,  Alliance = 52h
+	u8_t date_code[2];
+	u8_t reserved2[13];
 	u32_t page_bytes;                    ///<  00001000h
 	u16_t page_spare_bytes;              ///<  0080h
 	u32_t partial_page_bytes;            ///<  00000200h
 	u16_t partial_page_spare_bytes;      ///<  0010h
 	u32_t block_pages;                   ///<  00000040h
-	u32_t unit_blocks;                   ///<  00000800h
-	u8_t units;                          ///<  01h
-	u8_t reserved3;
+	u32_t logical_unit_blocks;           ///<  00000800h
+	u8_t logical_units;                  ///<  01h
+	u8_t address_cycles;
 	u8_t cell_bits;                      ///<  01h
-	u16_t unit_bb;                       ///<  0028h
-	u16_t endurance;                     ///<  0501h
+	u16_t logical_unit_bad_blocks;       ///<  0028h
+	u16_t block_endurance;               ///<  0501h
 	u8_t valid_blocks;
-	u8_t reserved4[2];
+	u8_t valid_block_endurance;
 	u8_t page_partial_writes;            ///<  04h
-	u8_t reserved5;
+	u8_t partial_write_attributes;
 	u8_t ecc_bits;
-	u8_t reserved6[15];
+	u8_t interleaved_address_bits;
+	u8_t interleaved_operation_attributes;
+	u8_t reserved3[13];
 	u8_t pin_capacitance;
-	u8_t reserved7[4];
+	u8_t timing_mode[2];
+	u8_t cache_timing_mode[2];
 	u16_t page_program_time;             ///<  0258h
 	u16_t block_erase_time;              ///<  1b58h
 	u16_t page_read_time;                ///<  0118h
-	u8_t reserved8[115];
+	u16_t column_setup_time;
+	u8_t reserved4[23];
+	u16_t vendor_revision;
+	u8_t vendor_data[88];
 	u16_t crc;                           ///<  e1f5h
 };
 */
-/* Page, sector, and block size are standard, not configurable. */
-#define SPI_NAND_PAGE_SIZE    0x1000U
-#define SPI_NAND_SECTOR_SIZE  0x200U
-#define SPI_NAND_BLOCK_SIZE   0x40000U
-#define SPI_NAND_PARTIAL_PAGE_WRITES 	4
-#define SPI_NAND_PARTIAL_PAGE_SIZE (SPI_NAND_PAGE_SIZE / SPI_NAND_PARTIAL_PAGE_WRITES)
 
-/* Some devices support erase operations on 32 KiBy blocks.
- * Support is indicated by the has-be32k property.
+/*
+ *  SPI NAND Parameter Page Data Address
+ *
+ *  References:
+ *  Alliance Memory SPI NAND Flash July 2020 Rev 1.0 Table 10-3 (page 38)
+ *  Toshiba / Kioxia TC58CVG2S0HxAIx Rev 1.1 2016-11-08 Table 19 (page 30)
+ *  Kioxia TC58CVG2SOHRAIJ datasheet 20191001 - Table 19 (page 35)
  */
-#define SPI_NAND_BLOCK32_SIZE 0x8000
-
-/* Test whether offset is aligned. */
-#define SPI_NAND_IS_PAGE_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_PAGE_SIZE - 1U)) == 0)
-#define SPI_NAND_IS_SECTOR_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_SECTOR_SIZE - 1U)) == 0)
-#define SPI_NAND_IS_BLOCK_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_BLOCK_SIZE - 1U)) == 0)
-#define SPI_NAND_IS_BLOCK32_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_BLOCK32_SIZE - 1U)) == 0)
-
-static inline u32_t page_addr_of(u32_t addr)
-{
-    return addr & ~(SPI_NAND_PAGE_SIZE - 1U);
-}
-
-static inline u32_t page_offset_of(u32_t addr)
-{
-    return addr & (SPI_NAND_PAGE_SIZE - 1U);
-}
+#define SPI_NAND_PARAMETER_SIGNATURE			0
+#define SPI_NAND_PARAMETER_ONFI_REVISION		4
+#define SPI_NAND_PARAMETER_FEATURES			6
+#define SPI_NAND_PARAMETER_OPTIONAL_CMDS		8
+#define SPI_NAND_PARAMETER_DEVICE_MFG			32
+#define SPI_NAND_PARAMETER_DEVICE_MODEL			44
+#define SPI_NAND_PARAMETER_JEDEC_ID			64
+#define SPI_NAND_PARAMETER_DATE_CODE			65
+#define SPI_NAND_PARAMETER_PAGE_BYTES			80
+#define SPI_NAND_PARAMETER_PAGE_SPARE_BYTES		84
+#define SPI_NAND_PARAMETER_PARTIAL_PAGE_BYTES		86
+#define SPI_NAND_PARAMETER_PARTIAL_PAGE_SPARE_BYTES	90
+#define SPI_NAND_PARAMETER_PAGES_PER_BLOCK		92
+#define SPI_NAND_PARAMETER_BLOCKS_PER_LUN		96
+#define SPI_NAND_PARAMETER_LUNS				100
+#define SPI_NAND_PARAMETER_ADDRESS_CYCLES		101
+#define SPI_NAND_PARAMETER_BITS_PER_CELL		102
+#define SPI_NAND_PARAMETER_BAD_BLOCKS_PER_LUN		103
+#define SPI_NAND_PARAMETER_BLOCK_ENDURANCE		105
+#define SPI_NAND_PARAMETER_VALID_BLOCKS			107
+#define SPI_NAND_PARAMETER_VALID_BLOCK_ENDURANCE	108
+#define SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE		110
+#define SPI_NAND_PARAMETER_PARTIAL_PROGRAM_ATTRIBUTES	111
+#define SPI_NAND_PARAMETER_ECC_BITS			112
+#define SPI_NAND_PARAMETER_INTERLEAVED_ADDRESS_BITS	113
+#define SPI_NAND_PARAMETER_INTERLEAVED_OPERATION_ATTRIBUTES	114
+#define SPI_NAND_PARAMETER_PIN_CAPACITANCE		128
+#define SPI_NAND_PARAMETER_TIMING_MODE			129
+#define SPI_NAND_PARAMETER_CACHE_TIMING_MODE		131
+#define SPI_NAND_PARAMETER_PAGE_PROGRAM_TIME		133
+#define SPI_NAND_PARAMETER_BLOCK_ERASE_TIME		135
+#define SPI_NAND_PARAMETER_PAGE_READ_TIME		137
+#define SPI_NAND_PARAMETER_COLUMN_SETUP_TIME		139
+#define SPI_NAND_PARAMETER_VENDOR_REVISION		164
+#define SPI_NAND_PARAMETER_VENDOR_DATA			166
+#define SPI_NAND_PARAMETER_CRC				254
 
 #endif /*__SPI_NAND_H__*/

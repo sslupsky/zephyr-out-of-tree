@@ -608,25 +608,36 @@ int spi_nand_read_parameter_page(struct device *dev)
 	if (ret < 0) {
 		goto done;
 	}
-	spi_nand_read_page_buf(dev, 0, params.str, 16);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_SIGNATURE, params.str, 16);
 	params.str[16] = '\0';
 	LOG_INF("Signature: %s", log_strdup(params.str));
-	spi_nand_read_page_buf(dev, 32, params.str, 12);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MFG, params.str, 12);
 	params.str[12] = '\0';
 	LOG_INF("Manufacturer: %s", log_strdup(params.str));
-	spi_nand_read_page_buf(dev, 44, params.str, 20);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MODEL, params.str, 20);
 	params.str[20] = '\0';
 	LOG_INF("Device model: %s", log_strdup(params.str));
-	spi_nand_read_page_buf(dev, 80, &params.i32, sizeof(params.i32));
-	LOG_DBG("bytes per page: %d", params.i32);
-	spi_nand_read_page_buf(dev, 92, &params.i32, sizeof(params.i32));
-	LOG_DBG("pages per block: %d", params.i32);
-	spi_nand_read_page_buf(dev, 96, &params.i32, sizeof(params.i32));
-	LOG_DBG("blocks per unit: %d", params.i32);
-	spi_nand_read_page_buf(dev, 105, &params.i16, sizeof(params.i16));
-	LOG_DBG("block endurance: %d", params.i16);
-	spi_nand_read_page_buf(dev, 110, &params.c, sizeof(params.c));
-	LOG_DBG("programs per page: %d", params.c);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGE_BYTES, &params.i32, sizeof(params.i32));
+	LOG_INF("bytes per page: %d", params.i32);
+	data->page_size = params.i32;
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PARTIAL_PAGE_BYTES, &params.i32, sizeof(params.i32));
+	LOG_INF("bytes per partial page: %d", params.i32);
+	data->partial_page_size = params.i32;
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGES_PER_BLOCK, &params.i32, sizeof(params.i32));
+	LOG_INF("pages per block: %d", params.i32);
+	data->pages_per_block = params.i32;
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCKS_PER_LUN, &params.i32, sizeof(params.i32));
+	LOG_INF("blocks per logical unit: %d", params.i32);
+	data->blocks_per_lun = params.i32;
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_LUNS, &params.i8, sizeof(params.i8));
+	LOG_INF("logical units per device: %d", params.i8);
+	data->luns_per_device = params.i8;
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCK_ENDURANCE, &params.i16, sizeof(params.i16));
+	LOG_INF("block endurance: %d", params.i16);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE, &params.c, sizeof(params.c));
+	LOG_INF("programs per page: %d", params.c);
+
+	data->flash_size = data->page_size * data->pages_per_block * data->blocks_per_lun * data->luns_per_device;
 done:
 	_chip_page = SPI_NAND_INVALID_PAGE;
 	spi_nand_id_read_enable(dev, false);
@@ -1008,27 +1019,19 @@ static int spi_nand_init(struct device *dev)
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
 
-/* instance 0 size in bytes */
-#define INST_0_BYTES (DT_INST_PROP(0, size) / 8)
+BUILD_ASSERT(SPI_NAND_IS_SECTOR_ALIGNED(SPI_NAND_BLOCK_SIZE),
+	     "LAYOUT_PAGE_SIZE must be multiple of sector size");
 
-BUILD_ASSERT(SPI_NAND_IS_SECTOR_ALIGNED(CONFIG_SPI_NAND_FLASH_LAYOUT_PAGE_SIZE),
-	     "SPI_NAND_FLASH_LAYOUT_PAGE_SIZE must be multiple of 4096");
-
-/* instance 0 page count */
-#define LAYOUT_PAGES_COUNT (INST_0_BYTES / CONFIG_SPI_NAND_FLASH_LAYOUT_PAGE_SIZE)
-
-BUILD_ASSERT((CONFIG_SPI_NAND_FLASH_LAYOUT_PAGE_SIZE * LAYOUT_PAGES_COUNT)
-	     == INST_0_BYTES,
-	     "SPI_NAND_FLASH_LAYOUT_PAGE_SIZE incompatible with flash size");
+#define LAYOUT_PAGES_COUNT (SPI_NAND_SIZE / SPI_NAND_BLOCK_SIZE)
 
 static const struct flash_pages_layout dev_layout = {
 	.pages_count = LAYOUT_PAGES_COUNT,
-	.pages_size = CONFIG_SPI_NAND_FLASH_LAYOUT_PAGE_SIZE,
+	.pages_size = SPI_NAND_BLOCK_SIZE,
 };
 #undef LAYOUT_PAGES_COUNT
 
 static const struct flash_parameters spi_nand_parameters = {
-	.write_block_size = SPI_NAND_PARTIAL_PAGE_SIZE,
+	.write_block_size = SPI_NAND_PAGE_SIZE,
 	.erase_value = 0xff,
 };
 
@@ -1063,7 +1066,6 @@ static const struct flash_driver_api spi_nand_api = {
 
 static const struct spi_nand_config flash_id = {
 	.id = DT_INST_PROP(0, jedec_id),
-	.has_be32k = DT_INST_PROP(0, has_be32k),
 	.spi_mode = DT_INST_PROP(0, spi_transfer_mode),
 	.size = DT_INST_PROP(0, size),
 };
