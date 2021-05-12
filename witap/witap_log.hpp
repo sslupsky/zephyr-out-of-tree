@@ -32,10 +32,10 @@
 #define WITAP_LOG_DEFAULT_SYNC_TIMEOUT		K_SECONDS(30)
 #define WITAP_LOG_INITIAL_SYNC_TIMEOUT		K_SECONDS(30)
 
-char const boot_count_fname[] = "/boot_count";
-char const boot_log_fname[] = "/boot.log";
-char const witap_log_fname[] = "/witap.log";
-char const test_log_fname[] = "/test.log";
+char const boot_count_fname[] = "boot_count";
+char const boot_log_fname[] = "boot.log";
+char const witap_log_fname[] = "witap.log";
+char const test_log_fname[] = "test.log";
 char const test_string[] = "this is a 32 byte test string. \n";
 
 
@@ -64,7 +64,7 @@ void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, str
 	char fname[20];
 
 	if (log_mp) {
-		snprintf(fname, sizeof(fname), "%s%s", log_mp->mnt_point, witap_log_fname);
+		snprintf(fname, sizeof(fname), "%s/%s", log_mp->mnt_point, witap_log_fname);
 		witap_log_backend_enable(fname, CONFIG_MYAPP_LOG_LEVEL, timeout);
 	}
 	if (boot_mp) {
@@ -85,7 +85,7 @@ int WITAP_LOG::update_bootcount(struct fs_mount_t *mp, struct boot_status *boot)
 	struct fs_file_t file;
 	int ret;
 
-	snprintf(fname, sizeof(fname), "%s%s", mp->mnt_point, boot_count_fname);
+	snprintf(fname, sizeof(fname), "%s/%s", mp->mnt_point, boot_count_fname);
 	LOG_DBG("opening file: %s", log_strdup(fname));
 
 	ret = fs_open(&file, fname);
@@ -142,7 +142,7 @@ int WITAP_LOG::update_bootlog(struct fs_mount_t *mp, struct boot_status *boot) {
 	clock_gettime(CLOCK_REALTIME, &tp);
 	gmtime_r(&tp.tv_sec, &tm);
 
-	snprintf(fname, sizeof(fname), "%s%s", mp->mnt_point, boot_log_fname);
+	snprintf(fname, sizeof(fname), "%s/%s", mp->mnt_point, boot_log_fname);
 	LOG_DBG("opening file: %s", log_strdup(fname));
 
 	ret = fs_open(&file, fname);
@@ -186,7 +186,7 @@ int WITAP_LOG::update_testlog(struct fs_mount_t *mp) {
 	struct fs_file_t file;
 	int ret;
 
-	snprintf(fname, sizeof(fname), "%s%s", mp->mnt_point, test_log_fname);
+	snprintf(fname, sizeof(fname), "%s/%s", mp->mnt_point, test_log_fname);
 	LOG_DBG("opening file: %s", log_strdup(fname));
 
 	ret = fs_open(&file, fname);
