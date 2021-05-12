@@ -26,16 +26,6 @@ config SPI_NAND_CS_WAIT_DELAY
 	help
 	  This is the wait delay (in us) to allow for CS switching to take effect
 
-config SPI_NAND_FLASH_LAYOUT_PAGE_SIZE
-	int "Page size to use for FLASH_LAYOUT feature"
-	default 262144
-	help
-	  When CONFIG_FLASH_PAGE_LAYOUT is used this driver will support
-	  that API.  By default the page size corresponds to the block
-	  size (262144).  Other options include the 32K-byte erase size
-	  (32768), the sector size (4096), or any non-zero multiple of the
-	  sector size.
-
 config SPI_NAND_IDLE_IN_DPD
 	bool "Use Deep Power-Down mode when flash is not being accessed."
 	help
