@@ -358,18 +358,18 @@ static void release_device(struct device *dev)
 static inline int spi_nand_read_id(struct device *dev,
 				  const struct spi_nand_config *const flash_id)
 {
-	u8_t buf[SPI_NAND_ID_LEN];
+	u8_t buf[SPI_NAND_JEDEC_ID_LEN];
 
 	/* tc58cvg2s0 has a "dummy" byte cycle between command and rx */
 	/* So insert wait */
-	if (spi_nand_cmd_read(dev, SPI_NAND_CMD_RDID, buf, SPI_NAND_ID_LEN, 1)
+	if (spi_nand_cmd_read(dev, SPI_NAND_CMD_RDID, buf, SPI_NAND_JEDEC_ID_LEN, 1)
 	    < 0) {
 		return -EIO;
 	}
 
 	/* jedec ID is only 2 bytes for tc58cvg2s0 */
 	/* see datasheet 4.13 */
-	if (memcmp(flash_id->id, buf, SPI_NAND_ID_LEN) != 0) {
+	if (memcmp(flash_id->id, buf, SPI_NAND_JEDEC_ID_LEN) != 0) {
 		return -ENODEV;
 	}
 

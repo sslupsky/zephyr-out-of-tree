@@ -11,14 +11,11 @@
 
 #define SPI_NAND_INVALID_PAGE 0xffffffff
 
-#define SPI_NAND_ID_LEN			2
+#define SPI_NAND_JEDEC_ID_LEN		DT_INST_PROP_LEN(0, jedec_id)
 
 struct spi_nand_config {
 	/* JEDEC id from devicetree */
-	u8_t id[SPI_NAND_ID_LEN];
-
-	/* Indicates support for BE32K */
-	bool has_be32k;
+	u8_t id[SPI_NAND_JEDEC_ID_LEN];
 
 	/* spi mode */
 	u8_t spi_mode;
