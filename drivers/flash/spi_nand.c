@@ -818,7 +818,7 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 		goto out;
 	}
 	if (!(reg & SPI_NAND_STATUS_WEL_BIT)) {
-		LOG_WRN("writes are disabled");
+		LOG_ERR("WEL=0, block erase aborted: 0x%lx", (long)addr);
 		ret = -EROFS;
 		goto out;
 	}
@@ -833,7 +833,7 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 			}
 			ret = spi_nand_erase_block(dev, addr / SPI_NAND_PAGE_SIZE);
 			if (ret < 0) {
-				LOG_ERR("block erase command error");
+				LOG_ERR("block erase error sending command");
 			}
 			// k_busy_wait(SPI_NAND_MIN_ERASE_TIME);
 			/* wait for OIP */
@@ -987,11 +987,11 @@ static int spi_nand_configure(struct device *dev)
 	/* now the spi bus is configured, we can verify the flash id */
 	ret = spi_nand_read_id(dev, params);
 	if (ret != 0) {
-		LOG_ERR("read id failed");
+		LOG_ERR("read jedec id failed");
 		return -ENODEV;
 	}
 
-	LOG_INF("device id ok");
+	LOG_INF("jedec id match");
 
 	ret = spi_nand_read_parameter_page(dev);
 	if (ret < 0) {
