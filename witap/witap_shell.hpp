@@ -31,7 +31,9 @@ static int cmd_show_version(const struct shell *shell)
 	shell_print(shell, "(c) Copyright");
 	shell_print(shell, "Scanimetrics Inc.");
 	shell_print(shell, "All rights reserved");
-	shell_print(shell, "Zephyr version %s", KERNEL_VERSION_STRING);
+	shell_print(shell, "Zephyr build: %s", STRINGIFY(BUILD_VERSION));
+	shell_print(shell, "Zephyr Out Of Tree build: %s", STRINGIFY(OOT_BUILD_VERSION));
+	shell_print(shell, "Application build: %s", STRINGIFY(APPLICATION_VERSION));
 	shell_print(shell, "Scanimetrics WiTAP command shell");
 	return 0;
 }
