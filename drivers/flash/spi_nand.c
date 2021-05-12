@@ -546,7 +546,13 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 		if (reg &  SPI_NAND_STATUS_PROGF_BIT) {
 			LOG_ERR("page write failed");
 			spi_nand_reset(dev);
-			ret = -EAGAIN;
+			/*
+			 *  Return EFAULT to indicate corrupt write
+			 *  This error code is mapped to LFS_ERR_CORRUPT
+			 *  by errno_to_lfs()
+			 *  see littlefs_fs.c
+			 */
+			ret = -EFAULT;
 		} else {
 			// _chip_page = SPI_NAND_INVALID_PAGE;
 			_page_sync_required = false;
@@ -839,6 +845,14 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 			if (reg & SPI_NAND_STATUS_ERASEF_BIT) {
 				LOG_ERR("block erase failed at addr: 0x%08lx", (long)addr);
 				spi_nand_reset(dev);
+				/*
+				*  Return EFAULT to indicate corrupt erase
+				*  This error code is mapped to LFS_ERR_CORRUPT
+				*  by errno_to_lfs()
+				*  see littlefs_fs.c
+				*/
+				ret = -EFAULT;
+				goto out;
 			}
 			addr += SPI_NAND_BLOCK_SIZE;
 			size -= SPI_NAND_BLOCK_SIZE;
