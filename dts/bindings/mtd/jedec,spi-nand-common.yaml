@@ -11,11 +11,6 @@ properties:
     required: true
     description: JEDEC ID as manufacturer ID, memory type, memory density
 
-  has-be32k:
-    type: boolean
-    required: false
-    description: Indicates the device supports the BE32K (0xD8) command
-
   requires-ulbpr:
     type: boolean
     required: false
@@ -86,6 +81,60 @@ properties:
     required: true
     description: flash capacity in bytes
 
+  page-bytes:
+    type: int
+    required: true
+    description: Size of page in bytes
+    
+  partial-page-bytes:
+    type: int
+    required: true
+    description: Size of partial page in bytes
+    
+  sector-bytes:
+    type: int
+    required: false
+    default:  512
+    description: Size of sector in bytes
+    
+  pages-per-block:
+    type: int
+    required: false
+    default:  64
+    description: Number of pages per block
+    
+  blocks:
+    type: int
+    required: true
+    description: Number of blocks
+    
+  luns:
+    type: int
+    required: false
+    default: 1
+    description: Number of logical units per device
+    
+  max-page-prog-time:
+    type: int
+    required: true
+    description: Maximum page program time
+    
+  max-page-read-time:
+    type: int
+    required: true
+    description: Maximum page read time
+    
+  max-block-erase-time:
+    type: int
+    required: true
+    description: Maximum block erase time
+    
+  page-prog:
+    type: int
+    required: false
+    default: 1
+    description: Number of programs per page
+    
   spi-transfer-mode:
     type: int
     required: false
