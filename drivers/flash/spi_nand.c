@@ -584,9 +584,19 @@ static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
 
 	/* check ecc bits */
 	ecc = ((reg &  SPI_NAND_STATUS_ECC_BIT) >> SPI_NAND_STATUS_ECC_POS);
-	if (ecc > 1) {
-		LOG_WRN("ecc error: %d", ecc);
+	switch (ecc) {
+	case 2:
+		LOG_ERR("ecc: uncorrected bit flips (%d)", ecc);
 		ret = -EIO;
+		break;
+	case 1:
+	case 3:
+		LOG_WRN("ecc: bit flips corrected (%d)", ecc);
+		break;
+	case 0:
+	default:
+		break;	
+
 	}
 	_chip_page = row_addr;
 
