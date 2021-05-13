@@ -15,6 +15,7 @@
 #include <string.h>
 #include <logging/log.h>
 #include <sys/util.h>
+#include <sys/byteorder.h>
 
 #include <stdlib.h>
 
@@ -594,13 +595,9 @@ done:
 
 int spi_nand_read_parameter_page(struct device *dev)
 {
+	struct spi_nand_data *data = dev->driver_data;
 	int ret;
-	union {
-		char str[21];
-		u32_t i32;
-		u16_t i16;
-		char c;
-	} params;
+	uint8_t buf[4];
 
 	acquire_device(dev);
 
@@ -615,36 +612,32 @@ int spi_nand_read_parameter_page(struct device *dev)
 	if (ret < 0) {
 		goto done;
 	}
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_SIGNATURE, params.str, 16);
-	params.str[16] = '\0';
-	LOG_INF("Signature: %s", log_strdup(params.str));
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MFG, params.str, 12);
-	params.str[12] = '\0';
-	LOG_INF("Manufacturer: %s", log_strdup(params.str));
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MODEL, params.str, 20);
-	params.str[20] = '\0';
-	LOG_INF("Device model: %s", log_strdup(params.str));
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGE_BYTES, &params.i32, sizeof(params.i32));
-	LOG_INF("bytes per page: %d", params.i32);
-	data->page_size = params.i32;
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PARTIAL_PAGE_BYTES, &params.i32, sizeof(params.i32));
-	LOG_INF("bytes per partial page: %d", params.i32);
-	data->partial_page_size = params.i32;
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGES_PER_BLOCK, &params.i32, sizeof(params.i32));
-	LOG_INF("pages per block: %d", params.i32);
-	data->pages_per_block = params.i32;
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCKS_PER_LUN, &params.i32, sizeof(params.i32));
-	LOG_INF("blocks per logical unit: %d", params.i32);
-	data->blocks_per_lun = params.i32;
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_LUNS, &params.i8, sizeof(params.i8));
-	LOG_INF("logical units per device: %d", params.i8);
-	data->luns_per_device = params.i8;
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCK_ENDURANCE, &params.i16, sizeof(params.i16));
-	LOG_INF("block endurance: %d", params.i16);
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE, &params.c, sizeof(params.c));
-	LOG_INF("programs per page: %d", params.c);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_SIGNATURE, data->signature, SPI_NAND_PARAMETER_SIGNATURE_LEN);
+	LOG_DBG("Signature: %.*s", sizeof(data->signature), data->signature);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MFG, data->manufacturer, SPI_NAND_PARAMETER_DEVICE_MFG_LEN);
+	LOG_DBG("Manufacturer: %.*s", sizeof(data->manufacturer), data->manufacturer);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MODEL, data->model, SPI_NAND_PARAMETER_DEVICE_MODEL_LEN);
+	LOG_DBG("Model: %.*s", sizeof(data->model), data->model);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGE_BYTES, buf, SPI_NAND_PARAMETER_PAGE_BYTES_LEN);
+	data->page_size = sys_get_le32(buf);
+	LOG_DBG("bytes per page: %d", data->page_size);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PARTIAL_PAGE_BYTES, buf, SPI_NAND_PARAMETER_PARTIAL_PAGE_BYTES_LEN);
+	data->partial_page_size = sys_get_le32(buf);
+	LOG_DBG("bytes per partial page: %d", data->partial_page_size);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGES_PER_BLOCK, buf, SPI_NAND_PARAMETER_PAGES_PER_BLOCK_LEN);
+	data->pages_per_block = sys_get_le32(buf);
+	LOG_DBG("pages per block: %d", data->pages_per_block);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCKS_PER_LUN, buf, SPI_NAND_PARAMETER_BLOCKS_PER_LUN_LEN);
+	data->blocks_per_lun = sys_get_le32(buf);
+	LOG_DBG("blocks per LUN: %d", data->blocks_per_lun);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_LUNS, &data->luns_per_device, SPI_NAND_PARAMETER_LUNS_LEN);
+	LOG_DBG("LUNs per device: %d", data->luns_per_device);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCK_ENDURANCE, buf, SPI_NAND_PARAMETER_BLOCK_ENDURANCE_LEN);
+	data->block_endurance = sys_get_le16(buf);
+	LOG_DBG("block endurance: %d", data->block_endurance);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE, &data->programs_per_page, SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE_LEN);
+	LOG_DBG("programs per page: %d", data->programs_per_page);
 
-	data->flash_size = data->page_size * data->pages_per_block * data->blocks_per_lun * data->luns_per_device;
 done:
 	_chip_page = SPI_NAND_INVALID_PAGE;
 	spi_nand_id_read_enable(dev, false);
