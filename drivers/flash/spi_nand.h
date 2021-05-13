@@ -30,18 +30,6 @@
 #define SPI_NAND_IS_SECTOR_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_SECTOR_SIZE - 1U)) == 0)
 #define SPI_NAND_IS_BLOCK_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_BLOCK_SIZE - 1U)) == 0)
 
-
-struct spi_nand_config {
-	/* JEDEC id from devicetree */
-	u8_t id[SPI_NAND_JEDEC_ID_LEN];
-
-	/* spi mode */
-	u8_t spi_mode;
-
-	/* Size from devicetree, in bytes */
-	u32_t size;
-};
-
 /* Status register bits */
 #define SPI_NAND_STATUS_OIP_BIT         BIT(0)  /* Write in progress */
 #define SPI_NAND_STATUS_WEL_BIT         BIT(1)  /* Write enable latch */
@@ -276,5 +264,93 @@ struct SPI_NAND_PARAMETER_PAGE_t {
 #define SPI_NAND_PARAMETER_VENDOR_REVISION		164
 #define SPI_NAND_PARAMETER_VENDOR_DATA			166
 #define SPI_NAND_PARAMETER_CRC				254
+
+/**
+ * @typedef spi_nand_reg_read_t
+ * @brief Callback API upon reading a sensor's register
+ *
+ * See spi_nand_reg_read() for argument description
+ */
+typedef 
+int (*spi_nand_reg_read_t)(struct device *dev, u8_t reg, u8_t *val);
+
+/**
+ * @typedef spi_nand_reg_write_t
+ * @brief Callback API upon writing a sensor's register
+ *
+ * See spi_nand_reg_write() for argument description
+ */
+typedef
+int (*spi_nand_reg_write_t)(struct device *dev, u8_t reg, u8_t val);
+
+
+struct spi_nand_driver_api {
+	spi_nand_reg_read_t reg_read;
+	spi_nand_reg_write_t reg_write;
+};
+
+struct spi_nand_config {
+	/* JEDEC id from devicetree */
+	u8_t id[SPI_NAND_JEDEC_ID_LEN];
+
+	/* spi mode */
+	u8_t spi_mode;
+
+	/* Size from devicetree, in bytes */
+	u32_t size;
+	struct spi_nand_driver_api api;
+};
+
+#if DT_INST_NODE_HAS_PROP(0, t_enter_dpd)
+#define T_DP_MS ceiling_fraction(DT_INST_PROP(0, t_enter_dpd), NSEC_PER_MSEC)
+#else /* T_ENTER_DPD */
+#define T_DP_MS 0
+#endif /* T_ENTER_DPD */
+#if DT_INST_NODE_HAS_PROP(0, t_exit_dpd)
+#define T_RES1_MS ceiling_fraction(DT_INST_PROP(0, t_exit_dpd), NSEC_PER_MSEC)
+#endif /* T_EXIT_DPD */
+#if DT_INST_NODE_HAS_PROP(0, dpd_wakeup_sequence)
+#define T_DPDD_MS ceiling_fraction(DT_INST_PROP(0, dpd_wakeup_sequence_0), NSEC_PER_MSEC)
+#define T_CRDP_MS ceiling_fraction(DT_INST_PROP(0, dpd_wakeup_sequence_1), NSEC_PER_MSEC)
+#define T_RDP_MS ceiling_fraction(DT_INST_PROP(0, dpd_wakeup_sequence_2), NSEC_PER_MSEC)
+#else /* DPD_WAKEUP_SEQUENCE */
+#define T_DPDD_MS 0
+#endif /* DPD_WAKEUP_SEQUENCE */
+
+/**
+ * struct spi_nand_data - Structure for defining the SPI NAND access
+ * @spi: The SPI device
+ * @spi_cfg: The SPI configuration
+ * @cs_ctrl: The GPIO pin used to emulate the SPI CS if required
+ * @sem: The semaphore to access to the flash
+ */
+struct spi_nand_data {
+	struct device *spi;
+	struct spi_config spi_cfg;
+#if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
+	struct spi_cs_control cs_ctrl;
+#endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
+#if DT_INST_NODE_HAS_PROP(0, has_dpd)
+	/* Low 32-bits of uptime counter at which device last entered
+	 * deep power-down.
+	 */
+	u32_t ts_enter_dpd;
+#endif
+	char signature[SPI_NAND_PARAMETER_SIGNATURE_LEN];
+	char manufacturer[SPI_NAND_PARAMETER_DEVICE_MFG_LEN];
+	char model[SPI_NAND_PARAMETER_DEVICE_MODEL_LEN];
+	uint32_t page_size;
+	uint32_t partial_page_size;
+	uint32_t pages_per_block;
+	uint32_t blocks_per_lun;
+	uint8_t  luns_per_device;
+	uint8_t  programs_per_page;
+	uint16_t block_endurance;
+	struct k_sem sem;
+};
+
+/* Forward declaration of "C" functions */
+int spi_nand_read_parameter_page(struct device *);
+void spi_nand_get_registers(struct device *dev, u8_t *status, u8_t *ctrl, u8_t *lock);
 
 #endif /*__SPI_NAND_H__*/

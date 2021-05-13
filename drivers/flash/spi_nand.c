@@ -49,44 +49,6 @@ LOG_MODULE_REGISTER(spi_nand, CONFIG_SPI_NAND_LOG_LEVEL);
 #define NSEC_PER_MSEC (NSEC_PER_USEC * USEC_PER_MSEC)
 #endif
 
-#if DT_INST_NODE_HAS_PROP(0, t_enter_dpd)
-#define T_DP_MS ceiling_fraction(DT_INST_PROP(0, t_enter_dpd), NSEC_PER_MSEC)
-#else /* T_ENTER_DPD */
-#define T_DP_MS 0
-#endif /* T_ENTER_DPD */
-#if DT_INST_NODE_HAS_PROP(0, t_exit_dpd)
-#define T_RES1_MS ceiling_fraction(DT_INST_PROP(0, t_exit_dpd), NSEC_PER_MSEC)
-#endif /* T_EXIT_DPD */
-#if DT_INST_NODE_HAS_PROP(0, dpd_wakeup_sequence)
-#define T_DPDD_MS ceiling_fraction(DT_INST_PROP(0, dpd_wakeup_sequence_0), NSEC_PER_MSEC)
-#define T_CRDP_MS ceiling_fraction(DT_INST_PROP(0, dpd_wakeup_sequence_1), NSEC_PER_MSEC)
-#define T_RDP_MS ceiling_fraction(DT_INST_PROP(0, dpd_wakeup_sequence_2), NSEC_PER_MSEC)
-#else /* DPD_WAKEUP_SEQUENCE */
-#define T_DPDD_MS 0
-#endif /* DPD_WAKEUP_SEQUENCE */
-
-/**
- * struct spi_nand_data - Structure for defining the SPI NAND access
- * @spi: The SPI device
- * @spi_cfg: The SPI configuration
- * @cs_ctrl: The GPIO pin used to emulate the SPI CS if required
- * @sem: The semaphore to access to the flash
- */
-struct spi_nand_data {
-	struct device *spi;
-	struct spi_config spi_cfg;
-#if DT_INST_SPI_DEV_HAS_CS_GPIOS(0)
-	struct spi_cs_control cs_ctrl;
-#endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
-#if DT_INST_NODE_HAS_PROP(0, has_dpd)
-	/* Low 32-bits of uptime counter at which device last entered
-	 * deep power-down.
-	 */
-	u32_t ts_enter_dpd;
-#endif
-	struct k_sem sem;
-};
-
 static u32_t _chip_page = SPI_NAND_INVALID_PAGE;
 static bool _page_sync_required = false;
 static bool _write_protect = true;
@@ -263,6 +225,25 @@ static int spi_nand_access(const struct device *const dev,
 
 #define spi_nand_write_ctrl(dev, src) \
 	spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, SPI_NAND_FT_ADDR_CTRL, (void *)src, 1, true, 0)
+
+
+static int spi_nand_reg_read(struct device *dev, u8_t reg, u8_t *val)
+{
+	int ret;
+
+	ret = spi_nand_access(dev, SPI_NAND_CMD_RDFR, SPI_NAND_FEATURE_ADDR_SIZE, reg, (void *)val, 1, false, 0);
+
+	return ret;
+}
+
+static int spi_nand_reg_write(struct device *dev, u8_t reg, u8_t val)
+{
+	int ret;
+
+	ret = spi_nand_access(dev, SPI_NAND_CMD_WRFR, SPI_NAND_FEATURE_ADDR_SIZE, reg, (void *)&val, 1, true, 0);
+
+	return ret;
+}
 
 __attribute__((unused))
 static int enter_dpd(const struct device *const dev)
@@ -1097,6 +1078,10 @@ static const struct spi_nand_config flash_id = {
 	.id = DT_INST_PROP(0, jedec_id),
 	.spi_mode = DT_INST_PROP(0, spi_transfer_mode),
 	.size = DT_INST_PROP(0, size),
+	.api = {
+		.reg_read = spi_nand_reg_read,
+		.reg_write = spi_nand_reg_write,
+	},
 };
 
 static struct spi_nand_data spi_nand_memory_data;
