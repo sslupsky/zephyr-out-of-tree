@@ -54,6 +54,31 @@ static u32_t _chip_page = SPI_NAND_INVALID_PAGE;
 static bool _page_sync_required = false;
 static bool _write_protect = true;
 
+static inline u32_t page_addr_of(u32_t addr)
+{
+	return addr & ~(SPI_NAND_PAGE_SIZE - 1U);
+}
+
+static inline u32_t page_offset_of(u32_t addr)
+{
+	return addr & (SPI_NAND_PAGE_SIZE - 1U);
+}
+
+static inline bool is_page_aligned(uint32_t addr)
+{
+	return (((addr) & (SPI_NAND_PAGE_SIZE - 1U)) == 0);
+}
+
+static inline bool is_sector_aligned(uint32_t addr)
+{
+	return (((addr) & (SPI_NAND_BLOCK_SIZE - 1U)) == 0);
+}
+
+static inline bool is_block_aligned(uint32_t addr)
+{
+	return (((addr) & (SPI_NAND_BLOCK_SIZE - 1U)) == 0);
+}
+
 /* Capture the time at which the device entered deep power-down. */
 static inline void record_entered_dpd(const struct device *const dev)
 {
@@ -797,7 +822,7 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 
 	while (size) {
 		if ((size >= SPI_NAND_BLOCK_SIZE)
-			  && SPI_NAND_IS_BLOCK_ALIGNED(addr)) {
+			  && is_block_aligned(addr)) {
 			/* 256 KiB block erase */
 			/* WREN must be set immediately before the block erase command */
 			if (!_write_protect) {
