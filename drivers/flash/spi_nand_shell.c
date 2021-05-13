@@ -20,6 +20,7 @@
 
 #include <errno.h>
 #include <zephyr/types.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -137,6 +138,7 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 {
 	struct device *dev;
 	struct spi_nand_data *drv_data;
+	char buf[21];
 
 	if (argc == 2) {
 		dev = device_get_binding(argv[1]);
@@ -151,9 +153,12 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 
 	drv_data = dev->driver_data;
 	spi_nand_read_parameter_page(dev);
-	shell_print(shell, "Signature: %.*s", sizeof(drv_data->signature), drv_data->signature);
-	shell_print(shell, "Manufacturer: %.*s", sizeof(drv_data->manufacturer), drv_data->manufacturer);
-	shell_print(shell, "Model: %.*s", sizeof(drv_data->model), drv_data->model);
+	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->signature), drv_data->signature);
+	shell_print(shell, "Signature: %s", buf);
+	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->manufacturer), drv_data->manufacturer);
+	shell_print(shell, "Manufacturer: %s", buf);
+	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->model), drv_data->model);
+	shell_print(shell, "Model: %s", buf);
 	shell_print(shell, "Page size: %d", drv_data->page_size);
 	shell_print(shell, "Pages per block: %d", drv_data->pages_per_block);
 	shell_print(shell, "Blocks per LUN: %d", drv_data->blocks_per_lun);
