@@ -536,7 +536,6 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 			goto done;
 		}
 
-		// k_busy_wait(SPI_NAND_MIN_PROG_TIME);
 		ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_PAGE_PROG_TIME);
 		if (ret < 0) {
 			LOG_ERR("page program wait error %d", ret);
@@ -581,7 +580,6 @@ static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
 		goto done;
 	}
 
-	// k_busy_wait(SPI_NAND_MIN_READ_TIME);
 	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_PAGE_READ_TIME);
 	if (ret < 0) {
 		LOG_ERR("read array wait error %d", ret);
@@ -835,7 +833,6 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 			if (ret < 0) {
 				LOG_ERR("block erase error sending command");
 			}
-			// k_busy_wait(SPI_NAND_MIN_ERASE_TIME);
 			/* wait for OIP */
 			ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_BLOCK_ERASE_TIME);
 			if (ret < 0) {
