@@ -457,7 +457,7 @@ static int spi_nand_wait_until_ready(struct device *dev, u8_t *status_reg, u32_t
 			break;
 		}
 		if (status_time > max_time) {
-			LOG_ERR("nand timed out at %dus", timeout);
+			LOG_ERR("time out: 0x%02x, %dus", *status_reg, timeout);
 			ret = -ETIMEDOUT;
 			break;
 		}
@@ -564,7 +564,7 @@ static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
 
 	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_PAGE_READ_TIME);
 	if (ret < 0) {
-		LOG_ERR("read array wait error %d", ret);
+		LOG_ERR("read cell array wait error %d", ret);
 		goto done;
 	}
 
