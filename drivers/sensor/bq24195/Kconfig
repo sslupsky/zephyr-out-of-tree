@@ -91,7 +91,7 @@ config BQ24195_THREAD_PRIORITY
 config BQ24195_THREAD_STACK_SIZE
 	int "Thread stack size"
 	depends on BQ24195_TRIGGER_OWN_THREAD
-	default 1024
+	default 512
 	help
 	  Stack size of thread used by the driver to handle interrupts.
 
