@@ -25,6 +25,7 @@ struct log_backend_ctx {
 	char fname[20];
 	struct k_timer timer;
 	bool sync_pending;
+	uint16_t char_count;
 	k_timeout_t timeout;
 };
 
@@ -46,6 +47,7 @@ static void witap_log_backend_sync_work_handler(struct k_work *work)
 
 	ret = fs_sync(&witap_log_ctx.file);
 	witap_log_ctx.sync_pending = false;
+	witap_log_ctx.char_count = 0;
 	return;
 }
 
@@ -55,6 +57,14 @@ static int char_out(u8_t *data, size_t length, void *backend_ctx)
 	int ret;
 
 	ret = fs_write(&ctx->file, data, length);
+	ctx->char_count += length;
+	/*
+	 *  if we are close to overflowing the log buffer,
+	 *  we need to sync the file
+	 */
+	if (ctx->char_count + 128 > CONFIG_LOG_BUFFER_SIZE) {
+		k_work_submit(&witap_log_backend_work);
+	}
 	if (!ctx->sync_pending) {
 		k_timer_start(&ctx->timer, ctx->timeout, K_MSEC(0));
 		ctx->sync_pending = true;
@@ -81,6 +91,7 @@ int witap_log_backend_enable(char *fname, u32_t init_log_level, k_timeout_t time
 	k_timer_init(&witap_log_ctx.timer, witap_log_backend_timer_handler, NULL);
 	witap_log_ctx.timeout = timeout;
 	witap_log_ctx.sync_pending = false;
+	witap_log_ctx.char_count = 0;
 	log_output_ctx_set(&witap_log_output, &witap_log_ctx);
 	log_backend_enable(&witap_log_backend, &witap_log_ctx, init_log_level);
 	return ret;
