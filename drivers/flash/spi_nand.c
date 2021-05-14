@@ -989,11 +989,11 @@ static int spi_nand_configure(struct device *dev)
 	/* now the spi bus is configured, we can verify the flash id */
 	ret = spi_nand_read_id(dev, params);
 	if (ret != 0) {
-		LOG_ERR("read jedec id failed");
+		LOG_ERR("jedec id match failed");
 		return -ENODEV;
 	}
 
-	LOG_INF("jedec id match");
+	LOG_DBG("jedec id match");
 
 	ret = spi_nand_read_parameter_page(dev);
 	if (ret < 0) {
