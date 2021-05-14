@@ -117,10 +117,10 @@ const struct led_animation_t animation_heartbeat = {
 
 const struct led_animation_t animation_heartbeat_error = {
 	.effect = LED_EFFECT_BLINK,
-	.color = (struct led_color_t *)&LED_COLOR_RED,
-	.duration = 1000,
-	.duty_cycle = 100,
-	.repeat = 0,
+	.color = (struct led_color_t *)&LED_COLOR_GREEN,
+	.duration = 200,
+	.duty_cycle = 500,
+	.repeat = 1,
 };
 
 const struct led_animation_t animation_boot = {
@@ -133,7 +133,7 @@ const struct led_animation_t animation_boot = {
 
 const struct led_animation_t animation_success = {
 	.effect = LED_EFFECT_BLINK,
-	.color = (struct led_color_t *)&LED_COLOR_GREEN,
+	.color = (struct led_color_t *)&LED_COLOR_RED,
 	.duration = 1000,
 	.duty_cycle = 100,
 	.repeat = 0,
@@ -141,7 +141,7 @@ const struct led_animation_t animation_success = {
 
 const struct led_animation_t animation_wait = {
 	.effect = LED_EFFECT_BLINK,
-	.color = (struct led_color_t *)&LED_COLOR_GREEN,
+	.color = (struct led_color_t *)&LED_COLOR_RED,
 	.duration = 200,
 	.duty_cycle = 500,
 	.repeat = 2,
@@ -150,12 +150,12 @@ const struct led_animation_t animation_wait = {
 const struct led_animation_t animation_error = {
 	.effect = LED_EFFECT_BLINK,
 	.color = (struct led_color_t *)&LED_COLOR_RED,
-	.duration = 1000,
-	.duty_cycle = 200,
-	.repeat = 2,
+	.duration = 200,
+	.duty_cycle = 500,
+	.repeat = 1,
 };
 
-const struct led_animation_t animation_gpslock = {
+const struct led_animation_t animation_gps_lock = {
 	.effect = LED_EFFECT_BLINK,
 	.color = (struct led_color_t *)&LED_COLOR_BLUE,
 	.duration = 1000,
@@ -163,12 +163,36 @@ const struct led_animation_t animation_gpslock = {
 	.repeat = 0,
 };
 
-const struct led_animation_t animation_usb = {
+const struct led_animation_t animation_gps_error = {
+	.effect = LED_EFFECT_BLINK,
+	.color = (struct led_color_t *)&LED_COLOR_BLUE,
+	.duration = 200,
+	.duty_cycle = 500,
+	.repeat = 1,
+};
+
+const struct led_animation_t animation_gps_searching = {
+	.effect = LED_EFFECT_BLINK,
+	.color = (struct led_color_t *)&LED_COLOR_BLUE,
+	.duration = 200,
+	.duty_cycle = 500,
+	.repeat = 2,
+};
+
+const struct led_animation_t animation_usb_connect = {
+	.effect = LED_EFFECT_BLINK,
+	.color = (struct led_color_t *)&LED_COLOR_MAGENTA,
+	.duration = 1000,
+	.duty_cycle = 100,
+	.repeat = 0,
+};
+
+const struct led_animation_t animation_usb_disconnect = {
 	.effect = LED_EFFECT_BLINK,
 	.color = (struct led_color_t *)&LED_COLOR_MAGENTA,
 	.duration = 200,
 	.duty_cycle = 500,
-	.repeat = 3,
+	.repeat = 1,
 };
 
 static bool led_initialized = false;
