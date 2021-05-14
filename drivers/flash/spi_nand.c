@@ -472,13 +472,19 @@ static int spi_nand_wait_until_ready(struct device *dev, u8_t *status_reg, u32_t
 		if (ret < 0) {
 			break;
 		}
-		if (!(*status_reg & SPI_NAND_STATUS_OIP_BIT)) {
-			break;
-		}
+		/*  The order of the following checks is important  */
+		/*  Check for an error condition first  */
+		// if (*status_reg & SPI_NAND_STATUS_ERROR_BITS) {
+		// 	break;
+		// }
 		if (*status_reg & SPI_NAND_STATUS_PROGF_BIT) {
 			break;
 		}
 		if (*status_reg & SPI_NAND_STATUS_ERASEF_BIT) {
+			break;
+		}
+		/*  Check if operation is complete last */
+		if (!(*status_reg & SPI_NAND_STATUS_OIP_BIT)) {
 			break;
 		}
 		if (status_time > max_time) {
