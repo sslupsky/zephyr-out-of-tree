@@ -46,6 +46,19 @@
 static const struct shell *ctx_shell;
 static struct device *spi_nand_dev;
 
+static const struct spi_nand_register spi_nand_registers[] = {
+	{.addr = SPI_NAND_FT_ADDR_LOCK, .name = "lock"},
+	{.addr = SPI_NAND_FT_ADDR_CTRL, .name = "ctrl"},
+	{.addr = SPI_NAND_FT_ADDR_STATUS, .name = "status"},
+	{.addr = SPI_NAND_FT_ADDR_BFD, .name = "bfd"},
+	{.addr = SPI_NAND_FT_ADDR_BFS, .name = "bfs"},
+	{.addr = SPI_NAND_FT_ADDR_MBF, .name = "mbf"},
+	{.addr = SPI_NAND_FT_ADDR_BFR0, .name = "bfr0"},
+	{.addr = SPI_NAND_FT_ADDR_BFR1, .name = "bfr1"},
+	{.addr = SPI_NAND_FT_ADDR_BFR2, .name = "bfr2"},
+	{.addr = SPI_NAND_FT_ADDR_BFR3, .name = "bfr3"},
+};
+
 __unused
 static void spi_nand_ready(int err)
 {
@@ -234,11 +247,6 @@ static int cmd_debug_register(const struct shell *shell, size_t argc, char **arg
 {
 	struct spi_nand_data *drv_data;
 	const struct spi_nand_config *cfg;
-	static const char* reg_names[] = {
-		"Lock",
-		"Control",
-		"Status",
-	};
 	u8_t reg = 0;
 	u8_t val = 0;
 	int ret = 0;
@@ -253,26 +261,26 @@ static int cmd_debug_register(const struct shell *shell, size_t argc, char **arg
 
 	if (argc == 2) {
 		if (strncmp(argv[1], "all", sizeof("all")) == 0) {
-			for (reg = 0; reg < ARRAY_SIZE(reg_names); reg++) {
+			for (reg = 0; reg < ARRAY_SIZE(spi_nand_registers); reg++) {
 				if (cfg->api.reg_read) {
-					cfg->api.reg_read(spi_nand_dev, reg, &val);
-				shell_print(shell, "REG%02X (%s):  0x%02x", reg, reg_names[reg], val);
+					cfg->api.reg_read(spi_nand_dev, spi_nand_registers[reg].addr, &val);
+					shell_print(shell, "REG%02X (%s):  0x%02x", spi_nand_registers[reg].addr, spi_nand_registers[reg].name, val);
 				}
 			}
 		} else {
 			reg = strtol(argv[1], NULL, 0);
-			if (cfg->api.reg_read) {
-				cfg->api.reg_read(spi_nand_dev, reg, &val);
-			shell_print(shell, "REG%02X (%s):  0x%02x", reg, reg_names[reg], val);
+			if (cfg->api.reg_read && reg >=0 && reg <= ARRAY_SIZE(spi_nand_registers)) {
+				cfg->api.reg_read(spi_nand_dev, spi_nand_registers[reg].addr, &val);
+				shell_print(shell, "REG%02X (%s):  0x%02x", spi_nand_registers[reg].addr, spi_nand_registers[reg].name, val);
 			}
 		}
 	} else if (argc == 3) {
 		reg = strtol(argv[1], NULL, 0);
 		val = strtol(argv[2], NULL, 0);
-		if (cfg->api.reg_write) {
-			cfg->api.reg_write(spi_nand_dev, reg, val);
+		if (cfg->api.reg_write && reg >=0 && reg <= ARRAY_SIZE(spi_nand_registers)) {
+			cfg->api.reg_write(spi_nand_dev, spi_nand_registers[reg].addr, val);
+			shell_print(shell, "REG%02X (%s):  0x%02x", spi_nand_registers[reg].addr, spi_nand_registers[reg].name, val);
 		}
-		shell_print(shell, "REG%02X (%s):  0x%02x", reg, reg_names[reg], val);
 	}
 
 	return ret;
@@ -353,6 +361,7 @@ static int cmd_debug_read(const struct shell *shell, size_t argc, char **argv)
 		offset += read;
 		count -= read;
 	}
+	flash_area_close(pfa);
 	return 0;
 }
 
