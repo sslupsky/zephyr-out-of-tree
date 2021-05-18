@@ -378,6 +378,47 @@ static int cmd_debug_read(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_erase(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argv);
+
+	const struct flash_area *pfa;
+	uint8_t id;
+	int ret;
+
+	if (argc > 1) {
+		id = strtol(argv[1], NULL, 0);
+	} else {
+		shell_error(shell, "area (partition) id required");
+		return -ENODEV;
+	}
+
+	ret = flash_area_open(id, &pfa);
+	if (ret < 0) {
+		shell_error(shell, "could not open partition, id=%u, ret=%d",
+		       id, ret);
+		return -ENODEV;
+	}
+
+	shell_print(shell, "partition: %u at 0x%x on %s for %u bytes",
+	       id, (unsigned int)pfa->fa_off,
+	       pfa->fa_dev_name,
+	       (unsigned int)pfa->fa_size);
+
+	shell_print(shell, "erasing flash");
+	ret = flash_area_erase(pfa, 0, pfa->fa_size);
+	if (ret < 0) {
+		shell_print(shell, "flash erase error, ret=%d", ret);
+		goto done;
+	} else {
+		shell_print(shell, "done");
+	}
+
+	flash_area_close(pfa);
+done:
+	return ret;
+}
+
 /***********************/
 
 static int cmd_spi_nand_poll(const struct shell *shell)
@@ -577,6 +618,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(spi_nand_cmds,
 	SHELL_CMD(pm, &spi_nand_pm_cmds, HELP_NONE, cmd_spi_nand_pm),
 	SHELL_CMD(poll, NULL, HELP_NONE, cmd_spi_nand_poll),
 	SHELL_CMD(save, NULL, HELP_NONE, cmd_spi_nand_save),
+	SHELL_CMD(erase, NULL, HELP_NONE, cmd_erase),
 	SHELL_CMD(status, NULL, HELP_NONE, cmd_nand_status),
 	SHELL_SUBCMD_SET_END
 );
