@@ -488,10 +488,16 @@ static int spi_nand_wait_until_ready(struct device *dev, u8_t *status_reg, u32_t
 			break;
 		}
 		if (status_time > max_time) {
-			LOG_ERR("time out: 0x%02x, %dus", *status_reg, timeout);
+			LOG_DBG("time out: 0x%02x, %dus", *status_reg, timeout);
 			ret = -ETIMEDOUT;
 			break;
 		}
+		/*
+		 *  spi_nand_wait_until_ready() wait duration can be 100's or
+		 *  1000's of usec.  So, since the nand is locked we can allow other
+		 *  threads to run while we wait
+		 */
+		k_yield();
 	};
 	return ret;
 }
