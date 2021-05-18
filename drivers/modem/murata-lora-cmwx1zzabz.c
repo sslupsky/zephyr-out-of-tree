@@ -157,7 +157,7 @@ static struct modem_pin modem_pins[] = {
 
 #define LORA_REJOIN_PERIOD            600000
 #define LORA_JOIN_RETRIES                  6
-#define LORA_UPLINK_TIMEOUT            65000                  ///<  MAX_RX_WINDOW for US915 region is 3000ms per retry.  Max timeout = 3000 * NbTrials (=8) = 24000 ms
+#define LORA_UPLINK_TIMEOUT            65000		///<  MAX_RX_WINDOW for US915 region is 3000ms per retry.  Max timeout = 3000 * NbTrials (=8) = 24000 ms
 #define LORA_RX_WINDOW_PERIOD           3000
 #define LORA_NBTRIALS                      8
 #define LORA_ACK_TIMEOUT                6000
@@ -185,19 +185,22 @@ struct lora_status_t
 	bool req_ack;      /*< ENABLE if acknowledge is requested */
 	bool ack_failed;
 	bool uart_busy;
+/*
+ * TODO:  Other status information to include:
+ *
+ * Firmware Version and Status Advertising in Frame 0
+ * Battery voltage and level
+ * Firmware revision
+ * Received signal levels (device Rx levels from gateway)
+ * Device configuration parameters or CRC/MD5 hash
+ * Device error conditions (e.g., sensor out of calibration)
+ * Temperature (if this is a secondary measurement)
+ * Counts of certain events such as the number of times woken by accelerometer
+ * Wake versus sleep time of the device
+ */
+
 };
 
-/*
-Firmware Version and Status Advertising in Frame 0
-Battery voltage and level
-Firmware revision
-Received signal levels (device Rx levels from gateway)
-Device configuration parameters or CRC/MD5 hash
-Device error conditions (e.g., sensor out of calibration)
-Temperature (if this is a secondary measurement)
-Counts of certain events such as the number of times woken by accelerometer
-Wake versus sleep time of the device
-*/
 static struct lora_modem {
 	struct modem_context context;
 
@@ -705,6 +708,7 @@ static int lora_setup_keys(struct lora_modem *lora)
 
 static void lora_heartbeat(struct k_work *work)
 {
+	/*  TODO: send device status  */
 	lora.status.req_ack = true;
 	k_delayed_work_submit(&lora.heartbeat_work, K_SECONDS(LORA_HEARTBEAT_TIMEOUT));
 }
@@ -744,7 +748,9 @@ static void lora_req_ack(struct k_work *work)
 			/* LoRaMac will retry sending the confirmed packet up
 			 * to 8 times.  If the retries fail, then the uplink
 			 * either could not reach the server or the ACK could
-			 * not reach the mote
+			 * not reach the end device
+			 * 
+			 * TODO:  handle ack failure
 			 */
 			lora.status.failed_ack_count++;
 			lora.status.ack_failed = true;
