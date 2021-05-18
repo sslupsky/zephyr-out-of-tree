@@ -85,7 +85,9 @@ extern const struct led_animation_t animation_boot;
 extern const struct led_animation_t animation_success;
 extern const struct led_animation_t animation_wait;
 extern const struct led_animation_t animation_error;
-extern const struct led_animation_t animation_gpslock;
+extern const struct led_animation_t animation_gps_lock;
+extern const struct led_animation_t animation_gps_error;
+extern const struct led_animation_t animation_gps_searching;
 extern const struct led_animation_t animation_usb_connect;
 extern const struct led_animation_t animation_usb_disconnect;
 
