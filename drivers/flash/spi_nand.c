@@ -595,8 +595,17 @@ static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
 
 	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_PAGE_READ_TIME);
 	if (ret < 0) {
-		LOG_ERR("read cell array wait error %d", ret);
-		goto done;
+		/* if first read fails, try again */
+		ret = spi_nand_cmd_read_flash_array(dev, row_addr);
+		if (ret < 0) {
+			goto done;
+		}
+		ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_PAGE_READ_TIME);
+		if (ret < 0) {
+			/* if read fails again, return with error */
+			LOG_ERR("read cell array wait error %d", ret);
+			goto done;
+		}
 	}
 
 	/* check ecc bits */
