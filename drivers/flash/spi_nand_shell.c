@@ -126,6 +126,7 @@ static int cmd_info_id(const struct shell *shell, size_t argc, char *argv[])
 {
 	struct device *dev;
 	struct spi_nand_data *drv_data;
+	char buf[21];
 
 	if (argc == 2) {
 		dev = device_get_binding(argv[1]);
@@ -139,10 +140,17 @@ static int cmd_info_id(const struct shell *shell, size_t argc, char *argv[])
 	}
 
 	drv_data = dev->driver_data;
-	spi_nand_read_parameter_page(dev);
-	shell_print(shell, "Signature: %.*s", sizeof(drv_data->signature), drv_data->signature);
-	shell_print(shell, "Manufacturer: %.*s", sizeof(drv_data->manufacturer), drv_data->manufacturer);
-	shell_print(shell, "Model: %.*s", sizeof(drv_data->model), drv_data->model);
+	const struct flash_driver_api *api =
+		(const struct flash_driver_api *)dev->driver_api;
+	api->get_parameters(dev);
+	/*  alternatively, the private spi_nand function could be used  */
+	// spi_nand_read_parameter_page(dev);
+	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->signature), drv_data->signature);
+	shell_print(shell, "Signature: %s", buf);
+	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->manufacturer), drv_data->manufacturer);
+	shell_print(shell, "Manufacturer: %s", buf);
+	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->model), drv_data->model);
+	shell_print(shell, "Model: %s", buf);
 
 	return 0;
 }
@@ -165,7 +173,11 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 	}
 
 	drv_data = dev->driver_data;
-	spi_nand_read_parameter_page(dev);
+	const struct flash_driver_api *api =
+		(const struct flash_driver_api *)dev->driver_api;
+	api->get_parameters(dev);
+	/*  alternatively, the private spi_nand function could be used  */
+	// spi_nand_read_parameter_page(dev);
 	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->signature), drv_data->signature);
 	shell_print(shell, "Signature: %s", buf);
 	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->manufacturer), drv_data->manufacturer);
@@ -220,6 +232,7 @@ static int cmd_nand_status(const struct shell *shell, size_t argc, char *argv[])
 
 	drv_data = dev->driver_data;
 
+	/*  this is a private spi_nand function call  */
 	spi_nand_get_registers(dev, &status, &ctrl, &lock);
 	shell_print(shell, "status: 0x%02x, ctrl: 0x%02x, lock: 0x%02x", status, ctrl, lock);
 
@@ -547,7 +560,6 @@ SHELL_STATIC_SUBCMD_SET_CREATE(spi_nand_info_cmds,
 SHELL_STATIC_SUBCMD_SET_CREATE(spi_nand_pm_cmds,
 	SHELL_CMD(mode, NULL, HELP_NONE, cmd_nand_mode),
 	SHELL_CMD(sleep, NULL, HELP_NONE, cmd_nand_sleep),
-	SHELL_CMD(status, NULL, HELP_NONE, cmd_nand_status),
 	SHELL_SUBCMD_SET_END
 );
 
@@ -565,6 +577,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(spi_nand_cmds,
 	SHELL_CMD(pm, &spi_nand_pm_cmds, HELP_NONE, cmd_spi_nand_pm),
 	SHELL_CMD(poll, NULL, HELP_NONE, cmd_spi_nand_poll),
 	SHELL_CMD(save, NULL, HELP_NONE, cmd_spi_nand_save),
+	SHELL_CMD(status, NULL, HELP_NONE, cmd_nand_status),
 	SHELL_SUBCMD_SET_END
 );
 

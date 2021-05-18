@@ -394,8 +394,8 @@ struct spi_nand_data {
 	struct k_sem sem;
 };
 
-/* Forward declaration of "C" functions */
-int spi_nand_read_parameter_page(struct device *);
+/* Forward declaration of private "C" functions */
+/* used in spi_nand_shell.c */
 void spi_nand_get_registers(struct device *dev, u8_t *status, u8_t *ctrl, u8_t *lock);
 
 #endif /*__SPI_NAND_H__*/
