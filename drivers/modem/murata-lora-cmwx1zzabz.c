@@ -160,14 +160,23 @@ static struct modem_pin modem_pins[] = {
 #define LORA_UPLINK_TIMEOUT            65000		///<  MAX_RX_WINDOW for US915 region is 3000ms per retry.  Max timeout = 3000 * NbTrials (=8) = 24000 ms
 #define LORA_RX_WINDOW_PERIOD           3000
 #define LORA_NBTRIALS                      8
-#define LORA_ACK_TIMEOUT                6000
+
+/*
+ * If an ack is not received within the rx window of the uplink
+ * that requested the ack then we must wait until the next rx
+ * window opens.  So, the ack timeout must extend beyond the 
+ * time of the next uplink (uplink + rx windwo).  If we want to
+ * provide time for multiple rx windows then the timeout must
+ * be a multiple of the uplink period.
+ */
+#define LORA_ACK_TIMEOUT              120000		///<  This timeout should extend beyond the next uplink so we have an rx window for the ack
 #define LORA_CONFIRMED_RETRIES             6
 #define LORA_UNCONFIRMED_RETRIES           2
 #define LORA_MAX_CONFIRMED_UPLINKS_FAILED 10
 #define LORA_MAX_LORAMAC_FAILED           10
 
-#define LORA_HEARTBEAT_TIMEOUT		3600
-#define LORA_UART_TXC_TIMEOUT		   2
+#define LORA_HEARTBEAT_TIMEOUT		14400		///< Time between LoRa radio confirmed uplinks.  Also used to send device status.  (sec)
+#define LORA_UART_TXC_TIMEOUT		2
 
 struct lora_status_t
 {
@@ -177,12 +186,13 @@ struct lora_status_t
 	uint32_t ack_count;
 	uint32_t failed_ack_count;
 	uint32_t reset_count;
-	int16_t rssi;                /*< Rssi of the received packet */
-	uint8_t snr;                 /*< Snr of the received packet */
-	uint8_t application_port;    /*< Application port we will receive to */
+	int16_t rssi;			/*< Rssi of the received packet */
+	uint8_t snr;			/*< Snr of the received packet */
+	uint8_t application_port;	/*< Application port we will receive to */
 	uint8_t nbtrials;
 	bool network_joined;
-	bool req_ack;      /*< ENABLE if acknowledge is requested */
+	bool req_ack;			/*< ENABLE if acknowledge is requested */
+	bool ack_wait;
 	bool ack_failed;
 	bool uart_busy;
 /*
@@ -390,6 +400,12 @@ MODEM_CMD_DEFINE(on_cmd_ack)
 {
 	LOG_INF("network ack");
 	lora.status.ack_count++;
+	if (lora.status.ack_wait) {
+		if (k_delayed_work_remaining_get(&lora.req_ack_work)) {
+			k_delayed_work_cancel(&lora.req_ack_work);
+		}
+		lora.status.ack_wait = false;
+	}
 	modem_cmd_handler_set_error(data, 0);
 	// k_sem_give(&lora.sem_response);
 	return 0;
@@ -946,6 +962,7 @@ static int lora_init(struct device *device)
 	k_delayed_work_init(&lora->lora_configure_work, lora_configure);
 	k_delayed_work_init(&lora->heartbeat_work, lora_heartbeat);
 	lora->status.req_ack = false;
+	lora->status.ack_wait = false;
 	k_delayed_work_init(&lora->req_ack_work, lora_req_ack);
 
 	(void)k_delayed_work_submit(&lora->lora_configure_work, K_SECONDS(0));
@@ -970,6 +987,7 @@ int uart_pipe_send(const uint8_t *data, int len)
 			LOG_DBG("uplink ack requested");
 			snprintk(buf, sizeof(buf), "AT+CTX %d\r", len);
 			lora.status.req_ack = false;
+			lora.status.ack_wait = true;
 			lora.status.nbtrials = LORA_NBTRIALS;
 			k_delayed_work_submit(&lora.req_ack_work, K_MSEC(LORA_ACK_TIMEOUT));
 		} else {
