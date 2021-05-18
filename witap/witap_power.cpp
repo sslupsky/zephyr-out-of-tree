@@ -19,7 +19,7 @@
 #include "witap_types.h"
 #include "witap_power.hpp"
 
-LOG_MODULE_DECLARE(myApp, CONFIG_MYAPP_LOG_LEVEL);
+LOG_MODULE_DECLARE(app, CONFIG_APP_LOG_LEVEL);
 
 #define SECS_TO_TICKS		CONFIG_SYS_CLOCK_TICKS_PER_SEC
 

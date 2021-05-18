@@ -22,7 +22,7 @@
 #define LED_RING_BUF_BYTES ((LED_MAX_ANIMATIONS * sizeof(struct led_animation_t)) + 1)
 RING_BUF_DECLARE(led_ring_buf, LED_RING_BUF_BYTES);
 
-LOG_MODULE_DECLARE(myApp);
+LOG_MODULE_DECLARE(app);
 K_THREAD_STACK_DEFINE(led_stack, LED_THREAD_STACKSIZE);
 
 struct led_data_t {
