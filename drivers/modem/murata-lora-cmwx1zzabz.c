@@ -350,6 +350,12 @@ MODEM_CMD_DEFINE(lora_cmd_error)
 	return 0;
 }
 
+static const struct modem_cmd response_cmds[] = {
+	MODEM_CMD("+OK", lora_cmd_ok, 0U, ""),
+	MODEM_CMD("+ERR", lora_cmd_error, 0U, ""),
+	MODEM_CMD("CONNECT", lora_cmd_ok, 0U, ""),
+};
+
 /*
  * MODEM BOOLEAN RESPONSE HANDLERS
  */
@@ -385,6 +391,11 @@ MODEM_CMD_DEFINE(on_cmd_false)
 	k_sem_give(&lora.sem_response);
 	return 0;
 }
+
+static const struct modem_cmd bool_response_cmds[] = {
+	MODEM_CMD("0", on_cmd_false, 0U, ""),
+	MODEM_CMD("1", on_cmd_true, 0U, ""),
+};
 
 /*
  * MODEM UNSOLICITED NOTIFICATION HANDLERS
@@ -502,23 +513,12 @@ MODEM_CMD_DEFINE(on_cmd_modem_rx_err)
 	return 0;
 }
 
-static const struct modem_cmd response_cmds[] = {
-	MODEM_CMD("+OK", lora_cmd_ok, 0U, ""),
-	MODEM_CMD("+ERR", lora_cmd_error, 0U, ""),
-	MODEM_CMD("CONNECT", lora_cmd_ok, 0U, ""),
-};
-
 static const struct modem_cmd unsol_cmds[] = {
 	MODEM_CMD("+EVENT=0,0", on_cmd_reset, 0U, ""),
 	MODEM_CMD("+EVENT=1,1", on_cmd_join, 0U, ""),
 	MODEM_CMD("+RECV=", on_cmd_rx_data, 2U, ","),
 	MODEM_CMD("+ACK", on_cmd_ack, 0U, ""),
 	MODEM_CMD("Error when receiving", on_cmd_modem_rx_err, 0U, ""),
-};
-
-static const struct modem_cmd bool_response_cmds[] = {
-	MODEM_CMD("0", on_cmd_false, 0U, ""),
-	MODEM_CMD("1", on_cmd_true, 0U, ""),
 };
 
 #if defined(CONFIG_MODEM_SHELL)
