@@ -865,6 +865,14 @@ static void lora_heartbeat(struct k_work *work)
  * loosing an ACK is the retries are ignored by
  * Chirpstack.
  *
+ * see github issue:
+ * https://github.com/brocaar/chirpstack-network-server/issues/272
+ *
+ * In particular, section 18.4 of the LoRaWAN specification shows a table
+ * of how the retransmissions change the data rate.  By the
+ * end of the retranmissions cycle, the data rate has been reduced to
+ * DR0.
+ *
  * @param
  * @retval none
  *
