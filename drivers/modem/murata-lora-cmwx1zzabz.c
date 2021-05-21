@@ -19,7 +19,7 @@
 #define DT_DRV_COMPAT murata_lora
 
 #include <logging/log.h>
-LOG_MODULE_REGISTER(modem_lora, CONFIG_MODEM_LOG_LEVEL);
+LOG_MODULE_REGISTER(cmwx1zzabz, CONFIG_CMWX1ZZABZ_LOG_LEVEL);
 
 #include <kernel.h>
 #include <device.h>
