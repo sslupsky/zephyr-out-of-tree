@@ -10,9 +10,9 @@ menuconfig OOT_MODEM
 
 if OOT_MODEM
 
-# module = MODEM
-# module-str = modem
-# source "subsys/logging/Kconfig.template.log_config"
+module = CMWX1ZZABZ
+module-str = cmwx1zzabz
+source "subsys/logging/Kconfig.template.log_config"
 
 rsource "Kconfig.murata-lora-cmwx1zzabz"
 
