@@ -830,11 +830,11 @@ static int lora_setup_keys(struct lora_modem *lora)
  * Note that confirmed uplinks cause undesirable side effects.
  * In particular, an uplink that follows the confirmed uplink
  * will have its ADR changed.  In my observations, for some reason
- * the ADR appears to be reset to DR_0 with has a very limited
+ * the ADR appears to be reset to DR0 with has a very limited
  * payload size (11 bytes).
  * The consequence is that it is likely that the uplink following
  * the confirmed uplink will have it's payload removed because
- * the payload is too large for the DR_0 data rate.
+ * the payload is too large for the DR0 data rate.
  *
  * @param
  * @retval none
@@ -843,9 +843,8 @@ static int lora_setup_keys(struct lora_modem *lora)
  */
 static void lora_heartbeat(struct k_work *work)
 {
-	/*  TODO: send device status  */
-	lora.status.req_ack = true;
 	k_delayed_work_submit(&lora.heartbeat_work, K_SECONDS(LORA_HEARTBEAT_TIMEOUT));
+	// lora.status.req_ack = true;
 }
 
 /**
@@ -1082,6 +1081,7 @@ static int lora_init(struct device *device)
 	k_delayed_work_init(&lora->heartbeat_work, lora_heartbeat);
 	lora->status.req_ack = false;
 	lora->status.ack_wait = false;
+	lora->status.ack_count = 0;
 	lora->status.downlink_count = 0;
 	k_delayed_work_init(&lora->req_ack_work, lora_req_ack);
 
@@ -1127,16 +1127,20 @@ int uart_pipe_send(const uint8_t *data, int len)
 	k_sem_take(&lora.ppp_send_sem, K_FOREVER);
 
 	if (lora.status.network_joined && len <= LORA_MAX_DATA_LENGTH) {
-		LOG_DBG("uplink queued");
 		if (lora.status.req_ack) {
 			/* request ack */
-			LOG_DBG("uplink ack requested");
+			LOG_DBG("uplink ack request");
 			snprintk(buf, sizeof(buf), "AT+CTX %d\r", len);
 			lora.status.req_ack = false;
 			lora.status.ack_wait = true;
 			lora.status.nbtrials = LORA_NBTRIALS;
 		} else {
 			snprintk(buf, sizeof(buf), "AT+UTX %d\r", len);
+			lora.status.ack_wait = false;
+		}
+		LOG_DBG("uplink queued: len=%d", len);
+		if (len > 28) {
+			LOG_DBG("payload may be suppressed when data rate is DR0");
 		}
 		(void)lora.context.iface.write(&lora.context.iface, buf, strlen(buf));
 		(void)lora.context.iface.write(&lora.context.iface, data, len);
