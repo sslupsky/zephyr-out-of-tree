@@ -334,6 +334,7 @@ MODEM_CMD_DEFINE(lora_cmd_ok)
  * @param
  * @retval 0
  * 
+ * TODO:  Parse modem_error and return error code
  */
 MODEM_CMD_DEFINE(lora_cmd_error)
 {
@@ -428,7 +429,6 @@ MODEM_CMD_DEFINE(on_cmd_join)
 {
 	lora.status.network_joined = true;
 	lora.status.join_count++;
-	/* TODO:  send device status after join */
 	LOG_INF("network join");
 	modem_cmd_handler_set_error(data, 0);
 	return 0;
