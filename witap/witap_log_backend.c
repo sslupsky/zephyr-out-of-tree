@@ -101,6 +101,8 @@ int witap_log_backend_disable()
 {
 	int ret;
 
+	k_timer_stop(&witap_log_ctx.timer);
+	log_backend_disable(&witap_log_backend);
 	ret = fs_close(&witap_log_ctx.file);
 
 	return ret;
@@ -129,6 +131,7 @@ static void panic(struct log_backend const *const backend)
 
 	log_output_flush(&witap_log_output);
 	ret = fs_sync(&witap_log_ctx.file);
+	witap_log_backend_disable();
 }
 
 static void dropped(const struct log_backend *const backend, u32_t cnt)
