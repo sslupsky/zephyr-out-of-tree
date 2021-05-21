@@ -177,14 +177,14 @@ static struct modem_pin modem_pins[] = {
  * of the LoRaMac ack retry period which could be up to
  * Nbtrials (8) * (MAX_RX_WINDOW (2) + MAX_ACKTIMEOUT (3)) = 40 sec
  */
-#define LORA_ACK_TIMEOUT              120000		///<  This timeout should extend beyond the next uplink so we have an rx window for the ack
-#define LORA_CONFIRMED_RETRIES             6
-#define LORA_UNCONFIRMED_RETRIES           2
-#define LORA_MAX_CONFIRMED_UPLINKS_FAILED 10
-#define LORA_MAX_LORAMAC_FAILED           10
+#define LORA_ACK_TIMEOUT			120000		///<  This timeout should extend beyond the next uplink so we have an rx window for the ack
+#define LORA_CONFIRMED_RETRIES			6
+#define LORA_UNCONFIRMED_RETRIES		2
+#define LORA_MAX_CONFIRMED_UPLINKS_FAILED	10
+#define LORA_MAX_LORAMAC_FAILED			10
 
-#define LORA_HEARTBEAT_TIMEOUT		14400		///< Time between LoRa radio confirmed uplinks.  Also used to send device status.  (sec)
-#define LORA_UART_TXC_TIMEOUT		2
+#define LORA_HEARTBEAT_TIMEOUT			14400		///< Time between LoRa radio status checks.  (sec)
+#define LORA_UART_TXC_TIMEOUT			2
 
 struct lora_status_t
 {
