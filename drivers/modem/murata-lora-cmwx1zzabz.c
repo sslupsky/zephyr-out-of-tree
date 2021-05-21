@@ -413,7 +413,6 @@ MODEM_CMD_DEFINE(on_cmd_reset)
 	lora.status.reset_count++;
 	LOG_DBG("device reset");
 	modem_cmd_handler_set_error(data, 0);
-	// k_sem_give(&lora.sem_response);
 	return 0;
 }
 
@@ -432,7 +431,6 @@ MODEM_CMD_DEFINE(on_cmd_join)
 	/* TODO:  send device status after join */
 	LOG_INF("network join");
 	modem_cmd_handler_set_error(data, 0);
-	// k_sem_give(&lora.sem_response);
 	return 0;
 }
 
@@ -445,8 +443,6 @@ MODEM_CMD_DEFINE(on_cmd_join)
 MODEM_CMD_DEFINE(on_cmd_rx_data)
 {
 	size_t out_len;
-	// struct lora_modem *lora = CONTAINER_OF(data, struct lora_modem,
-	// 				     cmd_handler_data);
 
 	LOG_INF("downlink rx");
 	LOG_HEXDUMP_DBG(data->rx_buf, len, "+RECV");
@@ -464,13 +460,7 @@ MODEM_CMD_DEFINE(on_cmd_rx_data)
 	lora.ppp_recv_buf = lora.ppp_recv_cb(lora.ppp_recv_buf,
 					     &recv_buf_offset);
 
-	// modem_response[out_len] = '\0';
-	// if (out_len > 0 && modem_response[out_len-1] == '\r') {
-	// 	modem_response[out_len-1] = '\0';
-	// }
-
 	modem_cmd_handler_set_error(data, 0);
-	// k_sem_give(&lora.sem_response);
 	return 0;
 }
 
@@ -496,7 +486,8 @@ MODEM_CMD_DEFINE(on_cmd_ack)
 		lora.status.ack_wait = false;
 	}
 	modem_cmd_handler_set_error(data, 0);
-	// k_sem_give(&lora.sem_response);
+	return 0;
+}
 	return 0;
 }
 
@@ -1146,7 +1137,6 @@ int uart_pipe_send(const uint8_t *data, int len)
 			lora.status.req_ack = false;
 			lora.status.ack_wait = true;
 			lora.status.nbtrials = LORA_NBTRIALS;
-			k_delayed_work_submit(&lora.req_ack_work, K_MSEC(LORA_ACK_TIMEOUT));
 		} else {
 			snprintk(buf, sizeof(buf), "AT+UTX %d\r", len);
 		}
