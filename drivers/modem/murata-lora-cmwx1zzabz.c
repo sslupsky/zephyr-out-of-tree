@@ -193,6 +193,7 @@ struct lora_status_t
 	uint32_t join_count;
 	uint32_t ack_count;
 	uint32_t failed_ack_count;
+	uint32_t downlink_count;
 	uint32_t reset_count;
 	int16_t rssi;			/*< Rssi of the received packet */
 	uint8_t snr;			/*< Snr of the received packet */
@@ -488,6 +489,25 @@ MODEM_CMD_DEFINE(on_cmd_ack)
 	modem_cmd_handler_set_error(data, 0);
 	return 0;
 }
+
+/**
+ * @brief unsolicited modem downlink response
+ *	  "+ACK"
+ * @param
+ * @retval none
+ *
+ * Due to bug at line 1647 in mkrwan1300-fw/Drivers/BSP/Components/sx1276/sx1276.c
+ * the +ACK unsolicited modem response is an indication of a downlink
+ * not an ack.
+ */
+MODEM_CMD_DEFINE(on_cmd_downlink)
+{
+	LOG_DBG("downlink");
+	lora.status.downlink_count++;
+	if (lora.status.ack_wait) {
+		k_delayed_work_submit(&lora.req_ack_work, K_MSEC(0));
+	}
+	modem_cmd_handler_set_error(data, 0);
 	return 0;
 }
 
@@ -508,7 +528,7 @@ static const struct modem_cmd unsol_cmds[] = {
 	MODEM_CMD("+EVENT=0,0", on_cmd_reset, 0U, ""),
 	MODEM_CMD("+EVENT=1,1", on_cmd_join, 0U, ""),
 	MODEM_CMD("+RECV=", on_cmd_rx_data, 2U, ","),
-	MODEM_CMD("+ACK", on_cmd_ack, 0U, ""),
+	MODEM_CMD("+ACK", on_cmd_downlink, 0U, ""),
 	MODEM_CMD("Error when receiving", on_cmd_modem_rx_err, 0U, ""),
 };
 
@@ -855,6 +875,7 @@ static void lora_req_ack(struct k_work *work)
 {
 	int ret;
 
+	/*  check if downlink has an ACK  */
 	ret = modem_cmd_send(&lora.context.iface,
 				&lora.context.cmd_handler,
 				(struct modem_cmd *)bool_response_cmds,
@@ -867,33 +888,9 @@ static void lora_req_ack(struct k_work *work)
 		return;
 	}
 	if (modem_response[0]) {
-		LOG_DBG("uplink ack received");
-	} else {
-		if (lora.status.nbtrials--) {
-			LOG_DBG("uplink ack not received, retry...");
-			/* send zero length packet to trigger retransmission
-			 * of the unacknowledged packet
-			 */
-			ret = modem_cmd_send(&lora.context.iface,
-						&lora.context.cmd_handler,
-						(struct modem_cmd *)response_cmds,
-						ARRAY_SIZE(response_cmds),
-						"AT+CTX 0",
-						&lora.sem_response,
-						K_SECONDS(LORA_CMD_AT_TIMEOUT));
-			k_delayed_work_submit(&lora.req_ack_work, K_MSEC(LORA_ACK_TIMEOUT));
-		} else {
-			/* LoRaMac will retry sending the confirmed packet up
-			 * to 8 times.  If the retries fail, then the uplink
-			 * either could not reach the server or the ACK could
-			 * not reach the end device
-			 * 
-			 * TODO:  handle ack failure
-			 */
-			lora.status.failed_ack_count++;
-			lora.status.ack_failed = true;
-			LOG_ERR("ACK timeout");
-		}
+		LOG_INF("ack received");
+		lora.status.ack_count++;
+		lora.status.ack_wait = false;
 	}
 }
 
@@ -1085,6 +1082,7 @@ static int lora_init(struct device *device)
 	k_delayed_work_init(&lora->heartbeat_work, lora_heartbeat);
 	lora->status.req_ack = false;
 	lora->status.ack_wait = false;
+	lora->status.downlink_count = 0;
 	k_delayed_work_init(&lora->req_ack_work, lora_req_ack);
 
 	(void)k_delayed_work_submit(&lora->lora_configure_work, K_SECONDS(0));
