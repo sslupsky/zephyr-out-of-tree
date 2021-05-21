@@ -163,11 +163,19 @@ static struct modem_pin modem_pins[] = {
 
 /*
  * If an ack is not received within the rx window of the uplink
- * that requested the ack then we must wait until the next rx
- * window opens.  So, the ack timeout must extend beyond the 
- * time of the next uplink (uplink + rx windwo).  If we want to
- * provide time for multiple rx windows then the timeout must
- * be a multiple of the uplink period.
+ * that requested the ack then the ack either was not sent from
+ * the server or it was not received by the end device.
+ *
+ * So, we either ignore the fact we did not receive the ack or we
+ * must wait until LoRaMac is not busy (no longer retransmitting)
+ * and send another confirmed uplink.
+ *
+ * For the moment, we will simply ignore that we did not receive
+ * the ack.
+ *
+ * Otherwise, the ack timeout must extend beyond the total time
+ * of the LoRaMac ack retry period which could be up to
+ * Nbtrials (8) * (MAX_RX_WINDOW (2) + MAX_ACKTIMEOUT (3)) = 40 sec
  */
 #define LORA_ACK_TIMEOUT              120000		///<  This timeout should extend beyond the next uplink so we have an rx window for the ack
 #define LORA_CONFIRMED_RETRIES             6
@@ -284,7 +292,18 @@ static void lora_rx(struct lora_modem *lora)
 static char modem_response[33];
 static char modem_error[16];
 
-/* AT+OK Handler: +OK[0]=<response>[1] */
+/*
+ * MODEM RESPONSE HANDLERS
+ */
+
+/**
+ * @brief OK modem response handler
+ * 	  "+OK"
+ * 	  "+OK="<response>
+ * @param
+ * @retval 0
+ * 
+ */
 MODEM_CMD_DEFINE(lora_cmd_ok)
 {
 	size_t out_len;
@@ -303,6 +322,19 @@ MODEM_CMD_DEFINE(lora_cmd_ok)
 	return 0;
 }
 
+/**
+ * @brief ERR modem response handler
+ *	  "+ERR\r",               	AT_ERROR
+ *	  "+ERR_PARAM\r",         	AT_PARAM_ERROR
+ *	  "+ERR_BUSY\r",          	AT_BUSY_ERROR
+ *	  "+ERR_PARAM_OVERFLOW\r", 	AT_TEST_PARAM_OVERFLOW
+ *	  "+ERR_NO_NETWORK\r",   	AT_NO_NET_JOINED
+ *	  "+ERR_RX\r",            	AT_RX_ERROR
+ *	  "+ERR_UNKNOWN\r",         	AT_UNKNOWN_ERROR
+ * @param
+ * @retval 0
+ * 
+ */
 MODEM_CMD_DEFINE(lora_cmd_error)
 {
 	size_t out_len;
@@ -318,6 +350,17 @@ MODEM_CMD_DEFINE(lora_cmd_error)
 	return 0;
 }
 
+/*
+ * MODEM BOOLEAN RESPONSE HANDLERS
+ */
+
+/**
+ * @brief Boolean TRUE response handler
+ * 	  "1"
+ * @param
+ * @retval 0
+ * 
+ */
 MODEM_CMD_DEFINE(on_cmd_true)
 {
 	LOG_DBG("true");
@@ -327,6 +370,13 @@ MODEM_CMD_DEFINE(on_cmd_true)
 	return 0;
 }
 
+/**
+ * @brief Boolean FALSE response handler
+ * 	  "0"
+ * @param
+ * @retval 0
+ * 
+ */
 MODEM_CMD_DEFINE(on_cmd_false)
 {
 	LOG_DBG("false");
@@ -341,7 +391,12 @@ MODEM_CMD_DEFINE(on_cmd_false)
  */
 
 
-/* Handler: +EVENT=0,0 (Module reset event) */
+/**
+ * @brief unsolicited modem module reset handler
+ *	  "+EVENT=0,0"
+ * @param
+ * @retval none
+ */
 MODEM_CMD_DEFINE(on_cmd_reset)
 {
 	lora.status.reset_count++;
@@ -351,7 +406,14 @@ MODEM_CMD_DEFINE(on_cmd_reset)
 	return 0;
 }
 
-/* Handler: +EVENT=1,1 (Network join event) */
+/**
+ * @brief unsolicited modem network join handler
+ *	  "+EVENT=1,1"
+ * @param
+ * @retval none
+ *
+ * TODO:  send device status after join
+ */
 MODEM_CMD_DEFINE(on_cmd_join)
 {
 	lora.status.network_joined = true;
@@ -363,6 +425,12 @@ MODEM_CMD_DEFINE(on_cmd_join)
 	return 0;
 }
 
+/**
+ * @brief unsolicited modem downlink data handler
+ *	  "+RECV="<data>
+ * @param
+ * @retval none
+ */
 MODEM_CMD_DEFINE(on_cmd_rx_data)
 {
 	size_t out_len;
@@ -395,7 +463,17 @@ MODEM_CMD_DEFINE(on_cmd_rx_data)
 	return 0;
 }
 
-/* Handler: +ACK (ack) */
+/**
+ * @brief unsolicited modem downlink ACK response
+ *	  "+ACK"
+ * @param
+ * @retval none
+ *
+ * Due to bug in mkrwan1300-fw/Drivers/BSP/Components/sx1276/sx1276.c:1647
+ * the +ACK unsolicited modem response is an indication of a downlink
+ * not an ack.  See on_cmd_downlink
+ */
+__unused
 MODEM_CMD_DEFINE(on_cmd_ack)
 {
 	LOG_INF("network ack");
@@ -411,6 +489,13 @@ MODEM_CMD_DEFINE(on_cmd_ack)
 	return 0;
 }
 
+/**
+ * @brief unsolicited modem receive error
+ *	  "Error when receiving"
+ * @param
+ * @retval none
+ *
+ */
 MODEM_CMD_DEFINE(on_cmd_modem_rx_err)
 {
 	LOG_WRN("modem announced rx error");
@@ -722,6 +807,29 @@ static int lora_setup_keys(struct lora_modem *lora)
 	return ret;
 }
 
+/**
+ * lora_heartbeat
+ * 
+ * @brief periodic work function to evaluate device status
+ *
+ * Set lora.status.req_ack to true to turn on confirmed uplinks
+ * Confirmed uplinks will occur with a period set by
+ * LORA_HEARTBEAT_TIMEOUT
+ * 
+ * Note that confirmed uplinks cause undesirable side effects.
+ * In particular, an uplink that follows the confirmed uplink
+ * will have its ADR changed.  In my observations, for some reason
+ * the ADR appears to be reset to DR_0 with has a very limited
+ * payload size (11 bytes).
+ * The consequence is that it is likely that the uplink following
+ * the confirmed uplink will have it's payload removed because
+ * the payload is too large for the DR_0 data rate.
+ *
+ * @param
+ * @retval none
+ *
+ * TODO: send device status
+ */
 static void lora_heartbeat(struct k_work *work)
 {
 	/*  TODO: send device status  */
@@ -729,6 +837,29 @@ static void lora_heartbeat(struct k_work *work)
 	k_delayed_work_submit(&lora.heartbeat_work, K_SECONDS(LORA_HEARTBEAT_TIMEOUT));
 }
 
+/**
+ * lora_req_ack
+ *
+ * @brief  work function to evaluate a downlink and determine if
+ * the server sent an ACK
+ *
+ * LoRaMac will retry sending a confirmed uplink up
+ * to 8 times.  If the retries fail, then the uplink
+ * either could not reach the server or the ACK could
+ * not reach the end device
+ *
+ * Note that the ACK can be lost for any number of reasons
+ * including a poor radio environment.  Chirpstack strictly
+ * enforces the LoRaWAN requirement that there cannot be
+ * multiple ACK's to an uplink.  So, the consequence of
+ * loosing an ACK is the retries are ignored by
+ * Chirpstack.
+ *
+ * @param
+ * @retval none
+ *
+ * TODO:  handle ack failure
+ */
 static void lora_req_ack(struct k_work *work)
 {
 	int ret;
@@ -973,6 +1104,32 @@ static int lora_init(struct device *device)
 	return 0;
 }
 
+/**
+ * uart_pipe_send
+ *
+ * @brief queue uplink data for transmission
+ *
+ * Note the payload size.
+ * For DR0, the maximum payload is 11 bytes
+ * For DR1, the maximum payload size is 53 bytes
+ * reference:
+ * /mkrwan1300-fw/Middlewares/Third_Party/Lora/Mac/region/RegionUS915-Hybrid.h:219
+ *
+ * The LoRaWAN minimum overhead is nominally 12 bytes without a payload or FOpt's
+ * MHDR (1) + DevAddr (4) + FCtrl (1) + FCnt (2) + MIC(4)
+ *
+ * When a payload is added, an Fport is required which adds 1 overhead byte
+ * Min overhead(12) + Fport(1) = 13 bytes total overhead
+ *
+ * FOpts may include up to 15 bytes for mac commands
+ *
+ * The payload is encoded using base64 so the size of the payload is
+ * increased to size = 4 * n / 3 (where n = binary size)
+ *
+ * see also the airtime calculator
+ * https://avbentem.github.io/airtime-calculator/ttn/us915
+ * https://docs.google.com/spreadsheets/d/1QvcKsGeTTPpr9icj4XkKXq4r2zTc2j0gsHLrnplzM3I/edit#gid=0
+ */
 int uart_pipe_send(const uint8_t *data, int len)
 {
 	int ret;
