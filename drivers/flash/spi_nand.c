@@ -171,7 +171,7 @@ static int spi_nand_access(const struct device *const dev,
 		break;
 	case 2:
 		buf[addr_size + SPI_NAND_OPCODE_LEN] = 0;
-		buf[addr_size + SPI_NAND_OPCODE_LEN] = 0;
+		buf[1 + addr_size + SPI_NAND_OPCODE_LEN] = 0;
 		break;
 	default:
 		return -EINVAL;
