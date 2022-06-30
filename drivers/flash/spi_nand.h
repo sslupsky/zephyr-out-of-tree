@@ -85,7 +85,8 @@
 #define SPI_NAND_MIN_ERASE_TIME 	1000    /* min erase time (us) */
 #define SPI_NAND_MIN_PROG_TIME		225     /* min programming time (us) */
 #define SPI_NAND_MIN_READ_TIME		35      /* min read time (us) */
-#define SPI_NAND_POWER_ON_TIME		1100    /* min power up time (us) */
+#define SPI_NAND_POWER_UP_WAIT		DT_INST_PROP(0, power_up_wait)  /* tPUW min power up time (us) */
+#define SPI_NAND_TVSL			DT_INST_PROP(0, tvsl)         	/* tVSL vcc rising power up time (us) */
 
 #define SPI_NAND_OPCODE_LEN		1
 #define SPI_NAND_ADDR_SIZE_MAX		3

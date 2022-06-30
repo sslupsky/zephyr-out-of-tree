@@ -147,3 +147,13 @@ properties:
         1     0     1
         2     1     0
         3     1     1
+
+  power-up-wait:
+    type: int
+    required: true
+    description: waiting time for power on tPUW
+
+  tvsl:
+    type: int
+    required: true
+    description: vcc min to cs low tVSL

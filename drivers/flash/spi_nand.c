@@ -947,6 +947,8 @@ void spi_nand_get_registers(struct device *dev, u8_t *status, u8_t *ctrl, u8_t *
  */
 static int spi_nand_configure(struct device *dev)
 {
+	u8_t reg;
+
 	struct spi_nand_data *data = dev->driver_data;
 	const struct spi_nand_config *params = dev->config_info;
 	int ret;
@@ -991,6 +993,13 @@ static int spi_nand_configure(struct device *dev)
 
 	data->spi_cfg.cs = &data->cs_ctrl;
 #endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
+
+	/* wait until device ready */
+	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_POWER_UP_WAIT);
+	if (ret < 0) {
+		LOG_ERR("not ready after power up");
+		return ret;
+	}
 
 	/* Might be in DPD if system restarted without power cycle. */
 	// exit_dpd(dev);
@@ -1059,7 +1068,8 @@ static int spi_nand_init(struct device *dev)
 		k_sem_init(&driver_data->sem, 1, UINT_MAX);
 	}
 
-	while (k_uptime_ticks() < k_us_to_ticks_ceil32(SPI_NAND_POWER_ON_TIME)) {
+	/* device cannot be accessed for an period tvsl after Vcc > Vcc(min) */
+	while (k_uptime_ticks() < k_us_to_ticks_ceil32(SPI_NAND_TVSL)) {
 		/* wait for chip to power up */
 	}
 	ret = spi_nand_configure(dev);
