@@ -363,7 +363,7 @@ static void release_device(struct device *dev)
  * @param flash_id The flash info structure which contains the expected JEDEC ID
  * @return 0 on success, negative errno code otherwise
  */
-static inline int spi_nand_read_id(struct device *dev,
+int spi_nand_read_id(struct device *dev,
 				  const struct spi_nand_config *const flash_id)
 {
 	u8_t buf[SPI_NAND_JEDEC_ID_LEN];

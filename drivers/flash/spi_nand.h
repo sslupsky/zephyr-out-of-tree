@@ -403,5 +403,8 @@ struct spi_nand_data {
 /* Forward declaration of private "C" functions */
 /* used in spi_nand_shell.c */
 void spi_nand_get_registers(struct device *dev, u8_t *status, u8_t *ctrl, u8_t *lock);
+int spi_nand_read_id(struct device *dev,
+				  const struct spi_nand_config *const flash_id);
+int spi_nand_read_parameter_page(struct device *dev);
 
 #endif /*__SPI_NAND_H__*/
