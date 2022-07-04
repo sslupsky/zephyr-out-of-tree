@@ -883,8 +883,14 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 			}
 			/* wait for OIP */
 			ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_BLOCK_ERASE_TIME);
-			if (ret < 0) {
-				LOG_ERR("block erase wait error %d", ret);
+			if (ret == -ETIMEDOUT) {
+				LOG_ERR("block erase timed out");
+				ret = -EFAULT;
+				goto out;
+			} else if (ret < 0) {
+				LOG_ERR("error during block erase: %d", ret);
+				ret = -EFAULT;
+				goto out;
 			}
 			/* check ERS_F */
 			if (reg & SPI_NAND_STATUS_ERASEF_BIT) {
