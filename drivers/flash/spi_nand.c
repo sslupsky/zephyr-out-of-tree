@@ -386,7 +386,18 @@ int spi_nand_read_id(struct device *dev,
 	return 0;
 }
 
-static int spi_nand_id_read_enable(struct device *dev, bool val)
+/**
+ * @brief Enable device data read mode
+ * 
+ * 	nand devices have a parameter page and may have other device specific data.
+ * 	Kioxia TC58CVG2S0HRAIJ has a Unique ID and Parameter Page
+ * 	Alliance AS5F34G04SND-08LIN has a Parameter Page and an OTP memory region
+ * 
+ * @param dev 
+ * @param val 
+ * @return int 
+ */
+static int spi_nand_device_data_mode_enable(struct device *dev, bool val)
 {
 	int ret;
 	u8_t reg;
