@@ -382,7 +382,7 @@ struct spi_nand_data {
 	 * deep power-down.
 	 */
 	u32_t ts_enter_dpd;
-#endif
+#endif /* DT_INST_NODE_HAS_PROP(0, has_dpd) */
 	char signature[SPI_NAND_PARAMETER_SIGNATURE_LEN];
 	char manufacturer[SPI_NAND_PARAMETER_DEVICE_MFG_LEN];
 	char model[SPI_NAND_PARAMETER_DEVICE_MODEL_LEN];
@@ -392,7 +392,11 @@ struct spi_nand_data {
 	uint32_t blocks_per_lun;
 	uint8_t  luns_per_device;
 	uint8_t  programs_per_page;
+	uint8_t  jedec_id;
+	uint8_t  bits_per_cell;
 	uint16_t block_endurance;
+	uint16_t page_prog_time;
+	uint16_t block_erase_time;
 	struct k_sem sem;
 };
 

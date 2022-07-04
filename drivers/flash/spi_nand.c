@@ -12,6 +12,7 @@
 #include <drivers/flash.h>
 #include <drivers/spi.h>
 #include <init.h>
+#include <stdio.h>
 #include <string.h>
 #include <logging/log.h>
 #include <sys/util.h>
@@ -380,6 +381,8 @@ static inline int spi_nand_read_id(struct device *dev,
 		return -ENODEV;
 	}
 
+	LOG_HEXDUMP_DBG(buf, sizeof(buf), "Chip ID:");
+
 	return 0;
 }
 
@@ -644,6 +647,7 @@ int spi_nand_read_parameter_page(struct device *dev)
 	struct spi_nand_data *data = dev->driver_data;
 	int ret;
 	uint8_t buf[4];
+	char cbuf[MAX(sizeof(data->signature),MAX(sizeof(data->manufacturer),sizeof(data->model))) + 1];
 
 	acquire_device(dev);
 
@@ -659,11 +663,22 @@ int spi_nand_read_parameter_page(struct device *dev)
 		goto done;
 	}
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_SIGNATURE, data->signature, SPI_NAND_PARAMETER_SIGNATURE_LEN);
-	LOG_DBG("Signature: %.*s", sizeof(data->signature), data->signature);
+	snprintf(cbuf, sizeof(cbuf), "%.*s", sizeof(data->signature), data->signature);
+	LOG_DBG("Signature: %s", log_strdup(cbuf));
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MFG, data->manufacturer, SPI_NAND_PARAMETER_DEVICE_MFG_LEN);
-	LOG_DBG("Manufacturer: %.*s", sizeof(data->manufacturer), data->manufacturer);
+	snprintf(cbuf, sizeof(cbuf), "%.*s", sizeof(data->manufacturer), data->manufacturer);
+	LOG_DBG("Manufacturer: %s", log_strdup(cbuf));
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MODEL, data->model, SPI_NAND_PARAMETER_DEVICE_MODEL_LEN);
-	LOG_DBG("Model: %.*s", sizeof(data->model), data->model);
+	snprintf(cbuf, sizeof(cbuf), "%.*s", sizeof(data->model), data->model);
+	LOG_DBG("Model: %s", log_strdup(cbuf));
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_JEDEC_ID, &data->jedec_id, SPI_NAND_PARAMETER_JEDEC_ID_LEN);
+	LOG_DBG("JEDEC ID: %d", data->jedec_id);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BITS_PER_CELL, &data->bits_per_cell, SPI_NAND_PARAMETER_BITS_PER_CELL_LEN);
+	LOG_DBG("bits per cell: %d", data->bits_per_cell);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE, &data->programs_per_page, SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE_LEN);
+	LOG_DBG("programs per page: %d", data->programs_per_page);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_LUNS, &data->luns_per_device, SPI_NAND_PARAMETER_LUNS_LEN);
+	LOG_DBG("LUNs per device: %d", data->luns_per_device);
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGE_BYTES, buf, SPI_NAND_PARAMETER_PAGE_BYTES_LEN);
 	data->page_size = sys_get_le32(buf);
 	LOG_DBG("bytes per page: %d", data->page_size);
@@ -676,17 +691,19 @@ int spi_nand_read_parameter_page(struct device *dev)
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCKS_PER_LUN, buf, SPI_NAND_PARAMETER_BLOCKS_PER_LUN_LEN);
 	data->blocks_per_lun = sys_get_le32(buf);
 	LOG_DBG("blocks per LUN: %d", data->blocks_per_lun);
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_LUNS, &data->luns_per_device, SPI_NAND_PARAMETER_LUNS_LEN);
-	LOG_DBG("LUNs per device: %d", data->luns_per_device);
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCK_ENDURANCE, buf, SPI_NAND_PARAMETER_BLOCK_ENDURANCE_LEN);
 	data->block_endurance = sys_get_le16(buf);
 	LOG_DBG("block endurance: %d", data->block_endurance);
-	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE, &data->programs_per_page, SPI_NAND_PARAMETER_PROGRAMS_PER_PAGE_LEN);
-	LOG_DBG("programs per page: %d", data->programs_per_page);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGE_PROGRAM_TIME, buf, SPI_NAND_PARAMETER_PAGE_PROGRAM_TIME_LEN);
+	data->page_prog_time = sys_get_le16(buf);
+	LOG_DBG("block endurance: %d", data->page_prog_time);
+	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCK_ERASE_TIME, buf, SPI_NAND_PARAMETER_BLOCK_ERASE_TIME_LEN);
+	data->block_erase_time = sys_get_le16(buf);
+	LOG_DBG("block endurance: %d", data->block_erase_time);
 
 done:
 	_chip_page = SPI_NAND_INVALID_PAGE;
-	spi_nand_id_read_enable(dev, false);
+	spi_nand_device_data_mode_enable(dev, false);
 
 	release_device(dev);
 	return ret;

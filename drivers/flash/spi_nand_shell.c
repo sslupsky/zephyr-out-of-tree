@@ -126,7 +126,8 @@ static int cmd_info_id(const struct shell *shell, size_t argc, char *argv[])
 {
 	struct device *dev;
 	struct spi_nand_data *drv_data;
-	char buf[21];
+	const struct spi_nand_config *params;
+	int ret;
 
 	if (argc == 2) {
 		dev = device_get_binding(argv[1]);
@@ -139,18 +140,17 @@ static int cmd_info_id(const struct shell *shell, size_t argc, char *argv[])
 		return -EIO;
 	}
 
+	shell_print(shell, "Device: %s", dev->name);
 	drv_data = dev->driver_data;
-	const struct flash_driver_api *api =
-		(const struct flash_driver_api *)dev->driver_api;
-	api->get_parameters(dev);
-	/*  alternatively, the private spi_nand function could be used  */
-	// spi_nand_read_parameter_page(dev);
-	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->signature), drv_data->signature);
-	shell_print(shell, "Signature: %s", buf);
-	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->manufacturer), drv_data->manufacturer);
-	shell_print(shell, "Manufacturer: %s", buf);
-	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->model), drv_data->model);
-	shell_print(shell, "Model: %s", buf);
+	params = dev->config_info;
+
+	ret = spi_nand_read_id(dev, params);
+	if (ret != 0) {
+		shell_error(shell, "jedec id match failed");
+		return -EIO;
+	} else {
+		shell_print(shell, "jedec id match");
+	}
 
 	return 0;
 }
@@ -159,7 +159,9 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 {
 	struct device *dev;
 	struct spi_nand_data *drv_data;
-	char buf[21];
+	const struct spi_nand_config *params;
+	char buf[MAX(sizeof(drv_data->signature),MAX(sizeof(drv_data->manufacturer),sizeof(drv_data->model))) + 1];
+	int ret;
 
 	if (argc == 2) {
 		dev = device_get_binding(argv[1]);
@@ -172,18 +174,33 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 		return -EIO;
 	}
 
+	shell_print(shell, "Device: %s", dev->name);
 	drv_data = dev->driver_data;
-	const struct flash_driver_api *api =
-		(const struct flash_driver_api *)dev->driver_api;
-	api->get_parameters(dev);
-	/*  alternatively, the private spi_nand function could be used  */
-	// spi_nand_read_parameter_page(dev);
+	params = dev->config_info;
+
+	ret = spi_nand_read_id(dev, params);
+	if (ret != 0) {
+		shell_error(shell, "jedec id match failed");
+		return -EIO;
+	} else {
+		shell_print(shell, "jedec id match");
+	}
+
+	ret = spi_nand_read_parameter_page(dev);
+	if (ret < 0) {
+		shell_error(shell, "could not read parameter page");
+		return -EIO;
+	} else {
+		shell_print(shell, "read parameter page success");
+	}
+
 	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->signature), drv_data->signature);
 	shell_print(shell, "Signature: %s", buf);
 	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->manufacturer), drv_data->manufacturer);
 	shell_print(shell, "Manufacturer: %s", buf);
 	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->model), drv_data->model);
 	shell_print(shell, "Model: %s", buf);
+	shell_print(shell, "JEDEC ID: 0x%02x", drv_data->jedec_id);
 	shell_print(shell, "Page size: %d", drv_data->page_size);
 	shell_print(shell, "Pages per block: %d", drv_data->pages_per_block);
 	shell_print(shell, "Blocks per LUN: %d", drv_data->blocks_per_lun);
@@ -191,6 +208,8 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 	shell_print(shell, "Block endurance: %d", drv_data->block_endurance);
 	shell_print(shell, "Partial page size: %d", drv_data->partial_page_size);
 	shell_print(shell, "Programs per page: %d", drv_data->programs_per_page);
+	shell_print(shell, "Page program time: %d", drv_data->page_prog_time);
+	shell_print(shell, "Block erase time: %d", drv_data->block_erase_time);
 
 	return 0;
 }
@@ -234,6 +253,7 @@ static int cmd_nand_status(const struct shell *shell, size_t argc, char *argv[])
 
 	/*  this is a private spi_nand function call  */
 	spi_nand_get_registers(dev, &status, &ctrl, &lock);
+	shell_print(shell, "Device: %s", dev->name);
 	shell_print(shell, "status: 0x%02x, ctrl: 0x%02x, lock: 0x%02x", status, ctrl, lock);
 
 	return 0;
@@ -269,6 +289,8 @@ static int cmd_debug_register(const struct shell *shell, size_t argc, char **arg
 		return -EIO;
 	}
 
+	shell_print(shell, "Device: %s", spi_nand_dev->name);
+
 	drv_data = spi_nand_dev->driver_data;
 	cfg = spi_nand_dev->config_info;
 
@@ -299,6 +321,17 @@ static int cmd_debug_register(const struct shell *shell, size_t argc, char **arg
 	return ret;
 }
 
+/**
+ * @brief Read data from flash and print to screen
+ * 
+ * 	  This function reads a block of data from the flash partition
+ *        and dumps the data to the screen in hex and ascii format
+ * 
+ * @param shell 
+ * @param argc 
+ * @param argv <flash area partition id> <count> <memory offset into partition>
+ * @return int 
+ */
 static int cmd_debug_read(const struct shell *shell, size_t argc, char **argv)
 {
 	const struct flash_area *pfa;
@@ -378,6 +411,15 @@ static int cmd_debug_read(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+/**
+ * @brief Erase a partition.  This function fetches the partition parameters
+ *        from the flash area and erases the data on the partition.
+ * 
+ * @param shell 
+ * @param argc 
+ * @param argv <flash area partition id>
+ * @return int 
+ */
 static int cmd_erase(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argv);
