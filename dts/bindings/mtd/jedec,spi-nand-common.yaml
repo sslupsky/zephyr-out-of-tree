@@ -157,3 +157,8 @@ properties:
     type: int
     required: true
     description: vcc min to cs low tVSL
+
+  parameter-page-address:
+    type: int
+    required: true
+    description: address of parameter page in device data region

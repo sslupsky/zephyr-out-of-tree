@@ -24,6 +24,7 @@
 #define SPI_NAND_MAX_BLOCK_ERASE_TIME	DT_INST_PROP(0, max_block_erase_time)
 #define SPI_NAND_PAGE_PROG		DT_INST_PROP(0, page_prog)
 #define SPI_NAND_MAX_RESET_TIME		(10000U)	/* reset time out */
+#define SPI_NAND_PARAMETER_PAGE_ADDRESS	DT_INST_PROP(0, parameter_page_address)
 
 /* Test whether offset is aligned. */
 #define SPI_NAND_IS_PAGE_ALIGNED(_ofs) (((_ofs) & (SPI_NAND_PAGE_SIZE - 1U)) == 0)

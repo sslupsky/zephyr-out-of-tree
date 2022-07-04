@@ -653,8 +653,8 @@ int spi_nand_read_parameter_page(struct device *dev)
 		goto done;
 	}
 
-	spi_nand_id_read_enable(dev, true);
-	ret = spi_nand_read_cell_array(dev, 1);
+	spi_nand_device_data_mode_enable(dev, true);
+	ret = spi_nand_read_cell_array(dev, SPI_NAND_PARAMETER_PAGE_ADDRESS);
 	if (ret < 0) {
 		goto done;
 	}
