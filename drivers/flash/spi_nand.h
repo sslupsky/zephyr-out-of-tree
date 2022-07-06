@@ -4,6 +4,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @file spi_nand.h
+ * @author Steven Slupsky (sslupsky@scanimetrics.com)
+ * @brief 
+ * @version 0.1
+ * @date 2022-07-05
+ * 
+ * @copyright Copyright (c) 2022
+ * SPDX-License-Identifier: Apache-2.0
+ * 
+ *    _____                 _                _        _          
+ *   / ____|               (_)              | |      (_)         
+ *  | (___   ___ __ _ _ __  _ _ __ ___   ___| |_ _ __ _  ___ ___ 
+ *   \___ \ / __/ _` | '_ \| | '_ ` _ \ / _ \ __| '__| |/ __/ __|
+ *   ____) | (_| (_| | | | | | | | | | |  __/ |_| |  | | (__\__ \
+ *  |_____/ \___\__,_|_| |_|_|_| |_| |_|\___|\__|_|  |_|\___|___/
+ *                                                               
+ */
+
 #ifndef __SPI_NAND_H__
 #define __SPI_NAND_H__
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 Google LLC.
+ * Copyright (c) 2022 Scanimetrics Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */

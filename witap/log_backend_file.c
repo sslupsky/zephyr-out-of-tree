@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 Nordic Semiconductor ASA
+ * Copyright (c) 2022 Scanimetrics Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */

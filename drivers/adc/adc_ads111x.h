@@ -6,6 +6,7 @@
  * @date 2020-04-14
  * 
  * @copyright Copyright (c) 2020
+ * SPDX-License-Identifier: Apache-2.0
  *
  */
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020 Vestas Wind Systems A/S
+ * Copyright (c) 2022 Scanimetrics Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */

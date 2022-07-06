@@ -1,11 +1,12 @@
 /**
- * @file Untitled-1
+ * @file bq24195.c
  * @author Steven Slupsky (sslupsky@scanimetrics.com)
  * @brief BQ24195 PMIC driver
  * @version 0.1
  * @date 2020-05-18
  * 
  * @copyright Copyright (c) 2020
+ * SPDX-License-Identifier: Apache-2.0
  * 
  *    _____                 _                _        _          
  *   / ____|               (_)              | |      (_)         

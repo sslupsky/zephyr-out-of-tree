@@ -7,6 +7,7 @@
  * @date 2021-05-09
  * 
  * @copyright Copyright (c) 2021
+ * SPDX-License-Identifier: Apache-2.0
  * 
  * 
    _____                 _                _        _          

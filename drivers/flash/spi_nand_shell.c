@@ -1,11 +1,12 @@
 /**
- * @file Untitled-1
+ * @file spi_nand_shell.c
  * @author Steven Slupsky (sslupsky@scanimetrics.com)
  * @brief 
  * @version 0.1
  * @date 2020-06-14
  * 
  * @copyright Copyright (c) 2020
+ * SPDX-License-Identifier: Apache-2.0
  * 
  *    _____                 _                _        _          
  *   / ____|               (_)              | |      (_)         

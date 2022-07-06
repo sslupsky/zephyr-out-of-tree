@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019 Derek Hageman <hageman@inthat.cloud>
+ * Copyright (c) 2022 Scanimetrics Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */

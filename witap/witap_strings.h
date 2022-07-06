@@ -6,6 +6,7 @@
  * @date 2019-11-14
  * 
  * @copyright Copyright (c) 2019
+ * SPDX-License-Identifier: Apache-2.0
  * 
    _____                 _                _        _          
   / ____|               (_)              | |      (_)         

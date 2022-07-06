@@ -3,6 +3,25 @@
 // Copyright © 2017 The Things Network
 // Use of this source code is governed by the MIT license that can be found in the LICENSE file.
 
+/**
+ * @file CayenneLPP.cpp
+ * @author Steven Slupsky (sslupsky@scanimetrics.com)
+ * @brief 
+ * @version 0.1
+ * @date 2022-07-05
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ *    _____                 _                _        _          
+ *   / ____|               (_)              | |      (_)         
+ *  | (___   ___ __ _ _ __  _ _ __ ___   ___| |_ _ __ _  ___ ___ 
+ *   \___ \ / __/ _` | '_ \| | '_ ` _ \ / _ \ __| '__| |/ __/ __|
+ *   ____) | (_| (_| | | | | | | | | | |  __/ |_| |  | | (__\__ \
+ *  |_____/ \___\__,_|_| |_|_|_| |_| |_|\___|\__|_|  |_|\___|___/
+ *                                                               
+ */
+
+
 #include "CayenneLPP.h"
 
 // ----------------------------------------------------------------------------
