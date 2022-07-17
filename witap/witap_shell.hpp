@@ -142,6 +142,15 @@ static void forward(const struct shell *shell, struct fs_file_t *file, int num_l
 
 }
 
+/**
+ * @brief Tail
+ *        see reference:  https://github.com/openbsd/src/tree/master/usr.bin/tail
+ * 
+ * @param shell 
+ * @param argc 
+ * @param argv 
+ * @return int 
+ */
 static int cmd_tail(const struct shell *shell, size_t argc, char **argv)
 {
 #define _TAIL_NUM_LINES_DEFAULT 10
