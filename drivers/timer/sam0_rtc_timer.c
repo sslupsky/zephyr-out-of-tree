@@ -26,7 +26,7 @@
 #include <sys/timeutil.h>
 
 #include <logging/log.h>
-LOG_MODULE_REGISTER(rtc_sam0, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(rtc_sam0, LOG_LEVEL_INF);
 
 /* RTC registers. */
 #define RTC0 ((RtcMode0 *) DT_INST_REG_ADDR(0))
