@@ -614,7 +614,7 @@ static void pmic_update_battery_state(struct device *dev, enum pmic_battery_stat
 		"FAULT",
 		"DISCONNECTED"
 	};
-	LOG_INF("Battery state %s -> %s", states[present_state], states[next_state]);
+	LOG_DBG("Battery state %s -> %s", states[present_state], states[next_state]);
 
 	drv_data->battery_state = next_state;
 
@@ -679,7 +679,7 @@ static void pmic_update_power_state(struct device *dev, enum pmic_power_state pr
 		"PRIMARY_BATTERY",
 		"BACKUP",
 	};
-	LOG_INF("Power state %s -> %s", states[present_state], states[next_state]);
+	LOG_DBG("Power state %s -> %s", states[present_state], states[next_state]);
 
 	drv_data->power_state = next_state;
 
@@ -735,7 +735,7 @@ static void pmic_update_device_state(struct device *dev, enum pmic_device_state 
 		"FAULT",
 		"NOT_PRESENT",
 	};
-	LOG_INF("Device state %s -> %s", states[present_state], states[next_state]);
+	LOG_DBG("Device state %s -> %s", states[present_state], states[next_state]);
 
 	drv_data->device_state = next_state;
 
