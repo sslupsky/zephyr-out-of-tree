@@ -750,9 +750,10 @@ int spi_nand_read_parameter_page(struct device *dev)
 	LOG_DBG("block endurance: %d", data->block_endurance);
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGE_PROGRAM_TIME, buf, SPI_NAND_PARAMETER_PAGE_PROGRAM_TIME_LEN);
 	data->page_prog_time = sys_get_le16(buf);
-	LOG_DBG("block endurance: %d", data->page_prog_time);
+	LOG_DBG("page program time: %d", data->page_prog_time);
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_BLOCK_ERASE_TIME, buf, SPI_NAND_PARAMETER_BLOCK_ERASE_TIME_LEN);
 	data->block_erase_time = sys_get_le16(buf);
+	LOG_DBG("block erase time: %d", data->block_erase_time);
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_PAGE_READ_TIME, buf, SPI_NAND_PARAMETER_PAGE_READ_TIME_LEN);
 	data->page_read_time = sys_get_le16(buf);
 	LOG_DBG("page read time: %d", data->page_read_time);
