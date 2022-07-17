@@ -357,7 +357,7 @@ cat_file(const struct shell *shell, const char *path, cat_flags *flags)
 static int cmd_cat(const struct shell *shell, size_t argc, char **argv)
 {
 	cat_flags flags = {0};
-	int ch, rval;
+	int ch, rval = 0;
 
 	// if (pledge("stdio rpath", NULL) == -1)
 	// 	err(1, "pledge");
