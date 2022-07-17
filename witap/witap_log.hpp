@@ -37,6 +37,7 @@ char const boot_count_fname[] = "boot_count";
 char const boot_log_fname[] = "boot.log";
 char const witap_log_fname[] = "witap.log";
 char const test_log_fname[] = "test.log";
+char const data_log_fname[] = "data.log";
 char const test_string[] = "this is a 32 byte test string. \n";
 
 
@@ -47,17 +48,21 @@ extern "C" {
 class WITAP_LOG
 {
 public:
-    WITAP_LOG() {}
-    ~WITAP_LOG() {}
-    void begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct boot_status *boot, k_timeout_t timeout);
-    int update_bootcount(struct fs_mount_t *mp, struct boot_status *boot);
-    int update_bootlog(struct fs_mount_t *mp, struct boot_status *boot);
-    int update_testlog(struct fs_mount_t *mp);
-    bool initialized = false;
+	WITAP_LOG() {}
+	~WITAP_LOG() {}
+	void begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct boot_status *boot, k_timeout_t timeout);
+	int update_bootcount(struct fs_mount_t *mp, struct boot_status *boot);
+	int update_bootlog(struct fs_mount_t *mp, struct boot_status *boot);
+	int update_testlog(struct fs_mount_t *mp);
+	int init_datalog(struct fs_mount_t *mp);
+	int update_datalog(char *buf);
+	int stop_datalog();
+	bool initialized = false;
+	struct fs_file_t data_file;
 
 private:
 //     void _initialize_log();
-    boot_status bootStatus;
+	boot_status bootStatus;
 };
 
 void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, struct boot_status *boot, k_timeout_t timeout)
@@ -71,8 +76,6 @@ void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, str
 	if (boot_mp) {
 		update_bootcount(boot_mp, boot);
 	}
-	// Initialize Internal File System
-	initialized = true;
 }
 
 /**
@@ -218,4 +221,91 @@ int WITAP_LOG::update_testlog(struct fs_mount_t *mp) {
 out:
 	return ret;
 }
+
+int WITAP_LOG::init_datalog(struct fs_mount_t *mp) {
+	struct timespec tp;
+	char buf[64];
+	int ret;
+
+	snprintk(buf, sizeof(buf), "%s/%s", mp->mnt_point, data_log_fname);
+	LOG_DBG("opening file: %s", log_strdup(buf));
+
+	ret = fs_open(&(WITAP_LOG::data_file), buf);
+	if (ret < 0) {
+		LOG_ERR("file open error, ret=%d", ret);
+		goto out;
+	}
+
+	ret = fs_seek(&(WITAP_LOG::data_file), 0, FS_SEEK_END);
+	if (ret < 0) {
+		LOG_ERR("file seek error, ret=%d", ret);
+		goto out;
+	}
+
+	clock_gettime(CLOCK_REALTIME, &tp);
+	if (tp.tv_sec < 1657918426) {
+		LOG_WRN("Date is set earlier than July 15, 2022");
+	}
+	snprintk(buf, sizeof(buf), "%012llu,<<LOG START>>\n", tp.tv_sec);
+	/* do not print string null */
+	ret = fs_write(&(WITAP_LOG::data_file), buf, strlen(buf));
+	if (ret < 0) {
+		LOG_ERR("file write error, ret=%d", ret);
+		goto out;
+	}
+	// Initialize Internal File System
+	initialized = true;
+out:
+	return ret;
+}
+
+int WITAP_LOG::update_datalog(char *buf) {
+	struct timespec tp;
+	char csv[64];
+	int ret;
+
+	if (initialized) {
+		clock_gettime(CLOCK_REALTIME, &tp);
+		snprintk(csv, sizeof(csv), "%012llu,%s\n", tp.tv_sec, buf);
+		/* do not print string null */
+		ret = fs_write(&(WITAP_LOG::data_file), csv, strlen(csv));
+		if (ret < 0) {
+			LOG_ERR("file write error, ret=%d", ret);
+			goto out;
+		}
+	} else {
+		ret = -EINVAL;
+	}
+
+out:
+	return ret;
+}
+
+int WITAP_LOG::stop_datalog() {
+	struct timespec tp;
+	char buf[64];
+	int ret;
+
+	LOG_DBG("stop data logging");
+
+	clock_gettime(CLOCK_REALTIME, &tp);
+	snprintk(buf, sizeof(buf), "%012llu,<<LOG STOP>>\n", tp.tv_sec);
+	/* do not print string null */
+	ret = fs_write(&(WITAP_LOG::data_file), buf, strlen(buf));
+	if (ret < 0) {
+		LOG_ERR("file write error, ret=%d", ret);
+		goto out;
+	}
+
+	ret = fs_close(&(WITAP_LOG::data_file));
+	if (ret < 0) {
+		LOG_ERR("file close error, ret=%d", ret);
+		goto out;
+	}
+	initialized = false;
+
+out:
+	return ret;
+}
+
 #endif /* WITAP_LOG_H */
