@@ -1,0 +1,9 @@
+# Copyright (c) 2022 Scanimetrics Inc.
+# Copyright (c) 2019 Vestas Wind Systems A/S
+# SPDX-License-Identifier: Apache-2.0
+
+description: Fujitsu MB85RS (or compatible) SPI FRAM
+
+compatible: "fujitsu,mb85rs"
+
+include: [fram-spi.yaml, spi-device.yaml]

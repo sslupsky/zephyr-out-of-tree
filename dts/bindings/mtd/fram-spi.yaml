@@ -1,0 +1,30 @@
+# Copyright (c) 2022 Scanimetrics Inc.
+# Copyright (c) 2019 Vestas Wind Systems A/S
+# SPDX-License-Identifier: Apache-2.0
+
+# Common fields for I2C and SPI FRAM devices
+
+include: fram-base.yaml
+
+properties:
+    size:
+      required: true
+    pagesize:
+      type: int
+      required: true
+      description: FRAM page size in bytes
+    address-width:
+      type: int
+      required: true
+      description: FRAM address width in bits
+    timeout:
+      type: int
+      required: true
+      description: FRAM write cycle timeout in milliseconds
+    wp-gpios:
+      type: phandle-array
+      required: false
+      description: |
+        GPIO to which the write-protect pin of the chip is connected.
+
+        The device will interpret this signal as active-low.

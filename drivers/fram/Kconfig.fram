@@ -1,0 +1,64 @@
+# Copyright (c) 2022 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig FRAM
+	bool "FRAM hardware support"
+	depends on SPI
+	help
+	  Enable support for FRAM hardware.
+
+if FRAM
+
+module = FRAM
+module-str = fram
+source "subsys/logging/Kconfig.template.log_config"
+
+config FRAM_MB85RS
+	bool "Fujitsu MB85RS (and compatible) SPI FRAM support"
+	depends on SPI
+	select FRAM
+	help
+	  Enable support for Fujitsu MB85RS (and compatible) SPI FRAMs.
+
+config FRAM_INIT_PRIORITY
+	int
+	default 80
+	help
+	  Device driver initialization priority.
+	  Device is connected to SPI bus, it has to
+	  be initialized after SPI driver.
+
+config FRAM_CS_WAIT_DELAY
+	int "Delay time in us"
+	default 0
+	help
+	  This is the wait delay (in us) to allow for CS switching to take effect
+
+config FRAM_IDLE_IN_DPD
+	bool "Use Deep Power-Down mode when flash is not being accessed."
+	help
+	  Where supported deep power-down mode can reduce current draw
+	  to as little as 0.1% of standby current.  However it takes
+	  some milliseconds to enter and exit from this mode.
+
+	  Select this option for applications where device power
+	  management is not enabled, the flash remains inactive for
+	  long periods, and when used the impact of waiting for mode
+	  enter and exit delays is acceptable.
+
+config FRAM_SHELL
+	bool "Enable FRAM shell"
+	depends on SHELL
+	default y
+	help
+	  This shell provides access to basic device data.
+
+config FRAM_SHELL_BUFFER_SIZE
+	int "FRAM shell buffer size"
+	default 256
+	depends on FRAM_SHELL
+	help
+	  Size of the buffer used for FRAM read/write commands in
+	  the FRAM shell.
+
+endif # FRAM

@@ -1,0 +1,10 @@
+# FRAM configuration options
+
+# Copyright (c) 2022 Scanimetrics Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+menu "OOT FRAM Drivers"
+
+rsource "Kconfig.fram"
+
+endmenu # FRAM
