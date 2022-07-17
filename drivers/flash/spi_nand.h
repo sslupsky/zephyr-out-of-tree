@@ -63,11 +63,12 @@
 	|| SPI_NAND_STATUS_ECC_BIT	\
 )
 
+#define SPI_NAND_CTRL_HOLDD_BIT		BIT(0)
 #define SPI_NAND_CTRL_HSE_BIT		BIT(1)
-#define SPI_NAND_CTRL_BBI_BIT		BIT(2)
+#define SPI_NAND_CTRL_PRTE_BIT		BIT(2)
 #define SPI_NAND_CTRL_ECCE_BIT		BIT(4)
 #define SPI_NAND_CTRL_IDRE_BIT		BIT(6)
-#define SPI_NAND_CTRL_PRTE_BIT		BIT(7)
+#define SPI_NAND_CTRL_OTP_PRT		BIT(7)	/*  Alliance semi parts  */
 
 #define SPI_NAND_LOCK_BL_BIT		(BIT(5) | BIT(4) | BIT(3))
 #define SPI_NAND_LOCK_BL_POS		3
