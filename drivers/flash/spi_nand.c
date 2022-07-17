@@ -531,6 +531,10 @@ static int spi_nand_wait_until_ready(struct device *dev, u8_t *status_reg, u32_t
 		 */
 		k_yield();
 	};
+	if (timer < SPI_NAND_TIMER_NUM_TIMERS) {
+		data->timer[timer] += delta;
+		data->counter[timer]++;
+	};
 	return ret;
 }
 

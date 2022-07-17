@@ -326,6 +326,16 @@ struct SPI_NAND_PARAMETER_PAGE_t {
 #define SPI_NAND_PARAMETER_VENDOR_DATA_LEN		88
 #define SPI_NAND_PARAMETER_CRC_LEN			2
 
+enum SPI_NAND_TIMER_e {
+	SPI_NAND_TIMER_PAGE_READ_TIME,
+	SPI_NAND_TIMER_PAGE_PROG_TIME,
+	SPI_NAND_TIMER_BLOCK_ERASE_TIME,
+	SPI_NAND_TIMER_NUM_TIMERS,
+	SPI_NAND_TIMER_RESET,
+	SPI_NAND_TIMER_POWER_UP,
+	SPI_NAND_TIMER_NULL,
+};
+
 struct spi_nand_register {
 	enum SPI_NAND_FEATURE_TABLE_ADDRESS_e addr;
 	char *name;
@@ -417,6 +427,8 @@ struct spi_nand_data {
 	uint16_t page_prog_time;
 	uint16_t block_erase_time;
 	uint16_t page_read_time;
+	uint64_t timer[SPI_NAND_TIMER_NUM_TIMERS];
+	uint32_t counter[SPI_NAND_TIMER_NUM_TIMERS];
 	struct k_sem sem;
 };
 

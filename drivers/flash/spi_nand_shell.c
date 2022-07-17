@@ -217,6 +217,56 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 	return 0;
 }
 
+static int cmd_info_timers(const struct shell *shell, size_t argc, char *argv[])
+{
+	struct device *dev;
+	struct spi_nand_data *drv_data;
+	const struct spi_nand_config *params;
+
+	if (argc == 2) {
+		dev = device_get_binding(argv[1]);
+	} else {
+		dev = device_get_binding(DT_INST_LABEL(0));
+	}
+
+	if (!dev) {
+		shell_error(shell, "device not found");
+		return -EIO;
+	}
+
+	shell_print(shell, "Device: %s", dev->name);
+	drv_data = dev->driver_data;
+	params = dev->config_info;
+
+	/*
+	 *  Note:  shell_print() does not support 64-bit integers.
+	 */
+	shell_print(shell, "Cummulative time:");
+	shell_print(shell, "  page read= %d cycles\n"
+			   "  page prog= %d cycles\n"
+			   "  block erase= %d cycles",
+		    (uint32_t) drv_data->timer[SPI_NAND_TIMER_PAGE_READ_TIME],
+		     (uint32_t) drv_data->timer[SPI_NAND_TIMER_PAGE_PROG_TIME],
+		     (uint32_t) drv_data->timer[SPI_NAND_TIMER_BLOCK_ERASE_TIME]);
+	shell_print(shell, "Cummulative count:");
+	shell_print(shell, "  page read= %d\n"
+			   "  page prog= %d\n"
+			   "  block erase= %d",
+		    drv_data->counter[SPI_NAND_TIMER_PAGE_READ_TIME],
+		    drv_data->counter[SPI_NAND_TIMER_PAGE_PROG_TIME],
+		    drv_data->counter[SPI_NAND_TIMER_BLOCK_ERASE_TIME]);
+	shell_print(shell, "Average time:");
+	shell_print(shell, "  page read= %d cycles\n"
+			   "  page prog= %d cycles\n"
+			   "  block erase= %d cycles",
+		     (uint32_t) (drv_data->timer[SPI_NAND_TIMER_PAGE_READ_TIME] / drv_data->counter[SPI_NAND_TIMER_PAGE_READ_TIME]),
+		     (uint32_t) (drv_data->timer[SPI_NAND_TIMER_PAGE_PROG_TIME] / drv_data->counter[SPI_NAND_TIMER_PAGE_PROG_TIME]),
+		     (uint32_t) (drv_data->timer[SPI_NAND_TIMER_BLOCK_ERASE_TIME] / drv_data->counter[SPI_NAND_TIMER_BLOCK_ERASE_TIME]));
+
+
+	return 0;
+}
+
 
 /***********************/
 
@@ -640,6 +690,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(spi_nand_info_cmds,
 	SHELL_CMD(id, NULL, HELP_NONE, cmd_info_id),
 	SHELL_CMD(version, NULL, HELP_NONE, cmd_info_version),
 	SHELL_CMD(params, NULL, "params - display nand parameter data", cmd_info_params),
+	SHELL_CMD(timers, NULL, "timers - display nand timer data", cmd_info_timers),
 	SHELL_SUBCMD_SET_END
 );
 
