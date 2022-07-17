@@ -55,9 +55,15 @@ static void witap_log_backend_sync_work_handler(struct k_work *work)
 static int char_out(u8_t *data, size_t length, void *backend_ctx)
 {
 	struct log_backend_ctx *ctx = (struct log_backend_ctx *)backend_ctx;
-	int ret;
+	int len;
 
-	ret = fs_write(&ctx->file, data, length);
+	len = fs_write(&ctx->file, data, length);
+	if (len < 0) {
+		/*  char_out() should return the number of bytes written
+		 *  so do not send a negative value if there is an
+		 *  fs_write() error  */
+		len = 0;
+	}
 	ctx->char_count += length;
 	/*
 	 *  if we are close to overflowing the log buffer,
@@ -71,7 +77,8 @@ static int char_out(u8_t *data, size_t length, void *backend_ctx)
 		ctx->sync_pending = true;
 	}
 
-	return ret;
+	/*  return the number of bytes written  */
+	return len;
 }
 
 LOG_OUTPUT_DEFINE(witap_log_output, char_out, buf, sizeof(buf));
