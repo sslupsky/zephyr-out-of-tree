@@ -33,6 +33,8 @@
 #define WITAP_LOG_DEFAULT_SYNC_TIMEOUT		K_SECONDS(30)
 #define WITAP_LOG_INITIAL_SYNC_TIMEOUT		K_SECONDS(30)
 
+#define DATE_UTC_JULY_15_2022	1657918426U
+
 char const boot_count_fname[] = "boot_count";
 char const boot_log_fname[] = "boot.log";
 char const witap_log_fname[] = "witap.log";
@@ -243,7 +245,7 @@ int WITAP_LOG::init_datalog(struct fs_mount_t *mp) {
 	}
 
 	clock_gettime(CLOCK_REALTIME, &tp);
-	if (tp.tv_sec < 1657918426) {
+	if (tp.tv_sec < DATE_UTC_JULY_15_2022) {
 		LOG_WRN("Date is set earlier than July 15, 2022");
 	}
 	snprintk(buf, sizeof(buf), "%012llu,<<LOG START>>\n", tp.tv_sec);
