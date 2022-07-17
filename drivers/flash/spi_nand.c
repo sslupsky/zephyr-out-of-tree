@@ -478,17 +478,46 @@ done:
 
 /**
  * @brief Wait until the flash is ready
+ * 	  Notes:
+ * 	    It appears the maximum read, prog and erase times in the datasheet are not guaranteed.
+ * 	    So, we cannot use them directly as timeouts.
+ * 	    Therefore, the timeouts should be some multiple of the maximum shown in the datasheet
+ * 	    so that we cannot get locked up.
+ * 	    We have three timers that collect the cummulative time and count of the device access.
+ * 	    These can be used to evaluate the average read, prog and erase times.
  *
  * @param dev The device structure
  * @param timeout	timeout (microseconds)
  * @return 0 on success, negative errno code otherwise
  */
-static int spi_nand_wait_until_ready(struct device *dev, u8_t *status_reg, u32_t timeout)
+static int spi_nand_wait_until_ready(struct device *dev, u8_t *status_reg, enum SPI_NAND_TIMER_e timer)
 {
+	struct spi_nand_data *data = dev->driver_data;
 	int ret;
-	u32_t max_time, status_time;
+	u32_t timeout, start_time, delta;
 
-	max_time = k_cycle_get_32() + k_us_to_cyc_ceil32(timeout);
+	switch (timer) {
+		case SPI_NAND_TIMER_PAGE_READ_TIME:
+			timeout = k_us_to_cyc_ceil32(SPI_NAND_MAX_PAGE_READ_TIME);
+			break;
+		case SPI_NAND_TIMER_PAGE_PROG_TIME:
+			timeout = k_us_to_cyc_ceil32(SPI_NAND_MAX_PAGE_PROG_TIME);
+			break;
+		case SPI_NAND_TIMER_BLOCK_ERASE_TIME:
+			timeout = k_us_to_cyc_ceil32(SPI_NAND_MAX_BLOCK_ERASE_TIME);
+			break;
+		case SPI_NAND_TIMER_RESET:
+			timeout = k_us_to_cyc_ceil32(SPI_NAND_MAX_RESET_TIME);
+			break;
+		case SPI_NAND_TIMER_POWER_UP:
+			timeout = k_us_to_cyc_ceil32(SPI_NAND_POWER_UP_WAIT);
+			break;
+		default:
+			timeout = k_us_to_cyc_ceil32(1000);
+			break;
+	};
+
+	start_time = k_cycle_get_32();
 	while (1) {
 		/*
 		 * Capture the current time before reading OIP status so
@@ -500,7 +529,7 @@ static int spi_nand_wait_until_ready(struct device *dev, u8_t *status_reg, u32_t
 		 * This ensure that the read and program timings specified
 		 * in the datasheet work properly.
 		 */
-		status_time = k_cycle_get_32();
+		delta = k_cycle_get_32() - start_time;
 		ret = spi_nand_read_status(dev, status_reg);
 		if (ret < 0) {
 			break;
@@ -520,8 +549,8 @@ static int spi_nand_wait_until_ready(struct device *dev, u8_t *status_reg, u32_t
 		if (!(*status_reg & SPI_NAND_STATUS_OIP_BIT)) {
 			break;
 		}
-		if (status_time > max_time) {
-			LOG_DBG("time out: 0x%02x, %dus", *status_reg, timeout);
+		if (delta > timeout) {
+			LOG_INF("time out: REG=0x%02x, timeout=%dcycles, start time=%d, delta=%d", *status_reg, timeout, start_time, delta);
 			ret = -ETIMEDOUT;
 			break;
 		}
@@ -557,7 +586,7 @@ static int spi_nand_reset(struct device *dev)
 		return ret;
 	}
 
-	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_RESET_TIME);
+	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_TIMER_RESET);
 	return ret;
 }
 
@@ -592,7 +621,7 @@ static int spi_nand_page_write(struct device *dev, u32_t row_addr)
 			goto done;
 		}
 
-		ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_PAGE_PROG_TIME);
+		ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_TIMER_PAGE_PROG_TIME);
 		if (ret < 0) {
 			LOG_ERR("page program wait error %d", ret);
 			goto done;
@@ -636,19 +665,10 @@ static int spi_nand_read_cell_array(struct device *dev, u32_t row_addr)
 		goto done;
 	}
 
-	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_PAGE_READ_TIME);
+	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_TIMER_PAGE_READ_TIME);
 	if (ret < 0) {
-		/* if first read fails, try again */
-		ret = spi_nand_cmd_read_flash_array(dev, row_addr);
-		if (ret < 0) {
-			goto done;
-		}
-		ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_PAGE_READ_TIME);
-		if (ret < 0) {
-			/* if read fails again, return with error */
-			LOG_ERR("read cell array wait error %d", ret);
-			goto done;
-		}
+		LOG_ERR("read cell array wait error %d", ret);
+		goto done;
 	}
 
 	/* check ecc bits */
@@ -907,7 +927,7 @@ static int spi_nand_erase(struct device *dev, off_t addr, size_t size)
 				LOG_ERR("block erase error sending command");
 			}
 			/* wait for OIP */
-			ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_BLOCK_ERASE_TIME);
+			ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_TIMER_BLOCK_ERASE_TIME);
 			if (ret == -ETIMEDOUT) {
 				LOG_ERR("block erase timed out");
 				ret = -EFAULT;
@@ -967,7 +987,7 @@ static int spi_nand_write_protection_set(struct device *dev, bool write_protect)
 
 	acquire_device(dev);
 
-	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_MAX_BLOCK_ERASE_TIME);
+	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_TIMER_BLOCK_ERASE_TIME);
 	if (ret < 0) {
 		goto done;
 	}
@@ -1054,7 +1074,7 @@ static int spi_nand_configure(struct device *dev)
 #endif /* DT_INST_SPI_DEV_HAS_CS_GPIOS(0) */
 
 	/* wait until device ready */
-	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_POWER_UP_WAIT);
+	ret = spi_nand_wait_until_ready(dev, &reg, SPI_NAND_TIMER_POWER_UP);
 	if (ret < 0) {
 		LOG_ERR("not ready after power up");
 		return ret;
