@@ -183,9 +183,9 @@ const struct led_animation_t animation_gps_searching = {
 const struct led_animation_t animation_usb_connect = {
 	.effect = LED_EFFECT_BLINK,
 	.color = (struct led_color_t *)&LED_COLOR_MAGENTA,
-	.duration = 1000,
-	.duty_cycle = 100,
-	.repeat = 0,
+	.duration = 200,
+	.duty_cycle = 500,
+	.repeat = 3,
 };
 
 const struct led_animation_t animation_usb_disconnect = {
