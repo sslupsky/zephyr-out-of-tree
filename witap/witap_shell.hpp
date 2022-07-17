@@ -22,6 +22,7 @@
 #define _WITAP_SHELL_HPP_
 
 #include <getopt.h>
+#include <ctype.h>
 #include <shell/shell.h>
 
 static int cmd_show_version(const struct shell *shell)
@@ -203,6 +204,207 @@ static int cmd_tail(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+/**
+ * @brief cat support
+ * 
+ */
+#define isascii(__c)	((unsigned)(__c)<=0177)
+#define _CAT_BUFFER_SIZE 16
+
+struct cat_flags {
+	int bflag, eflag, nflag, sflag, tflag, vflag;
+};
+
+int
+cook_buf(const struct shell *shell, struct fs_file_t *fp, const char *filename, cat_flags *flags)
+{
+	unsigned long long line;
+	char ch, prev;
+	int gobble;
+	ssize_t len;
+
+	line = gobble = 0;
+	for (prev = '\n'; (len = fs_read(fp, &ch, 1)) > 0; prev = ch) {
+		if (prev == '\n') {
+			if (flags->sflag) {
+				if (ch == '\n') {
+					if (gobble)
+						continue;
+					gobble = 1;
+				} else
+					gobble = 0;
+			}
+			if (flags->nflag) {
+				if (!flags->bflag || ch != '\n') {
+					shell_fprintf(shell, SHELL_OPTION, "%6llu\t", ++line);
+				} else if (flags->eflag) {
+					shell_fprintf(shell, SHELL_OPTION, "%6s\t", "");
+				}
+			}
+		}
+		if (ch == '\n') {
+			if (flags->eflag) {
+				shell_fprintf(shell, SHELL_OPTION, "$");
+			}
+		} else if (ch == '\t') {
+			if (flags->tflag) {
+				shell_fprintf(shell, SHELL_OPTION, "^I");
+				continue;
+			}
+		} else if (flags->vflag) {
+			if (!isascii(ch)) {
+				shell_fprintf(shell, SHELL_OPTION, "M-");
+				ch = ch & 0x7f;
+			}
+			if (iscntrl(ch)) {
+				ch = (ch == '\177' ? '?' : ch | 0100);
+				shell_fprintf(shell, SHELL_OPTION, "^%c", ch);
+				continue;
+			}
+		}
+		shell_fprintf(shell, SHELL_OPTION, "%c", ch);
+	}
+	if (len < 0) {
+		shell_print(shell,"could not read %s", filename);
+		return 1;
+	}
+	return 0;
+}
+
+void
+raw_cat(const struct shell *shell, struct fs_file_t *fp, const char *filename)
+{
+	ssize_t nr, nw, off;
+
+	// static size_t bsize;
+	// static char *buf = NULL;
+	// struct fs_dirent sbuf;
+
+	// if (buf == NULL) {
+	// 	if (fs_stat(filename, &sbuf) < 0)
+	// 		shell_print(shell,"file stat error");
+	// 	bsize = MIN(sbuf.size, 128);
+	// 	if ((buf = (char *)k_malloc(bsize)) == NULL) {
+	// 		shell_print(shell,"malloc error");
+	// 		return;
+	// 	}
+	// }
+
+	u8_t buf[_CAT_BUFFER_SIZE+1];
+	ssize_t bsize = _CAT_BUFFER_SIZE;
+
+	while ((nr = fs_read(fp, buf, bsize)) > 0) {
+		nw = MIN(bsize,nr);
+		for (off = 0; nr; nr -= nw, off += nw) {
+			buf[nr] = 0;
+			shell_fprintf(shell, SHELL_OPTION, "%s", buf);
+		}
+	}
+}
+
+int
+cat_file(const struct shell *shell, const char *path, cat_flags *flags)
+{
+	struct fs_file_t fp;
+	int ret;
+
+	if (flags->bflag || flags->eflag || flags->nflag || flags->sflag || flags->tflag || flags->vflag) {
+		if (path == NULL || strcmp(path, "-") == 0) {
+			shell_print(shell, "stdin unsupported");
+			return 1;
+		} else {
+			if ((ret = fs_open(&fp, path)) < 0) {
+				shell_print(shell,"failed to open %s", path);
+				return 1;
+			}
+			cook_buf(shell, &fp, path, flags);
+			fs_close(&fp);
+		}
+	} else {
+		if (path == NULL || strcmp(path, "-") == 0) {
+			shell_print(shell, "stdin unsupported");
+			return 1;
+		} else {
+			if ((ret = fs_open(&fp, path)) < 0) {
+				shell_print(shell,"%s", path);
+				return 1;
+			}
+			raw_cat(shell, &fp, path);
+			fs_close(&fp);
+		}
+	}
+	return 0;
+}
+
+/**
+ * @brief cat
+ *        see reference https://github.com/openbsd/src/blob/master/bin/cat/cat.c
+ * 
+ * @param shell 
+ * @param argc 
+ * @param argv 
+ * @return int 
+ */
+static int cmd_cat(const struct shell *shell, size_t argc, char **argv)
+{
+	cat_flags flags = {0};
+	int ch, rval;
+
+	// if (pledge("stdio rpath", NULL) == -1)
+	// 	err(1, "pledge");
+
+	/* reset getopt() with optind=0 so that successive calls
+	 * to getopts() parses the args.  Otherwise getops()
+	 * remembers the last parse and returns -1 when
+	 * tail is run more than once.
+	 * see linux man page
+	 * http://man7.org/linux/man-pages/man3/getopt.3.html
+	 */
+	optind = 0;
+	while ((ch = getopt(argc, argv, "benstuv")) != -1) {
+		switch (ch) {
+		case 'b':
+			flags.bflag = flags.nflag = 1;	/* -b implies -n */
+			break;
+		case 'e':
+			flags.eflag = flags.vflag = 1;	/* -e implies -v */
+			break;
+		case 'n':
+			flags.nflag = 1;
+			break;
+		case 's':
+			flags.sflag = 1;
+			break;
+		case 't':
+			flags.tflag = flags.vflag = 1;	/* -t implies -v */
+			break;
+		case 'u':
+			// setvbuf(stdout, NULL, _IONBF, 0);
+			break;
+		case 'v':
+			flags.vflag = 1;
+			break;
+		default:
+			shell_fprintf(shell, SHELL_OPTION, "usage: cat [-benstuv] [file ...]\n");
+			return 1;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc == 0) {
+		// if (pledge("stdio", NULL) == -1)
+		// 	err(1, "pledge");
+
+		rval = cat_file(shell, NULL, &flags);
+	} else {
+		for (; *argv != NULL; argv++)
+			rval = cat_file(shell, *argv, &flags);
+	}
+
+	return rval;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_show,
 	SHELL_CMD(banner, NULL, "display banner", cmd_show_banner),
 	SHELL_CMD(version, NULL, "display version info", cmd_show_version),
@@ -211,5 +413,6 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_show,
 SHELL_CMD_REGISTER(show, &sub_show, "show [version | banner] - show witap info", NULL);
 
 SHELL_CMD_ARG_REGISTER(tail, NULL, "tail [-q] [-n number] file - display the last part of a file", cmd_tail, 2, 3);
+SHELL_CMD_ARG_REGISTER(cat, NULL, "cat -- concatenate and print files", cmd_cat, 2, 3);
 
 #endif /*_WITAP_SHELL_HPP */
