@@ -383,7 +383,8 @@ uint32_t z_timer_cycle_get_32(void)
 	 *        ticks are converted to SYS HW cycles
 	 */
 	k_spinlock_key_t key = k_spin_lock(&lock);
-	ret = k_ticks_to_cyc_near32(rtc_count() / CYCLES_PER_TICK);
+	// ret = k_ticks_to_cyc_near32(rtc_count() / CYCLES_PER_TICK);
+	ret = rtc_count();
 
 	k_spin_unlock(&lock, key);
 	return ret;
