@@ -38,9 +38,9 @@
 #define SPI_NAND_PAGES_PER_BLOCK	DT_INST_PROP(0, pages_per_block)
 #define SPI_NAND_BLOCK_SIZE		(SPI_NAND_PAGE_SIZE * SPI_NAND_PAGES_PER_BLOCK)
 #define SPI_NAND_BLOCKS			DT_INST_PROP(0, blocks)
-#define SPI_NAND_MAX_PAGE_PROG_TIME	DT_INST_PROP(0, max_page_prog_time)
-#define SPI_NAND_MAX_PAGE_READ_TIME	DT_INST_PROP(0, max_page_read_time)
-#define SPI_NAND_MAX_BLOCK_ERASE_TIME	DT_INST_PROP(0, max_block_erase_time)
+#define SPI_NAND_MAX_PAGE_PROG_TIME	DT_INST_PROP(0, max_page_prog_time) * 4
+#define SPI_NAND_MAX_PAGE_READ_TIME	DT_INST_PROP(0, max_page_read_time) * 8
+#define SPI_NAND_MAX_BLOCK_ERASE_TIME	DT_INST_PROP(0, max_block_erase_time) * 2
 #define SPI_NAND_PAGE_PROG		DT_INST_PROP(0, page_prog)
 #define SPI_NAND_MAX_RESET_TIME		(10000U)	/* reset time out */
 #define SPI_NAND_PARAMETER_PAGE_ADDRESS	DT_INST_PROP(0, parameter_page_address)
