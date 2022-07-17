@@ -27,7 +27,7 @@
 static int cmd_show_version(const struct shell *shell)
 {
 	shell_print(shell, "WiTAP G3 Wireless Industrial Sensor");
-	shell_print(shell, "(c) Copyright 2021");
+	shell_print(shell, "(c) Copyright 2022");
 	shell_print(shell, "Scanimetrics Inc.");
 	shell_print(shell, "All rights reserved");
 	shell_print(shell, "Zephyr build: %s", STRINGIFY(BUILD_VERSION));
