@@ -692,13 +692,13 @@ int spi_nand_read_parameter_page(struct device *dev)
 		goto done;
 	}
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_SIGNATURE, data->signature, SPI_NAND_PARAMETER_SIGNATURE_LEN);
-	snprintf(cbuf, sizeof(cbuf), "%.*s", sizeof(data->signature), data->signature);
+	snprintk(buf, MIN(sizeof(buf),sizeof(data->signature)+1), "%4s", data->signature);
 	LOG_DBG("Signature: %s", log_strdup(cbuf));
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MFG, data->manufacturer, SPI_NAND_PARAMETER_DEVICE_MFG_LEN);
-	snprintf(cbuf, sizeof(cbuf), "%.*s", sizeof(data->manufacturer), data->manufacturer);
+	snprintk(buf, MIN(sizeof(buf),sizeof(data->manufacturer)+1), "%12s", data->manufacturer);
 	LOG_DBG("Manufacturer: %s", log_strdup(cbuf));
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_DEVICE_MODEL, data->model, SPI_NAND_PARAMETER_DEVICE_MODEL_LEN);
-	snprintf(cbuf, sizeof(cbuf), "%.*s", sizeof(data->model), data->model);
+	snprintk(buf, MIN(sizeof(buf),sizeof(data->model)+1), "%20s", data->model);
 	LOG_DBG("Model: %s", log_strdup(cbuf));
 	spi_nand_read_page_buf(dev, SPI_NAND_PARAMETER_JEDEC_ID, &data->jedec_id, SPI_NAND_PARAMETER_JEDEC_ID_LEN);
 	LOG_DBG("JEDEC ID: %d", data->jedec_id);

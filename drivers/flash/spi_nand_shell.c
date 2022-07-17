@@ -195,11 +195,11 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 		shell_print(shell, "read parameter page success");
 	}
 
-	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->signature), drv_data->signature);
+	snprintk(buf, MIN(sizeof(buf),sizeof(drv_data->signature)+1), "%4s", drv_data->signature);
 	shell_print(shell, "Signature: %s", buf);
-	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->manufacturer), drv_data->manufacturer);
+	snprintk(buf, MIN(sizeof(buf),sizeof(drv_data->manufacturer)+1), "%12s", drv_data->manufacturer);
 	shell_print(shell, "Manufacturer: %s", buf);
-	snprintf(buf, sizeof(buf), "%.*s", sizeof(drv_data->model), drv_data->model);
+	snprintk(buf, MIN(sizeof(buf),sizeof(drv_data->model)+1), "%20s", drv_data->model);
 	shell_print(shell, "Model: %s", buf);
 	shell_print(shell, "JEDEC ID: 0x%02x", drv_data->jedec_id);
 	shell_print(shell, "Page size: %d", drv_data->page_size);

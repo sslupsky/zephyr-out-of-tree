@@ -70,7 +70,7 @@ void WITAP_LOG::begin(struct fs_mount_t *boot_mp, struct fs_mount_t *log_mp, str
 	char fname[20];
 
 	if (log_mp) {
-		snprintf(fname, sizeof(fname), "%s/%s", log_mp->mnt_point, witap_log_fname);
+		snprintk(fname, sizeof(fname), "%s/%s", log_mp->mnt_point, witap_log_fname);
 		witap_log_backend_enable(fname, CONFIG_WITAP_LOG_LEVEL, timeout);
 	}
 	if (boot_mp) {
@@ -89,7 +89,7 @@ int WITAP_LOG::update_bootcount(struct fs_mount_t *mp, struct boot_status *boot)
 	struct fs_file_t file;
 	int ret;
 
-	snprintf(fname, sizeof(fname), "%s/%s", mp->mnt_point, boot_count_fname);
+	snprintk(fname, sizeof(fname), "%s/%s", mp->mnt_point, boot_count_fname);
 	LOG_DBG("opening file: %s", log_strdup(fname));
 
 	ret = fs_open(&file, fname);
@@ -146,7 +146,7 @@ int WITAP_LOG::update_bootlog(struct fs_mount_t *mp, struct boot_status *boot) {
 	clock_gettime(CLOCK_REALTIME, &tp);
 	gmtime_r(&tp.tv_sec, &tm);
 
-	snprintf(fname, sizeof(fname), "%s/%s", mp->mnt_point, boot_log_fname);
+	snprintk(fname, sizeof(fname), "%s/%s", mp->mnt_point, boot_log_fname);
 	LOG_DBG("opening file: %s", log_strdup(fname));
 
 	ret = fs_open(&file, fname);
@@ -162,7 +162,7 @@ int WITAP_LOG::update_bootlog(struct fs_mount_t *mp, struct boot_status *boot) {
 	}
 
 	/* convert time to seconds */
-	snprintf(buf, sizeof(buf), "[%09d] cause: %#02x, count: %d\n", (u32_t) (boot->time / 1000), boot->cause, boot->count);
+	snprintk(buf, sizeof(buf), "[%09d] cause: %#02x, count: %d\n", (u32_t) (boot->time / 1000), boot->cause, boot->count);
 	ret = fs_write(&file, buf, strlen(buf));
 	if (ret < 0) {
 		LOG_ERR("file write error, ret=%d", ret);
@@ -190,7 +190,7 @@ int WITAP_LOG::update_testlog(struct fs_mount_t *mp) {
 	struct fs_file_t file;
 	int ret;
 
-	snprintf(fname, sizeof(fname), "%s/%s", mp->mnt_point, test_log_fname);
+	snprintk(fname, sizeof(fname), "%s/%s", mp->mnt_point, test_log_fname);
 	LOG_DBG("opening file: %s", log_strdup(fname));
 
 	ret = fs_open(&file, fname);
