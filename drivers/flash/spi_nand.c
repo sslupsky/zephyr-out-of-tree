@@ -436,6 +436,7 @@ done:
 	return ret;
 }
 
+__unused
 static int spi_nand_high_speed_mode(struct device *dev, bool val)
 {
 	int ret;
@@ -826,7 +827,7 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 	}
 
 	acquire_device(dev);
-	spi_nand_high_speed_mode(dev, false);
+	// spi_nand_high_speed_mode(dev, false);
 
 	while (remain) {
 		// Fill page buffer
@@ -865,7 +866,7 @@ static int spi_nand_write(struct device *dev, off_t addr, const void *src,
 	ret = spi_nand_page_write(dev, _chip_page);
 
 cleanup:
-	spi_nand_high_speed_mode(dev, true);
+	// spi_nand_high_speed_mode(dev, true);
 	release_device(dev);
 	return ret;
 }
