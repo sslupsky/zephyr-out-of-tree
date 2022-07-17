@@ -416,6 +416,7 @@ struct spi_nand_data {
 	uint16_t block_endurance;
 	uint16_t page_prog_time;
 	uint16_t block_erase_time;
+	uint16_t page_read_time;
 	struct k_sem sem;
 };
 

@@ -202,6 +202,7 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 	snprintk(buf, MIN(sizeof(buf),sizeof(drv_data->model)+1), "%20s", drv_data->model);
 	shell_print(shell, "Model: %s", buf);
 	shell_print(shell, "JEDEC ID: 0x%02x", drv_data->jedec_id);
+	shell_print(shell, "Bits per cell: %d", drv_data->bits_per_cell);
 	shell_print(shell, "Page size: %d", drv_data->page_size);
 	shell_print(shell, "Pages per block: %d", drv_data->pages_per_block);
 	shell_print(shell, "Blocks per LUN: %d", drv_data->blocks_per_lun);
@@ -211,6 +212,7 @@ static int cmd_info_params(const struct shell *shell, size_t argc, char *argv[])
 	shell_print(shell, "Programs per page: %d", drv_data->programs_per_page);
 	shell_print(shell, "Page program time: %d", drv_data->page_prog_time);
 	shell_print(shell, "Block erase time: %d", drv_data->block_erase_time);
+	shell_print(shell, "Page read time: %d", drv_data->page_read_time);
 
 	return 0;
 }
