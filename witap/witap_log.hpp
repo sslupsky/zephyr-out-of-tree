@@ -69,6 +69,7 @@ public:
 	int init_datalog(struct fs_mount_t *mp);
 	int update_datalog(char *buf);
 	int stop_datalog();
+	int sync_datalog();
 	bool initialized = false;
 	struct fs_file_t data_file;
 
@@ -239,34 +240,38 @@ int WITAP_LOG::init_datalog(struct fs_mount_t *mp) {
 	char buf[64];
 	int ret;
 
-	snprintk(buf, sizeof(buf), "%s/%s", mp->mnt_point, data_log_fname);
-	LOG_DBG("opening file: %s", log_strdup(buf));
+	if (!initialized) {
+		snprintk(buf, sizeof(buf), "%s/%s", mp->mnt_point, data_log_fname);
+		LOG_DBG("opening file: %s", log_strdup(buf));
 
-	ret = fs_open(&(WITAP_LOG::data_file), buf);
-	if (ret < 0) {
-		LOG_ERR("file open error, ret=%d", ret);
-		goto out;
-	}
+		ret = fs_open(&(WITAP_LOG::data_file), buf);
+		if (ret < 0) {
+			LOG_ERR("file open error, ret=%d", ret);
+			goto out;
+		}
 
-	ret = fs_seek(&(WITAP_LOG::data_file), 0, FS_SEEK_END);
-	if (ret < 0) {
-		LOG_ERR("file seek error, ret=%d", ret);
-		goto out;
-	}
+		ret = fs_seek(&(WITAP_LOG::data_file), 0, FS_SEEK_END);
+		if (ret < 0) {
+			LOG_ERR("file seek error, ret=%d", ret);
+			goto out;
+		}
 
-	clock_gettime(CLOCK_REALTIME, &tp);
-	if (tp.tv_sec < DATE_UTC_JULY_15_2022) {
-		LOG_WRN("Date is set earlier than July 15, 2022");
+		clock_gettime(CLOCK_REALTIME, &tp);
+		if (tp.tv_sec < DATE_UTC_JULY_15_2022) {
+			LOG_WRN("Date is set earlier than July 15, 2022");
+		}
+		snprintk(buf, sizeof(buf), "%012llu,<<LOG START>>\n", tp.tv_sec);
+		/* do not print string null */
+		ret = fs_write(&(WITAP_LOG::data_file), buf, strlen(buf));
+		if (ret < 0) {
+			LOG_ERR("file write error, ret=%d", ret);
+			goto out;
+		}
+		// Initialize Internal File System
+		initialized = true;
+	} else {
+		ret = -EINVAL;
 	}
-	snprintk(buf, sizeof(buf), "%012llu,<<LOG START>>\n", tp.tv_sec);
-	/* do not print string null */
-	ret = fs_write(&(WITAP_LOG::data_file), buf, strlen(buf));
-	if (ret < 0) {
-		LOG_ERR("file write error, ret=%d", ret);
-		goto out;
-	}
-	// Initialize Internal File System
-	initialized = true;
 out:
 	return ret;
 }
@@ -300,21 +305,41 @@ int WITAP_LOG::stop_datalog() {
 
 	LOG_DBG("stop data logging");
 
-	clock_gettime(CLOCK_REALTIME, &tp);
-	snprintk(buf, sizeof(buf), "%012llu,<<LOG STOP>>\n", tp.tv_sec);
-	/* do not print string null */
-	ret = fs_write(&(WITAP_LOG::data_file), buf, strlen(buf));
-	if (ret < 0) {
-		LOG_ERR("file write error, ret=%d", ret);
-		goto out;
+	if (initialized) {
+		clock_gettime(CLOCK_REALTIME, &tp);
+		snprintk(buf, sizeof(buf), "%012llu,<<LOG STOP>>\n", tp.tv_sec);
+		/* do not print string null */
+		ret = fs_write(&(WITAP_LOG::data_file), buf, strlen(buf));
+		if (ret < 0) {
+			LOG_ERR("file write error, ret=%d", ret);
+			goto out;
+		}
+		ret = fs_close(&(WITAP_LOG::data_file));
+		if (ret < 0) {
+			LOG_ERR("file close error, ret=%d", ret);
+			goto out;
+		}
+		initialized = false;
+	} else {
+		ret = -EINVAL;
 	}
 
-	ret = fs_close(&(WITAP_LOG::data_file));
-	if (ret < 0) {
-		LOG_ERR("file close error, ret=%d", ret);
-		goto out;
+out:
+	return ret;
+}
+
+int WITAP_LOG::sync_datalog() {
+	int ret;
+
+	if (initialized) {
+		ret = fs_sync(&(WITAP_LOG::data_file));
+		if (ret < 0) {
+			LOG_ERR("file sync error, ret=%d", ret);
+			goto out;
+		}
+	} else {
+		ret = -EINVAL;
 	}
-	initialized = false;
 
 out:
 	return ret;
