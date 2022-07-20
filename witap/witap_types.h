@@ -28,10 +28,7 @@ typedef struct {
 extern "C" {
 #endif
 
-	int spi_nand_read_parameter_page(struct device *);
-	void spi_nand_get_registers(struct device *dev, u8_t *status, u8_t *ctrl, u8_t *lock);
-	s64_t sam0_rtc_timer_boot_time(void);
-
+/*  prototypes  */
 
 #ifdef __cplusplus
 }
