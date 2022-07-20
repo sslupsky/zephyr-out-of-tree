@@ -51,14 +51,6 @@ struct witap_mkr_dock_config_data {
 	u16_t version;
 };
 
-struct witap_mkr_dock_device_data {
-	witap_mkr_dock_config_reg config;
-	struct boot_status boot;
-	u64_t uptime;
-	u64_t sleep_time;
-	u16_t battery;
-};
-
 struct witap_mkr_dock_sensor_data {
 	s16_t ths_temperature;
 	s16_t sensor1;
@@ -67,11 +59,11 @@ struct witap_mkr_dock_sensor_data {
 	s16_t ads1115_1;
 	s16_t ads1115_2;
 	s16_t ads1115_3;
+	uint16_t battery;
 };
 
 struct witap_mkr_dock {
 	struct witap_mkr_dock_config_data config;
-	struct witap_mkr_dock_device_data device;
 	struct witap_mkr_dock_sensor_data sensor;
 };
 

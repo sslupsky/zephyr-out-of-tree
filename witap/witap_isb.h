@@ -25,6 +25,7 @@
 #define _WITAP_ISB_H_
 
 #include <zephyr/types.h>
+#include "witap_mkr.h"
 
 struct witap_isb_config_reg {
 	union {
@@ -70,6 +71,16 @@ struct witap_isb_sensor_ready_flags {
 	u32_t gnss_fixOK : 1;
 } __packed;
 
+/**
+ * @brief Boot status descriptor
+ * 
+ */
+struct witap_isb_boot_status {
+	time_t	 time;
+	uint32_t count;
+	u8_t	 cause;
+} __attribute__((packed));
+
 struct witap_isb_config_data {
 	char name[16];
 	u16_t version;
@@ -77,7 +88,7 @@ struct witap_isb_config_data {
 
 struct witap_isb_device_data {
 	witap_isb_config_reg config;
-	struct boot_status boot;
+	struct witap_isb_boot_status boot;
 	u64_t uptime;
 	u64_t sleep_time;
 	u16_t battery;
