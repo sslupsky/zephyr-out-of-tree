@@ -18,7 +18,6 @@
  */
 
 
-#include "witap_types.h"
 #include <usb/usb_device.h>
 #include <drivers/pmic.h>
 

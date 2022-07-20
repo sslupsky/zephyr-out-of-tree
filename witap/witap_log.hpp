@@ -28,8 +28,6 @@
 #include <posix/time.h>
 #include <sys/timeutil.h>
 
-#include "witap_types.h"
-
 #define WITAP_LOG_DEFAULT_SYNC_TIMEOUT		K_SECONDS(30)
 #define WITAP_LOG_INITIAL_SYNC_TIMEOUT		K_SECONDS(30)
 
@@ -46,6 +44,18 @@ char const test_string[] = "this is a 32 byte test string. \n";
 extern "C" {
 	int witap_log_backend_enable(char *fname, u32_t init_log_level, k_timeout_t timeout);
 }
+
+
+/**
+ * @brief Boot status descriptor
+ * 
+ */
+struct boot_status {
+    u64_t time {};
+    u32_t count {};
+    u8_t  cause {};
+} __attribute__((packed));
+
 
 class WITAP_LOG
 {

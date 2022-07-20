@@ -17,7 +17,6 @@
 #include <logging/log.h>
 #include <shell/shell.h>
 
-#include "witap_types.h"
 #include "witap_power.hpp"
 
 LOG_MODULE_DECLARE(witap, CONFIG_WITAP_LOG_LEVEL);
